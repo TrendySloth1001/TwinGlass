@@ -1,0 +1,26 @@
+{
+  "name": "mob-mirror",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mirror and control Android phones from the desktop over USB or Wi-Fi",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "fetch-server": "node scripts/fetch-server.mjs",
+    "postinstall": "node scripts/fetch-server.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0",
+    "electron-vite": "6.0.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.6",
+    "vitest": "5.1.0"
+  }
+}

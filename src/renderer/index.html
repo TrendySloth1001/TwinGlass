@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+    <title>Mob Mirror</title>
+    <style>
+      :root { color-scheme: light dark; font-family: -apple-system, system-ui, sans-serif; }
+      body { margin: 0; padding: 20px; }
+      header { display: flex; align-items: center; gap: 12px; }
+      h1 { font-size: 18px; margin: 0; }
+      .muted { opacity: 0.6; font-size: 12px; }
+      ul { list-style: none; padding: 0; }
+      li { padding: 10px 12px; border: 1px solid #8884; border-radius: 8px; margin: 8px 0; }
+      .tag { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #8883; margin-left: 6px; }
+      .error { color: #d33; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Mob Mirror</h1>
+      <button id="refresh">Refresh</button>
+      <span id="adb" class="muted"></span>
+    </header>
+    <ul id="devices"></ul>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
