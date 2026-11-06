@@ -30,6 +30,12 @@ export function useMacScreen(): { state: MacScreenState; toggle: (mode?: 'mirror
       window.mobMirror.onMacScreen((ev) => {
         if (ev.t === 'keyframe') sender.current?.requestKeyFrame()
         else if (ev.t === 'viewers') setState((s) => ({ ...s, viewers: ev.n }))
+        else if (ev.t === 'input-trusted' && !ev.ok)
+          notify('warning', 'Allow touch control of the Mac', {
+            description:
+              'To click and scroll on the Mac from the phone, allow Electron (Mob Mirror while developing) under System Settings → Privacy & Security → Accessibility, then touch the phone again.',
+            action: { label: 'Open Settings', run: () => void window.mobMirror.macScreenOpenPrivacy('accessibility') },
+          })
         else if (ev.t === 'stats') setState((s) => ({ ...s, latencyMs: typeof ev.s.p50 === 'number' ? ev.s.p50 : null }))
         else if (ev.t === 'stop' && sender.current) {
           sender.current.stop()

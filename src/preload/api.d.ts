@@ -111,12 +111,12 @@ export interface MobMirrorApi {
   /** Mac screen on the phone (see main/mac-screen.ts). */
   macScreenStatus(): Promise<{ running: boolean; viewers: number; permission: string; transport: 'usb' | 'wifi' | null; phoneStats: Record<string, number> | null }>
   /** mirror: the main screen; extend: a new virtual display shaped like the phone (second monitor). */
-  macScreenStart(mode?: 'mirror' | 'extend'): Promise<{ url: string; mode: 'mirror' | 'extend'; displayId: number | null }>
+  macScreenStart(mode?: 'mirror' | 'extend'): Promise<{ url: string; mode: 'mirror' | 'extend'; displayId: number | null; viewer: 'companion' | 'browser' }>
   macScreenStop(): Promise<void>
-  macScreenOpenPrivacy(): Promise<void>
+  macScreenOpenPrivacy(which?: 'screen' | 'accessibility'): Promise<void>
   macScreenConfig(json: string): void
   macScreenChunk(type: 1 | 2, timestampUs: number, data: Uint8Array): void
-  onMacScreen(cb: (ev: { t: 'keyframe' } | { t: 'stop' } | { t: 'viewers'; n: number } | { t: 'stats'; s: Record<string, number> }) => void): () => void
+  onMacScreen(cb: (ev: { t: 'keyframe' } | { t: 'stop' } | { t: 'viewers'; n: number } | { t: 'stats'; s: Record<string, number> } | { t: 'input-trusted'; ok: boolean }) => void): () => void
   /** Notify-only updates (see main/update-check.ts). */
   checkForUpdate(): Promise<UpdateInfo>
   downloadUpdate(url: string): Promise<void>

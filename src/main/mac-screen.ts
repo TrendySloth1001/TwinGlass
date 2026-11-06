@@ -64,6 +64,8 @@ function sendInput(lines: string): void {
   inputHelper.stdin!.write(lines.endsWith('\n') ? lines : `${lines}\n`)
 }
 export type ShareMode = 'mirror' | 'extend'
+/** The Android companion app (companion/). */
+export const COMPANION_PKG = 'com.mobmirror.companion'
 /** Latest latency report from the phone page (POST /stats), for the Mac UI. */
 let phoneStats: Record<string, number> | null = null
 let transport: 'usb' | 'wifi' | null = null
@@ -299,14 +301,22 @@ export function registerMacScreenIpc(getAdb: () => Adb | null, getSerial: (wcId:
       throw new Error(`Could not reach the phone: ${rev.trim()}`)
     }
     const url = `http://localhost:${port}/?t=${token}`
-    await adb.runLoose(['shell', `am start -a android.intent.action.VIEW -d '${url}'`], serial, 8000)
-    return { url, mode, displayId: extendDisplayId }
+    // The companion app (hardware low-latency decode + touch control) when installed, else Chrome.
+    const companion = /package:/.test(await adb.runLoose(['shell', `pm path ${COMPANION_PKG}`], serial, 5000))
+    await adb.runLoose(
+      ['shell', companion ? `am start -n ${COMPANION_PKG}/.ViewerActivity -d '${url}'` : `am start -a android.intent.action.VIEW -d '${url}'`],
+      serial,
+      8000,
+    )
+    return { url, mode, displayId: extendDisplayId, viewer: companion ? 'companion' : 'browser' }
   })
 
   ipcMain.handle('macscreen:stop', () => stop(getAdb()))
   // macOS: Screen Recording permission lives in System Settings (an app can't grant it itself).
-  ipcMain.handle('macscreen:open-privacy', () =>
-    shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'),
+  ipcMain.handle('macscreen:open-privacy', (_e, which: unknown) =>
+    shell.openExternal(
+      `x-apple.systempreferences:com.apple.preference.security?${which === 'accessibility' ? 'Privacy_Accessibility' : 'Privacy_ScreenCapture'}`,
+    ),
   )
 
   ipcMain.on('macscreen:config', (_e, json: string) => {

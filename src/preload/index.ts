@@ -43,15 +43,16 @@ const api: MobMirrorApi = {
   macScreenStatus: () => ipcRenderer.invoke('macscreen:status'),
   macScreenStart: (mode: 'mirror' | 'extend' = 'mirror') => ipcRenderer.invoke('macscreen:start', mode),
   macScreenStop: () => ipcRenderer.invoke('macscreen:stop'),
-  macScreenOpenPrivacy: () => ipcRenderer.invoke('macscreen:open-privacy'),
+  macScreenOpenPrivacy: (which?: 'screen' | 'accessibility') => ipcRenderer.invoke('macscreen:open-privacy', which),
   macScreenConfig: (json: string) => ipcRenderer.send('macscreen:config', json),
   macScreenChunk: (type: 1 | 2, ts: number, data: Uint8Array) => ipcRenderer.send('macscreen:chunk', type, ts, data),
-  onMacScreen: (cb: (ev: { t: 'keyframe' } | { t: 'stop' } | { t: 'viewers'; n: number } | { t: 'stats'; s: Record<string, number> }) => void) => {
+  onMacScreen: (cb: (ev: { t: 'keyframe' } | { t: 'stop' } | { t: 'viewers'; n: number } | { t: 'stats'; s: Record<string, number> } | { t: 'input-trusted'; ok: boolean }) => void) => {
     const offs = [
       subscribe('macscreen:keyframe', () => cb({ t: 'keyframe' })),
       subscribe('macscreen:stop', () => cb({ t: 'stop' })),
       subscribe('macscreen:viewers', (n: number) => cb({ t: 'viewers', n })),
       subscribe('macscreen:stats', (s: Record<string, number>) => cb({ t: 'stats', s })),
+      subscribe('macscreen:input-trusted', (ok: boolean) => cb({ t: 'input-trusted', ok })),
     ]
     return () => offs.forEach((o) => o())
   },

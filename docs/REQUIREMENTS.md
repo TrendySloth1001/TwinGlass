@@ -120,13 +120,15 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - It is placed **right of the main screen, vertically centred** (public `CGConfigureDisplayOrigin`), so the pointer crosses the middle of the right edge.
   - The phone is held in landscape while it runs, and everything is restored on Stop.
   - Start: ⇧⌥⌘P, or ⌘K → "second display".
-- **Touch → Mac mouse.**
+- ✅ **Touch → Mac mouse.**
   - `native/input` (public CGEvent API) plus `POST /input` on the share server: tap = click, drag, long press = right click, two fingers = scroll.
   - Needs the macOS **Accessibility** permission for Electron.
   - Built; it is driven by the companion app.
-- **Companion app** (`companion/`, Kotlin, package `com.mobmirror.companion`):
-  - Viewer: MediaCodec low-latency decode to a SurfaceView, touch-to-Mac, the same latency report.
-  - Source is written. **Building needs Gradle**: the user installs it, or opens the project in Android Studio.
+- ✅ **Companion app** (`companion/`, Kotlin, package `com.mobmirror.companion`).
+  - Built: Gradle 8.11.1 wrapper with a pinned SHA-256, AGP 8.7.3, minSdk 29, target 35. Commands: `npm run companion:build` / `companion:install`.
+  - Installed on the A024; Mob Mirror opens it automatically, with Chrome as the fallback.
+  - **Verified:** extend at full 2800×1260 is **p50 40 ms / p95 45 ms** (Chrome: 43 / 53 ms at 1846×1200).
+  - **Touch → Mac verified:** a tap at the phone's centre put the Mac pointer at (2499, 583), the second display's centre. Accessibility granted.
 - ✅ **Updates: notify-only.**
   - Verified fact: Squirrel.Mac / electron-updater can't auto-install an unsigned app.
   - The app checks GitHub Releases (package.json `mobMirror.updateRepo`) or a JSON feed daily, and offers Download. Settings → Advanced → Check now.
