@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import type { AdbStatusInfo, DeviceListInfo } from '../../../preload/api'
 
 export function useDevices(): {
@@ -35,20 +36,24 @@ export function useDevices(): {
   useEffect(() => {
     if (!adb?.serverVersion || !adb.clientVersion || adb.serverVersion === adb.clientVersion || noticeShown.current) return
     noticeShown.current = true
-    toast.warning(`adb server ${adb.serverVersion} is running`, {
-      description: `Another tool started an older adb than this app’s ${adb.clientVersion}. Wireless pairing can misbehave until it’s restarted.`,
-      duration: Infinity,
+    // Brief toast; the notice stays in the notification center (bell) with its action.
+    notify('warning', 'adb server outdated', {
+      description: `v${adb.serverVersion} was started by another tool (this app uses v${adb.clientVersion}). Wireless pairing may misbehave until it is restarted.`,
       action: {
-        label: 'Restart adb server',
-        onClick: () => {
+        label: 'Restart adb',
+        run: () => {
           const id = toast.loading('Restarting the adb server…')
           window.mobMirror.restartAdbServer().then(
             (s) => {
               setAdb(s)
               refresh()
-              toast.success(`adb server ${s.serverVersion ?? ''} running`, { id, description: 'Phones reconnect automatically.' })
+              toast.dismiss(id)
+              notify('success', `adb server ${s.serverVersion ?? ''} running`, { description: 'Phones reconnect automatically.' })
             },
-            (e: unknown) => toast.error('Could not restart adb', { id, description: String(e) }),
+            (e: unknown) => {
+              toast.dismiss(id)
+              notify('error', 'Could not restart adb', { description: String(e) })
+            },
           )
         },
       },

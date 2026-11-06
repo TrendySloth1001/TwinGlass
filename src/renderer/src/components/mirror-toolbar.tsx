@@ -27,6 +27,7 @@ import {
 import type { ReactNode } from 'react'
 import { shortcutFor, type DeviceAction } from '@shared/shortcuts'
 import { IconButton } from '@/components/icon-button'
+import { NotificationCenter } from '@/components/notification-center'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -219,6 +220,7 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sideba
           </Group>
         </div>
 
+        <NotificationCenter />
         {/* Narrow toolbars: everything folded away is one click away here. */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

@@ -84,3 +84,12 @@
 - [x] docs/AGENTS.md and the `phone-control` skill
 - [ ] Needs the user: `claude mcp add …`, then ask Claude Code to do something on the phone (first input tools on the device)
 - [ ] Ideas: per-tool permissions (e.g. allow read-only tools only), an action log/replay, a "Stop agent" button, app-install tool, notifications/logcat reader for app debugging
+
+## M7: Reliability, quality and UI (2026-11-06)
+- [x] Auto-reconnect + watchdog (router deauth / IP change / cable); USB > mDNS > ip:port ✅ failover verified
+- [x] Quality presets + H.265 end to end ✅ (USB native 16 Mbps hvc1, Wi-Fi 1600 px 6 Mbps)
+- [x] Unlock locked apps (app-lock PIN prompts), Touch ID gated
+- [x] Sidebar: docked/floating, collapsible, sections; responsive layout down to 480 px ✅ 1180/860/560
+- [x] Show touches = app overlay, instant; settings apply live and are queued, not dropped ✅
+- [x] Notifications: compact shadcn-styled toasts (one line); click opens the notification center (bell) with the notice expanded; adb mismatch notice with "Restart adb"
+- [ ] Needs the user: open an app-locked app to confirm its activity name is recognised (else use "Type PIN")

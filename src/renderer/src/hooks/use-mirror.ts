@@ -11,6 +11,7 @@ import { AudioPlayer } from '@/engine/audio-player'
 import { InputController } from '@/engine/input'
 import { Recorder } from '@/engine/recorder'
 import { TouchOverlay } from '@/engine/touch-overlay'
+import { notify } from '@/lib/notify'
 import { VideoView, type VideoStats } from '@/engine/video-view'
 
 /** `reconnecting`: the link died unexpectedly (Wi-Fi drop, cable pulled); retrying automatically. */
@@ -214,7 +215,7 @@ export function useMirror(
           else if (data.t === 'closed') {
             teardown(false)
             if (data.unexpected) reconnectRef.current(t, opts, data.error ?? 'The connection closed')
-            else if (data.error) toast.error('Disconnected', { description: data.error })
+            else if (data.error) notify('error', 'Disconnected', { description: data.error })
             else toast('Disconnected')
           }
         }
@@ -240,7 +241,7 @@ export function useMirror(
         if (gen !== attempt.current) return false // cancelled by the user: not an error
         if (mode === 'fresh') {
           setState(IDLE)
-          toast.error('Could not start mirroring', { description: errMsg(e) })
+          notify('error', 'Could not start mirroring', { description: errMsg(e) })
         }
         return false
       } finally {
@@ -306,16 +307,15 @@ export function useMirror(
           const next = dev?.transports[0]
           if (!next) continue
           if (await connectOnce(next, { ...opts, deviceId: dev.id }, gen, 'reconnect')) {
-            toast.success('Reconnected', { description: `via ${next.kind === 'usb' ? 'USB' : 'Wi-Fi'} (${next.serial})` })
+            notify('success', 'Reconnected', { description: `via ${next.kind === 'usb' ? 'USB' : 'Wi-Fi'} (${next.serial})` })
             return
           }
         }
         if (gen !== attempt.current) return
         setState(IDLE)
-        toast.error('Connection lost', {
+        notify('error', 'Connection lost', {
           description: `${reason}. The phone didn’t come back within 90 s (check its Wi-Fi or the cable).`,
-          action: { label: 'Retry', onClick: () => void connect(lost, opts) },
-          duration: 15000,
+          action: { label: 'Retry', run: () => void connect(lost, opts) },
         })
       })()
     },
