@@ -11,7 +11,7 @@
 //   is forgotten immediately so it can't burn more attempts.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { app, ipcMain, safeStorage } from 'electron'
+import { app, ipcMain, safeStorage, systemPreferences } from 'electron'
 import { AndroidKey } from '@shared/input/keycodes'
 import { KeyAction } from '@shared/scrcpy/constants'
 import { injectKeycode, injectText } from '@shared/scrcpy/control'
@@ -35,6 +35,8 @@ export interface UnlockStatus {
   saved: boolean
   /** safeStorage (Keychain) is available, so "remember" can be offered. */
   canSave: boolean
+  /** Touch ID can be prompted right now; a saved secret is only released after it succeeds. */
+  touchId: boolean
 }
 
 export interface UnlockRequest {
@@ -105,6 +107,27 @@ async function status(adb: Adb, serial: string): Promise<UnlockStatus> {
     locked,
     saved: id in readStore(),
     canSave: safeStorage.isEncryptionAvailable(),
+    touchId: canTouchId(),
+  }
+}
+
+const canTouchId = (): boolean => process.platform === 'darwin' && systemPreferences.canPromptTouchID()
+
+/**
+ * Gate for releasing a saved secret. promptTouchID() is an app-level check (Electron docs: it does
+ * not itself protect data), so it runs here in main, before the secret is decrypted, where the
+ * renderer can't skip it. No silent fallback: without Touch ID the user types the PIN.
+ */
+async function confirmWithTouchId(): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (!canTouchId()) {
+    return { ok: false, message: 'Touch ID isn’t available right now (e.g. lid closed). Type the PIN instead.' }
+  }
+  try {
+    // macOS shows: “Mob Mirror” is trying to unlock your Android phone.
+    await systemPreferences.promptTouchID('unlock your Android phone')
+    return { ok: true }
+  } catch {
+    return { ok: false, message: 'Touch ID was cancelled or didn’t match. The phone was not touched.' }
   }
 }
 
@@ -121,18 +144,25 @@ async function unlock(adb: Adb, session: ScrcpySession, req: UnlockRequest): Pro
   if (st.credential === 'PATTERN') {
     return { ok: false, message: 'This phone uses a pattern lock, which can’t be typed. Switch it to a PIN or password to unlock from the Mac.' }
   }
-  const fromStore = req.secret === undefined
-  const secret = req.secret ?? loadSecret(id) ?? ''
   const needsSecret = st.credential !== 'NONE'
-  if (needsSecret && !secret) return { ok: false, message: 'Enter the phone’s PIN or password.' }
-  if (needsSecret && !isTypeableSecret(secret)) {
+  const fromStore = req.secret === undefined && needsSecret
+  if (req.secret !== undefined && !isTypeableSecret(req.secret)) {
     return { ok: false, message: 'Only plain ASCII PINs/passwords (letters, digits, symbols) can be typed reliably.' }
   }
 
+  // Checked before Touch ID, so an unlocked phone never triggers a fingerprint prompt.
   if (st.locked === false) {
     if (req.remember && req.secret) saveSecret(id, req.secret)
     return { ok: true, message: 'The phone is already unlocked.' }
   }
+
+  if (fromStore) {
+    if (!(id in readStore())) return { ok: false, message: 'Enter the phone’s PIN or password.' }
+    const gate = await confirmWithTouchId()
+    if (!gate.ok) return gate
+  }
+  const secret = req.secret ?? (fromStore ? loadSecret(id) : null) ?? ''
+  if (needsSecret && !secret) return { ok: false, message: 'Enter the phone’s PIN or password.' }
 
   press(session, AndroidKey.WAKEUP)
   await sleep(350)

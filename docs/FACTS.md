@@ -179,6 +179,11 @@ adb shell CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobi
   5. Poll the lock state for up to 3.5 s
 - **Not yet verified end to end:** typing a real PIN into a locked phone. The user needs to test this, since it needs their PIN.
 - **Pattern locks can't be typed.** Only ASCII PINs/passwords are supported (that's the INJECT_TEXT limitation).
+- ✅ **The user confirmed that a typed PIN unlocks the phone** (2026-11-06).
+- **Touch ID:** `systemPreferences.canPromptTouchID()` / `promptTouchID(reason)` (Electron 45, darwin). The dev Mac (MacBookPro18,3) has biometrics enabled for unlock.
+  - Electron's own docs say `promptTouchID` is an **app-level gate** and doesn't protect data by itself. So main decrypts the saved secret (safeStorage) only after Touch ID succeeds, and the renderer can't bypass that.
+  - **Limit:** code running as the same macOS user could still decrypt the safeStorage file. A hardware-bound Keychain item (`kSecAccessControlUserPresence`) would need a native module.
+  - Touch ID is checked *after* "already unlocked", so an unlocked phone never prompts. If Touch ID is unavailable (lid closed), there's no silent fallback: the user types the PIN.
 
 ## Build and packaging (verified 2026-11-06)
 - **electron-vite 6 does not minify the renderer by default.** With `renderer.build.minify: true`, the JS goes from 1,538 KB to 606 KB. Dropping `motion` brings it to 471 KB.

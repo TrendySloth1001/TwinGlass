@@ -54,8 +54,9 @@
   - Wakes the phone, shows the bouncer and types the PIN/password over the control socket, then verifies.
   - Detects the lock type (pattern → explains it can't be typed).
   - Optional "Remember on this Mac" (safeStorage / Keychain, per device; a saved PIN that fails is forgotten).
-  - Never auto-retries. ✅ Status and dialog checked on the device.
-- [ ] Needs the user: lock the phone, press ⌘L, type the PIN, then try once with "Remember"
+  - Never auto-retries. ✅ The user confirmed unlocking with a typed PIN.
+  - Saved PIN released only after Touch ID (in main); no silent fallback. ✅ Detected on the dev Mac.
+- [ ] Needs the user: lock the phone → ⌘L → Unlock with Touch ID
 - [ ] Optional quality presets (e.g. "Low latency" = smaller max_size on Wi-Fi), driven by jitter measurements
 
 ## M4: Polish and packaging (in progress; ✅ marks items verified)

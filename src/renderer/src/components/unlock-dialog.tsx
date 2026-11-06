@@ -1,4 +1,4 @@
-import { CheckCircle2, KeyRound, Loader2, LockKeyhole, ShieldAlert, XCircle } from 'lucide-react'
+import { CheckCircle2, Fingerprint, KeyRound, Loader2, LockKeyhole, ShieldAlert, XCircle } from 'lucide-react'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import type { UnlockStatusInfo } from '../../../preload/api'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -58,6 +58,8 @@ export function UnlockDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   const kind = status ? LABEL[status.credential] : 'PIN or password'
   const isPin = status?.credential === 'PIN'
   const busy = result.kind === 'busy'
+  /** Saved secret usable now (main releases it only after Touch ID succeeds). */
+  const useSaved = !!status?.saved && status.touchId
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -91,10 +93,15 @@ export function UnlockDialog({ open, onOpenChange }: { open: boolean; onOpenChan
               {status.locked === false && (
                 <p className="text-sm text-muted-foreground">The phone is currently unlocked.</p>
               )}
-              {status.saved ? (
+              {status.saved && (
                 <div className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
                   <span className="flex items-center gap-2">
-                    <KeyRound className="size-4 text-muted-foreground" /> Saved {kind} on this Mac
+                    {status.touchId ? (
+                      <Fingerprint className="size-4 text-brand" />
+                    ) : (
+                      <KeyRound className="size-4 text-muted-foreground" />
+                    )}
+                    Saved {kind} · {status.touchId ? 'Touch ID protected' : 'Touch ID unavailable now'}
                   </span>
                   <Button
                     type="button"
@@ -106,7 +113,8 @@ export function UnlockDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                     Forget
                   </Button>
                 </div>
-              ) : (
+              )}
+              {!useSaved &&
                 status.credential !== 'NONE' && (
                   <>
                     <div className="grid gap-1.5">
@@ -122,18 +130,17 @@ export function UnlockDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                         disabled={busy}
                       />
                     </div>
-                    {status.canSave && (
+                    {status.canSave && !status.saved && (
                       <div className="flex items-start gap-2">
                         <Checkbox id="unlock-remember" checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
                         <Label htmlFor="unlock-remember" className="text-xs leading-snug font-normal text-muted-foreground">
-                          Remember on this Mac (encrypted with the macOS Keychain). Anyone using this Mac account could
-                          then unlock the phone.
+                          Remember on this Mac (encrypted with the macOS Keychain). Next time, unlock with your
+                          fingerprint: the saved {kind} is only released after Touch ID.
                         </Label>
                       </div>
                     )}
                   </>
-                )
-              )}
+                )}
 
               {result.kind === 'ok' && (
                 <Alert>
@@ -150,9 +157,10 @@ export function UnlockDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
               <DialogFooter className="items-center gap-2 sm:justify-between">
                 <p className="text-[11px] text-muted-foreground">Wrong attempts count on the phone. No auto-retry.</p>
-                {status.saved || status.credential === 'NONE' ? (
-                  <Button type="button" disabled={busy} onClick={() => void run({})}>
-                    {busy && <Loader2 className="animate-spin" />} Unlock
+                {useSaved || status.credential === 'NONE' ? (
+                  <Button type="button" disabled={busy} autoFocus onClick={() => void run({})}>
+                    {busy ? <Loader2 className="animate-spin" /> : useSaved && <Fingerprint />}
+                    {useSaved ? (busy ? 'Waiting for Touch ID…' : 'Unlock with Touch ID') : 'Unlock'}
                   </Button>
                 ) : (
                   <Button type="submit" disabled={busy || !secret}>

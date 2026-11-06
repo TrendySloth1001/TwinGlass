@@ -39,6 +39,8 @@ export interface UnlockStatusInfo {
   locked: boolean | null
   saved: boolean
   canSave: boolean
+  /** Touch ID can be prompted now; required to use the saved secret. */
+  touchId: boolean
 }
 
 export type QrState =
