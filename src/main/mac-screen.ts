@@ -7,11 +7,15 @@
 //
 // Stream framing (big-endian): u8 type (0 config JSON, 1 key frame, 2 delta frame),
 // f64 timestamp (µs), u32 length, then `length` bytes. H.264 is Annex-B, SPS/PPS inline.
+import { spawn, type ChildProcess } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { createServer, type Server, type ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { app, BrowserWindow, desktopCapturer, ipcMain, session as electronSession, shell, systemPreferences, type WebContents } from 'electron'
 import type { Adb } from './adb/adb'
+import { holdLandscape } from './adb/rotation'
 import { VIEWER_HTML } from './mac-screen-viewer'
 
 interface Viewer {
@@ -26,6 +30,44 @@ let port = 0
 let serial: string | null = null
 let sender: WebContents | null = null
 let config: Uint8Array | null = null
+/** Extend mode: the virtual display helper and the display it created. */
+let displayHelper: ChildProcess | null = null
+let extendDisplayId: number | null = null
+/** Restores the phone's rotation after extend mode turned it to landscape. */
+let restoreRotation: (() => Promise<void>) | null = null
+/** Touch -> Mac mouse helper (native/input), started on the first touch. */
+let inputHelper: ChildProcess | null = null
+let inputTrusted: boolean | null = null
+
+function inputHelperPath(): string {
+  const dev = join(app.getAppPath(), 'native/input/mm-input')
+  const packaged = join(process.resourcesPath, 'mm-input')
+  return app.isPackaged && existsSync(packaged) ? packaged : dev
+}
+
+/** Lines of JSON events from the phone -> the helper (which posts CGEvents on the shared display). */
+function sendInput(lines: string): void {
+  if (!inputHelper || inputHelper.exitCode !== null) {
+    const bin = inputHelperPath()
+    if (!existsSync(bin)) return
+    inputHelper = spawn(bin, [], { stdio: ['pipe', 'pipe', 'ignore'] })
+    inputHelper.stdout!.once('data', (b: Buffer) => {
+      try {
+        inputTrusted = (JSON.parse(b.toString().split('\n')[0]!) as { trusted: boolean }).trusted
+        for (const w of BrowserWindow.getAllWindows()) w.webContents.send('macscreen:input-trusted', inputTrusted)
+      } catch {
+        // ignore
+      }
+    })
+    inputHelper.stdin!.write(`${JSON.stringify({ t: 'display', id: extendDisplayId ?? 0 })}\n`)
+  }
+  inputHelper.stdin!.write(lines.endsWith('\n') ? lines : `${lines}\n`)
+}
+export type ShareMode = 'mirror' | 'extend'
+/** Latest latency report from the phone page (POST /stats), for the Mac UI. */
+let phoneStats: Record<string, number> | null = null
+let transport: 'usb' | 'wifi' | null = null
+const wallMs = (): number => performance.timeOrigin + performance.now()
 const viewers = new Set<Viewer>()
 
 export function frame(type: number, timestampUs: number, data: Uint8Array): Uint8Array {
@@ -55,7 +97,71 @@ function broadcast(type: number, chunk: Uint8Array): void {
   }
 }
 
+/** The compiled helper (npm run build:native); bundled under Resources when packaged. */
+function helperPath(): string {
+  const dev = join(app.getAppPath(), 'native/virtual-display/mm-virtual-display')
+  const packaged = join(process.resourcesPath, 'mm-virtual-display')
+  return app.isPackaged && existsSync(packaged) ? packaged : dev
+}
+
+/** `wm size`: "Physical size: 1260x2800" (an "Override size" line wins if present). */
+export function parseWmSize(out: string): { width: number; height: number } | null {
+  const m = /Override size:\s*(\d+)x(\d+)/.exec(out) ?? /Physical size:\s*(\d+)x(\d+)/.exec(out)
+  return m ? { width: Number(m[1]), height: Number(m[2]) } : null
+}
+
+/**
+ * Virtual display for the phone in landscape, Retina 2x: "looks like" half the phone's pixels,
+ * backed by exactly its pixels (2800x1260 phone -> 1400x630 pt display rendered at 2800x1260).
+ */
+export function extendSize(phone: { width: number; height: number }): { width: number; height: number } {
+  const long = Math.max(phone.width, phone.height)
+  const short = Math.min(phone.width, phone.height)
+  return { width: Math.round(long / 2), height: Math.round(short / 2) }
+}
+
+async function createDisplay(size: { width: number; height: number }, name: string): Promise<number> {
+  const bin = helperPath()
+  if (!existsSync(bin)) throw new Error('The display helper is missing: run npm run build:native')
+  // Right of the main screen, vertically centred (the pointer crosses along the middle of that edge).
+  const p = spawn(bin, [String(size.width), String(size.height), '60', name, '1', 'right'], { stdio: ['pipe', 'pipe', 'pipe'] })
+  displayHelper = p
+  const line = await new Promise<string>((resolve, reject) => {
+    let out = ''
+    const t = setTimeout(() => reject(new Error('The virtual display did not start')), 5000)
+    p.stdout!.on('data', (b: Buffer) => {
+      out += b.toString()
+      const nl = out.indexOf('\n')
+      if (nl >= 0) {
+        clearTimeout(t)
+        resolve(out.slice(0, nl))
+      }
+    })
+    p.once('exit', (code) => {
+      clearTimeout(t)
+      reject(new Error(`The virtual display helper exited (${code})`))
+    })
+  })
+  const msg = JSON.parse(line) as { displayId?: number; error?: string }
+  if (!msg.displayId) throw new Error(msg.error ?? 'macOS refused to create the display')
+  return msg.displayId
+}
+
+function removeDisplay(): void {
+  displayHelper?.stdin?.end() // the helper exits when stdin closes; the display disappears
+  const p = displayHelper
+  setTimeout(() => p && p.exitCode === null && p.kill(), 1500)
+  displayHelper = null
+  extendDisplayId = null
+}
+
 async function stop(adb: Adb | null): Promise<void> {
+  inputHelper?.stdin?.end()
+  inputHelper = null
+  removeDisplay()
+  const restore = restoreRotation
+  restoreRotation = null
+  await restore?.().catch(() => {})
   for (const v of viewers) v.res.end()
   viewers.clear()
   server?.close()
@@ -78,7 +184,9 @@ export function registerMacScreenIpc(getAdb: () => Adb | null, getSerial: (wcId:
       void desktopCapturer.getSources({ types: ['screen'] }).then(
         (sources) => {
           try {
-            callback(sources[0] ? { video: sources[0] } : {})
+            // Extend mode: the virtual display; mirror mode: the main screen.
+            const pick = (extendDisplayId !== null && sources.find((x) => x.display_id === String(extendDisplayId))) || sources[0]
+            callback(pick ? { video: pick } : {})
           } catch (err) {
             console.warn('[macscreen] display media denied:', err)
           }
@@ -97,10 +205,14 @@ export function registerMacScreenIpc(getAdb: () => Adb | null, getSerial: (wcId:
   ipcMain.handle('macscreen:status', () => ({
     running: server !== null,
     viewers: viewers.size,
+    transport,
+    phoneStats,
+    inputTrusted,
     permission: process.platform === 'darwin' ? systemPreferences.getMediaAccessStatus('screen') : 'granted',
   }))
 
-  ipcMain.handle('macscreen:start', async (e) => {
+  ipcMain.handle('macscreen:start', async (e, modeArg: unknown) => {
+    const mode: ShareMode = modeArg === 'extend' ? 'extend' : 'mirror'
     const adb = getAdb()
     const target = await getSerial(e.sender.id)
     if (!adb || !target) throw new Error('Connect a phone first.')
@@ -111,6 +223,8 @@ export function registerMacScreenIpc(getAdb: () => Adb | null, getSerial: (wcId:
     await stop(adb)
     token = randomBytes(16).toString('hex')
     serial = target
+    transport = /^[\w-]+$/.test(target) && !target.includes('._adb-tls') && !/:\d+$/.test(target) ? 'usb' : 'wifi'
+    phoneStats = null
     sender = e.sender
     server = createServer((req, res) => {
       const url = new URL(req.url ?? '/', 'http://localhost')
@@ -120,6 +234,33 @@ export function registerMacScreenIpc(getAdb: () => Adb | null, getSerial: (wcId:
       }
       if (url.pathname === '/') {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }).end(VIEWER_HTML)
+      } else if (url.pathname === '/time') {
+        // Clock sync for latency: the phone compares this with its own clock (NTP-style).
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end(JSON.stringify({ now: wallMs() }))
+      } else if (url.pathname === '/stats' && req.method === 'POST') {
+        let body = ''
+        req.on('data', (c: Buffer) => (body += c.toString()).length > 4096 && req.destroy())
+        req.on('end', () => {
+          try {
+            phoneStats = JSON.parse(body) as Record<string, number>
+            for (const w of BrowserWindow.getAllWindows()) w.webContents.send('macscreen:stats', phoneStats)
+          } catch {
+            // ignore malformed
+          }
+          res.writeHead(204).end()
+        })
+      } else if (url.pathname === '/input' && req.method === 'POST') {
+        // Touches from the phone (newline-separated JSON events, normalised 0..1 coordinates).
+        let body = ''
+        req.on('data', (c: Buffer) => (body += c.toString()).length > 64 * 1024 && req.destroy())
+        req.on('end', () => {
+          const ok = body
+            .split('\n')
+            .filter((l) => /^\{"t":"(move|down|drag|up|scroll)"/.test(l))
+            .join('\n')
+          if (ok) sendInput(ok)
+          res.writeHead(204).end()
+        })
       } else if (url.pathname === '/stream') {
         res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Cache-Control': 'no-store' })
         res.socket?.setNoDelay(true)
@@ -140,6 +281,18 @@ export function registerMacScreenIpc(getAdb: () => Adb | null, getSerial: (wcId:
     })
     port = (server.address() as AddressInfo).port
     // The phone's localhost:port -> this Mac's 127.0.0.1:port, through the USB/adb link.
+    if (mode === 'extend') {
+      const phone = parseWmSize(await adb.runLoose(['shell', 'wm size'], serial, 5000))
+      if (!phone) throw new Error('Could not read the phone’s screen size.')
+      extendDisplayId = await createDisplay(extendSize(phone), 'Mob Mirror (phone)')
+      restoreRotation = await holdLandscape(adb, serial) // the second display is wide
+      // Wait until the new screen is capturable (it shows up in desktopCapturer shortly after).
+      for (let i = 0; i < 20; i++) {
+        const src = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
+        if (src.some((x) => x.display_id === String(extendDisplayId))) break
+        await new Promise((r) => setTimeout(r, 150))
+      }
+    }
     const rev = await adb.runLoose(['reverse', `tcp:${port}`, `tcp:${port}`], serial, 8000)
     if (/error|failed/i.test(rev)) {
       await stop(adb)
@@ -147,7 +300,7 @@ export function registerMacScreenIpc(getAdb: () => Adb | null, getSerial: (wcId:
     }
     const url = `http://localhost:${port}/?t=${token}`
     await adb.runLoose(['shell', `am start -a android.intent.action.VIEW -d '${url}'`], serial, 8000)
-    return { url }
+    return { url, mode, displayId: extendDisplayId }
   })
 
   ipcMain.handle('macscreen:stop', () => stop(getAdb()))

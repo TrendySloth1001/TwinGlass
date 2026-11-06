@@ -197,7 +197,8 @@ export function App(): ReactNode {
       window.mobMirror.onUiCommand((cmd) => {
         const s = settingsRef.current
         if (cmd === 'open-settings') setSettingsOpen(true)
-        else if (cmd === 'toggle-mac-screen') macScreenToggle.current()
+        else if (cmd === 'toggle-mac-screen') macScreenToggle.current('mirror')
+        else if (cmd === 'toggle-extend-display') macScreenToggle.current('extend')
         else if (cmd === 'open-palette') setPalette({ open: true, mode: 'all' })
         else if (cmd === 'open-clipboard') setPalette({ open: true, mode: 'clipboard' })
         else if (cmd === 'send-clipboard') {
@@ -389,8 +390,12 @@ export function App(): ReactNode {
             <span className="relative inline-flex size-2 rounded-full bg-destructive" />
           </span>
           {macScreen.state.starting
-            ? 'Starting Mac screen on phone…'
-            : `Mac screen on phone · ${macScreen.state.viewers ? `${macScreen.state.viewers} watching` : 'waiting for the phone'}`}
+            ? macScreen.state.mode === 'extend'
+              ? 'Creating the phone display…'
+              : 'Starting Mac screen on phone…'
+            : `${macScreen.state.mode === 'extend' ? 'Phone as second display' : 'Mac screen on phone'} · ${macScreen.state.viewers ? `${macScreen.state.viewers} watching` : 'waiting for the phone'}${
+                macScreen.state.latencyMs !== null ? ` · ${Math.round(macScreen.state.latencyMs)} ms` : ''
+              }`}
           <Button size="xs" variant="secondary" className="rounded-full" onClick={macScreen.stop}>
             Stop
           </Button>
@@ -402,7 +407,7 @@ export function App(): ReactNode {
         onOpenChange={(open) => setPalette((p) => ({ ...p, open }))}
         live={live}
         onAction={dispatch}
-        onToggleMacScreen={macScreen.toggle}
+        onToggleMacScreen={(m) => macScreen.toggle(m)}
         macScreenRunning={macScreen.state.running}
       />
       <SettingsDialog

@@ -81,12 +81,13 @@ registerPhoneAppsIpc(getAdb, serverPath, getSession)
 registerClipboardHistoryIpc()
 void app.whenReady().then(registerUpdateIpc)
 // Mac screen on the phone: the window's mirrored phone, else the first connected one.
+// Prefers the phone's USB link (transports are ranked USB first): lowest latency.
 registerMacScreenIpc(getAdb, async (wcId) => {
   const s = getSession(wcId)
-  if (s) return s.serial
   const adb = getAdb()
   const list = adb ? await trackDevices(adb).catch(() => null) : null
-  return list?.devices[0]?.transports[0]?.serial ?? null
+  const dev = s ? list?.devices.find((d) => d.transports.some((t) => t.serial === s.serial)) : list?.devices[0]
+  return dev?.transports[0]?.serial ?? s?.serial ?? null
 })
 
 /** Menu bar icon actions: mirror in an idle window (or a new one), show the app. */

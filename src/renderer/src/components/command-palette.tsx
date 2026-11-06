@@ -73,7 +73,7 @@ interface CommandPaletteProps {
   /** A phone is mirrored (apps / sending need it). */
   live: boolean
   onAction: (a: DeviceAction) => void
-  onToggleMacScreen: () => void
+  onToggleMacScreen: (mode: 'mirror' | 'extend') => void
   macScreenRunning: boolean
 }
 
@@ -159,15 +159,26 @@ export function CommandPalette({ open, mode, onOpenChange, live, onAction, onTog
         )
       : []
 
-  const macLabel = macScreenRunning ? 'Stop showing Mac screen on phone' : 'Show Mac screen on phone'
+  const macLabel = macScreenRunning ? 'Stop Mac screen on phone' : 'Show Mac screen on phone'
+  const extLabel = macScreenRunning ? 'Stop Mac screen on phone' : 'Use phone as a second display'
   const actionRows: Row[] =
     mode === 'all' && live
       ? rows([
           {
+            key: 'extend',
+            score: Math.max(matchScore(extLabel, q), matchScore('extend second display monitor screen', q)),
+            node: (
+              <CommandItem key="extend" value="action:extend" onSelect={() => run(() => onToggleMacScreen('extend'))}>
+                <MonitorUp /> {extLabel}
+                <CommandShortcut>⇧⌥⌘P</CommandShortcut>
+              </CommandItem>
+            ),
+          },
+          {
             key: 'mac-screen',
             score: Math.max(matchScore(macLabel, q), matchScore('mac screen display share cast', q)),
             node: (
-              <CommandItem key="mac-screen" value="action:mac-screen" onSelect={() => run(onToggleMacScreen)}>
+              <CommandItem key="mac-screen" value="action:mac-screen" onSelect={() => run(() => onToggleMacScreen('mirror'))}>
                 <MonitorUp /> {macLabel}
                 <CommandShortcut>⌥⌘P</CommandShortcut>
               </CommandItem>

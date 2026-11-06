@@ -109,13 +109,14 @@ export interface MobMirrorApi {
   /** A background error in the main process (logged; shown as a notification). */
   onAppError(cb: (message: string) => void): () => void
   /** Mac screen on the phone (see main/mac-screen.ts). */
-  macScreenStatus(): Promise<{ running: boolean; viewers: number; permission: string }>
-  macScreenStart(): Promise<{ url: string }>
+  macScreenStatus(): Promise<{ running: boolean; viewers: number; permission: string; transport: 'usb' | 'wifi' | null; phoneStats: Record<string, number> | null }>
+  /** mirror: the main screen; extend: a new virtual display shaped like the phone (second monitor). */
+  macScreenStart(mode?: 'mirror' | 'extend'): Promise<{ url: string; mode: 'mirror' | 'extend'; displayId: number | null }>
   macScreenStop(): Promise<void>
   macScreenOpenPrivacy(): Promise<void>
   macScreenConfig(json: string): void
   macScreenChunk(type: 1 | 2, timestampUs: number, data: Uint8Array): void
-  onMacScreen(cb: (ev: { t: 'keyframe' } | { t: 'stop' } | { t: 'viewers'; n: number }) => void): () => void
+  onMacScreen(cb: (ev: { t: 'keyframe' } | { t: 'stop' } | { t: 'viewers'; n: number } | { t: 'stats'; s: Record<string, number> }) => void): () => void
   /** Notify-only updates (see main/update-check.ts). */
   checkForUpdate(): Promise<UpdateInfo>
   downloadUpdate(url: string): Promise<void>
@@ -148,7 +149,7 @@ export interface MobMirrorApi {
   onDeviceAction(cb: (action: DeviceAction) => void): () => void
   /** View menu commands (toggle sidebar ⌘\, float/dock ⌥⌘\). */
   onUiCommand(
-    cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view' | 'open-settings' | 'open-palette' | 'open-clipboard' | 'send-clipboard' | 'toggle-mac-screen') => void,
+    cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view' | 'open-settings' | 'open-palette' | 'open-clipboard' | 'send-clipboard' | 'toggle-mac-screen' | 'toggle-extend-display') => void,
   ): () => void
   /** compact: phone-shaped window locked to `aspect` (video width / height); full: restore. */
   /** extra: chrome around the video besides the title strip and rail (nav bar, phone frame). */

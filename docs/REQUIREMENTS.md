@@ -114,6 +114,19 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - How it works: screen → hardware H.264 (WebCodecs, realtime) → a local server (127.0.0.1 with a random token) → `adb reverse` → the phone's Chrome page (WebCodecs decode, full screen).
   - Start it with ⌥⌘P, ⌘K → "Mac screen", or the Phone menu. A status pill with Stop shows while it runs.
   - ✅ **Verified end to end on the A024** (2026-11-06): the live Mac screen showed in the phone's Chrome over `adb reverse`, with 1 viewer. Screen Recording had to be granted for Electron first (System Settings → Privacy & Security → Screen Recording; add it with ⇧⌘G to `node_modules/electron/dist`), then the app restarted.
+- ✅ **Latency over USB (Mac → phone Chrome, measured 2026-11-06).** Capture → drawn: p50 **43 ms**, p95 **~53 ms**, at about 58 fps and 1846×1200. Breakdown: encode ~9 ms, link round trip 4 ms, **phone decode ~30 ms** (Chrome's decoder holds about one frame: the biggest cost, and why the companion app uses MediaCodec in low-latency mode).
+- ✅ **Phone as a second display (extend), verified.**
+  - A native helper (`native/virtual-display`, private `CGVirtualDisplay` as DeskPad and BetterDisplay use) creates a display shaped like the phone, landscape at 2× (1400×630 pt = 2800×1260 px).
+  - It is placed **right of the main screen, vertically centred** (public `CGConfigureDisplayOrigin`), so the pointer crosses the middle of the right edge.
+  - The phone is held in landscape while it runs, and everything is restored on Stop.
+  - Start: ⇧⌥⌘P, or ⌘K → "second display".
+- **Touch → Mac mouse.**
+  - `native/input` (public CGEvent API) plus `POST /input` on the share server: tap = click, drag, long press = right click, two fingers = scroll.
+  - Needs the macOS **Accessibility** permission for Electron.
+  - Built; it is driven by the companion app.
+- **Companion app** (`companion/`, Kotlin, package `com.mobmirror.companion`):
+  - Viewer: MediaCodec low-latency decode to a SurfaceView, touch-to-Mac, the same latency report.
+  - Source is written. **Building needs Gradle**: the user installs it, or opens the project in Android Studio.
 - ✅ **Updates: notify-only.**
   - Verified fact: Squirrel.Mac / electron-updater can't auto-install an unsigned app.
   - The app checks GitHub Releases (package.json `mobMirror.updateRepo`) or a JSON feed daily, and offers Download. Settings → Advanced → Check now.

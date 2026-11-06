@@ -35,14 +35,45 @@ export const VIEWER_HTML = `<!doctype html>
   if (!('VideoDecoder' in window)) { say('This browser can’t decode video (needs Chrome 94+).'); return }
 
   let decoder = null, frames = 0, needKey = true
-  setInterval(() => { if (decoder) say(frames + ' fps'); frames = 0 }, 1000)
+  const t = new URLSearchParams(location.search).get('t')
+  const now = () => performance.timeOrigin + performance.now()
+
+  // ---- latency: sync to the Mac's clock (NTP-style: keep the sample with the smallest round trip),
+  // then every drawn frame gives capture-on-Mac -> drawn-on-phone. Re-synced every 10 s.
+  let offset = null, rtt = null
+  const sync = async () => {
+    let best = null
+    for (let i = 0; i < 8; i++) {
+      const t0 = now()
+      const r = await fetch('/time?t=' + t, { cache: 'no-store' }).then((x) => x.json())
+      const t1 = now()
+      if (!best || t1 - t0 < best.rtt) best = { rtt: t1 - t0, offset: r.now - (t0 + t1) / 2 }
+    }
+    offset = best.offset; rtt = best.rtt
+  }
+  sync(); setInterval(sync, 10000)
+  let lat = [], dec = [], gotAt = new Map()
+  const pct = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(p * s.length))] }
+  setInterval(() => {
+    const p50 = pct(lat, 0.5), p95 = pct(lat, 0.95), d50 = pct(dec, 0.5)
+    if (decoder) say((p50 !== null ? Math.round(p50) + ' ms · ' : '') + frames + ' fps')
+    if (p50 !== null) fetch('/stats?t=' + t, { method: 'POST', body: JSON.stringify({
+      p50: +p50.toFixed(1), p95: +p95.toFixed(1), min: +Math.min(...lat).toFixed(1), max: +Math.max(...lat).toFixed(1),
+      decode50: d50 === null ? null : +d50.toFixed(1), fps: frames, rtt: rtt === null ? null : +rtt.toFixed(1), samples: lat.length,
+      w: canvas.width, h: canvas.height }) }).catch(() => {})
+    frames = 0; lat = []; dec = []
+  }, 2000)
   const make = (cfg) => {
     decoder?.close()
     decoder = new VideoDecoder({
       output: (f) => {
         if (canvas.width !== f.displayWidth) canvas.width = f.displayWidth
         if (canvas.height !== f.displayHeight) canvas.height = f.displayHeight
-        ctx.drawImage(f, 0, 0); f.close(); frames++
+        ctx.drawImage(f, 0, 0)
+        const n = now()
+        if (offset !== null) lat.push(n + offset - f.timestamp / 1000) // capture (Mac clock) -> drawn
+        const g = gotAt.get(f.timestamp); if (g) { dec.push(n - g); gotAt.delete(f.timestamp) }
+        f.close(); frames++
       },
       error: (e) => { say('Decoder error: ' + e.message); needKey = true },
     })
@@ -52,7 +83,6 @@ export const VIEWER_HTML = `<!doctype html>
   }
 
   const run = async () => {
-    const t = new URLSearchParams(location.search).get('t')
     const res = await fetch('/stream?t=' + t, { cache: 'no-store' })
     if (!res.ok) { say('Not allowed (' + res.status + '). Start it again from the Mac.'); return }
     const reader = res.body.getReader()
@@ -71,6 +101,7 @@ export const VIEWER_HTML = `<!doctype html>
         else if (decoder && decoder.state === 'configured') {
           if (type === 1) needKey = false
           if (needKey) continue
+          gotAt.set(ts, now()); if (gotAt.size > 120) gotAt.delete(gotAt.keys().next().value)
           decoder.decode(new EncodedVideoChunk({ type: type === 1 ? 'key' : 'delta', timestamp: ts, data }))
         }
       }

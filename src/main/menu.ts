@@ -81,6 +81,7 @@ export function installMenu(): void {
         { label: 'Send Mac Clipboard to Phone', accelerator: 'CommandOrControl+Shift+O', click: () => uiCommand('send-clipboard') },
         { type: 'separator' },
         { label: 'Show Mac Screen on Phone', accelerator: 'CommandOrControl+Alt+P', click: () => uiCommand('toggle-mac-screen') },
+        { label: 'Use Phone as Second Display', accelerator: 'CommandOrControl+Alt+Shift+P', click: () => uiCommand('toggle-extend-display') },
       ],
     },
     {

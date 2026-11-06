@@ -3,6 +3,8 @@ export interface MacScreenStats {
   width: number
   height: number
   fps: number
+  /** Frame read from capture -> encoded chunk out (ms, moving average). */
+  encodeMs: number
 }
 
 const KEY_INTERVAL_MS = 2000
@@ -20,6 +22,10 @@ export class MacScreenSender {
   private fps = 0
   private timer = 0
   private configured = ''
+  private encodeMs = 0
+  /** Wall-clock µs (epoch) of the frame being encoded: sent as the chunk timestamp, so the phone can
+   * measure capture -> on-screen after a clock sync. */
+  private wallUs = (): number => Math.round((performance.timeOrigin + performance.now()) * 1000)
   stopped = false
 
   constructor(
@@ -37,17 +43,18 @@ export class MacScreenSender {
 
   stats(): MacScreenStats {
     const s = this.stream?.getVideoTracks()[0]?.getSettings()
-    return { width: s?.width ?? 0, height: s?.height ?? 0, fps: this.fps }
+    return { width: s?.width ?? 0, height: s?.height ?? 0, fps: this.fps, encodeMs: Math.round(this.encodeMs * 10) / 10 }
   }
 
-  async start(): Promise<void> {
+  /** @param max largest size to send (extend mode sends the phone's full resolution) */
+  async start(max = { width: 1920, height: 1200 }): Promise<void> {
     // Main's display-media handler picks the main screen; no picker. Cap at 1920 wide: phone
     // screens are ~2400 px on the long side, and this keeps encode + Wi-Fi light.
     this.stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
     const track = this.stream.getVideoTracks()[0]
     if (!track) throw new Error('No screen video track')
     // Scale after capture (more compatible than capture-time constraints).
-    await track.applyConstraints({ width: { max: 1920 }, height: { max: 1200 }, frameRate: { max: 60 } }).catch(() => {})
+    await track.applyConstraints({ width: { max: max.width }, height: { max: max.height }, frameRate: { max: 60 } }).catch(() => {})
     track.addEventListener('ended', () => this.stop('The screen capture ended.'))
     this.timer = window.setInterval(() => {
       this.fps = this.frames
@@ -66,6 +73,8 @@ export class MacScreenSender {
         }
         const data = new Uint8Array(chunk.byteLength)
         chunk.copyTo(data)
+        const ms = (this.wallUs() - chunk.timestamp) / 1000
+        this.encodeMs = this.encodeMs ? this.encodeMs + 0.1 * (ms - this.encodeMs) : ms
         this.send.chunk(chunk.type === 'key' ? 1 : 2, chunk.timestamp, data)
       },
       error: (e) => this.stop(`Encoder error: ${e.message}`),
@@ -86,7 +95,7 @@ export class MacScreenSender {
       if (`${w}x${h}` !== size) {
         size = `${w}x${h}`
         encoder.configure({
-          codec: 'avc1.640033', // High profile, level 5.1: up to 1920x1200 @ 60
+          codec: 'avc1.640033', // High profile, level 5.1: up to 4096x2304 (2800x1260 phone fits) @ 60
           width: w,
           height: h,
           bitrate: 10_000_000,
@@ -108,8 +117,11 @@ export class MacScreenSender {
         this.wantKey = false
         this.lastKey = now
       }
-      encoder.encode(frame, { keyFrame: key })
+      // Re-stamp with the wall clock at capture read (VideoFrame timestamps are on another clock).
+      const stamped = new VideoFrame(frame, { timestamp: this.wallUs() })
       frame.close()
+      encoder.encode(stamped, { keyFrame: key })
+      stamped.close()
       this.frames++
     }
   }

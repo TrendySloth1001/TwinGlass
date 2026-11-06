@@ -41,16 +41,17 @@ const api: MobMirrorApi = {
   onConnectRequest: (cb: (t: { serial: string; kind: 'usb' | 'wifi' }) => void) => subscribe('ui:connect', cb),
   onAppError: (cb: (message: string) => void) => subscribe('app:error', cb),
   macScreenStatus: () => ipcRenderer.invoke('macscreen:status'),
-  macScreenStart: () => ipcRenderer.invoke('macscreen:start'),
+  macScreenStart: (mode: 'mirror' | 'extend' = 'mirror') => ipcRenderer.invoke('macscreen:start', mode),
   macScreenStop: () => ipcRenderer.invoke('macscreen:stop'),
   macScreenOpenPrivacy: () => ipcRenderer.invoke('macscreen:open-privacy'),
   macScreenConfig: (json: string) => ipcRenderer.send('macscreen:config', json),
   macScreenChunk: (type: 1 | 2, ts: number, data: Uint8Array) => ipcRenderer.send('macscreen:chunk', type, ts, data),
-  onMacScreen: (cb: (ev: { t: 'keyframe' } | { t: 'stop' } | { t: 'viewers'; n: number }) => void) => {
+  onMacScreen: (cb: (ev: { t: 'keyframe' } | { t: 'stop' } | { t: 'viewers'; n: number } | { t: 'stats'; s: Record<string, number> }) => void) => {
     const offs = [
       subscribe('macscreen:keyframe', () => cb({ t: 'keyframe' })),
       subscribe('macscreen:stop', () => cb({ t: 'stop' })),
       subscribe('macscreen:viewers', (n: number) => cb({ t: 'viewers', n })),
+      subscribe('macscreen:stats', (s: Record<string, number>) => cb({ t: 'stats', s })),
     ]
     return () => offs.forEach((o) => o())
   },
