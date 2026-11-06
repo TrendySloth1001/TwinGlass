@@ -186,14 +186,14 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSe
 
       <div className="flex shrink-0 flex-col items-center gap-0.5 pt-1">
         <Sep />
-        <NotificationCenter />
+        <NotificationCenter side="left" />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon-sm" aria-label="More controls" className="rounded-lg [-webkit-app-region:no-drag]">
               <Ellipsis />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="left" align="end" className="w-60">
+          <DropdownMenuContent side="left" align="end" className="dark w-60">
             {/* Only what the strip doesn't already show: no duplicates. */}
             {!roomy && (
               <>

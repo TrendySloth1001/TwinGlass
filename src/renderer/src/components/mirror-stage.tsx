@@ -136,15 +136,19 @@ export function MirrorStage({
       )}
 
       {live && (locked || appPrompt) && (
-        <div className="absolute top-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-neutral-900/85 py-1.5 pr-1.5 pl-4 text-sm text-white shadow-lg backdrop-blur">
-          <LockKeyhole className="size-4 text-warning" />
-          <span>
-            {locked
-              ? 'Phone is locked. The PIN screen is hidden from capture.'
-              : `${appPrompt} is asking for your PIN (hidden from capture).`}
-          </span>
-          <Button size="sm" variant="secondary" className="rounded-full" onClick={onUnlock}>
-            Unlock <Kbd className="ml-1">⌘L</Kbd>
+        // One line that fits any window: short label, full explanation in the tooltip.
+        <div
+          title={
+            locked
+              ? 'The PIN screen is hidden from capture (it shows black), so Mob Mirror types your PIN for you.'
+              : `${appPrompt} is asking for your PIN. The prompt is hidden from capture.`
+          }
+          className="absolute top-3 left-1/2 z-10 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-neutral-900/90 py-1 pr-1 pl-3 text-xs whitespace-nowrap text-white shadow-lg backdrop-blur"
+        >
+          <LockKeyhole className="size-3.5 shrink-0 text-warning" />
+          <span className="min-w-0 truncate">{locked ? 'Phone locked' : `${appPrompt} wants your PIN`}</span>
+          <Button size="xs" variant="secondary" className="shrink-0 rounded-full" onClick={onUnlock}>
+            Unlock <Kbd className="ml-0.5 hidden sm:inline-flex">⌘L</Kbd>
           </Button>
         </div>
       )}

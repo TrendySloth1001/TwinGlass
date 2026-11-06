@@ -45,3 +45,20 @@ export function parseDevicesL(output: string): AdbTransport[] {
   }
   return result
 }
+
+/**
+ * Several shell commands in one adb round trip: `a; echo MARK; b; echo MARK; c`. Over Wi-Fi each
+ * `adb shell` costs a full round trip plus process start on the phone, so batching the lock poll's
+ * three dumpsys calls cuts its cost by about two thirds.
+ */
+export function batchShellCommand(cmds: string[], marker: string): string {
+  return cmds.join(` ; echo ${marker} ; `)
+}
+
+/** Splits the combined output of batchShellCommand back into one string per command. */
+export function splitBatchOutput(out: string, marker: string, count: number): string[] {
+  const parts = out.split(new RegExp(`^${marker}\\r?$`, 'm'))
+  const res = parts.slice(0, count).map((p, i) => (i === 0 ? p : p.replace(/^\r?\n/, '')))
+  while (res.length < count) res.push('')
+  return res
+}

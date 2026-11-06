@@ -1,12 +1,13 @@
 // Thin wrapper around the system adb binary (ADR-4: we do not bundle adb).
 import { execFile, spawn, type ChildProcess } from 'node:child_process'
-import { randomInt } from 'node:crypto'
+import { randomBytes, randomInt } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { promisify } from 'node:util'
-import { parseDevicesL, type AdbTransport } from './parse'
+import { KeyedLimiter } from './limiter'
+import { batchShellCommand, parseDevicesL, splitBatchOutput, type AdbTransport } from './parse'
 import {
   connectSucceeded,
   makeQrPairing,
@@ -74,10 +75,26 @@ export class Adb {
 
   constructor(readonly path: string) {}
 
+  /** At most 4 adb commands at once per phone (see KeyedLimiter); server-wide commands are not limited. */
+  private limiter = new KeyedLimiter(4)
+
   async run(args: string[], serial?: string, timeoutMs = 15000): Promise<string> {
     const full = serial ? ['-s', serial, ...args] : args
-    const { stdout, stderr } = await execFileP(this.path, full, { timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 })
-    return stdout + stderr
+    const exec = async (): Promise<string> => {
+      const { stdout, stderr } = await execFileP(this.path, full, { timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 })
+      return stdout + stderr
+    }
+    return serial ? this.limiter.run(serial, exec) : exec()
+  }
+
+  /**
+   * Several shell commands in one round trip; returns one output per command (empty when a
+   * command produced nothing or the link dropped). Never throws.
+   */
+  async shellBatch(serial: string, cmds: string[], timeoutMs = 8000): Promise<string[]> {
+    const marker = `__MOB_MIRROR_${randomBytes(6).toString('hex')}__`
+    const out = await this.runLoose(['shell', batchShellCommand(cmds, marker)], serial, timeoutMs)
+    return splitBatchOutput(out, marker, cmds.length)
   }
 
   /** Like run(), but resolves with the combined output even on a non-zero exit. */

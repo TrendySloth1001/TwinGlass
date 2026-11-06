@@ -7,8 +7,7 @@ import { clipboard, ipcMain, MessageChannelMain, webContents, type WebContents }
 import { scanFile } from '@shared/scrcpy/control'
 import type { Adb } from './adb/adb'
 import { ScrcpySession } from './scrcpy/session'
-import { isCredentialPrompt, promptOwner } from './adb/lock'
-import { focusedWindow, isLocked, topActivity } from './unlock-ipc'
+import { isCredentialPrompt, LOCK_POLL_CMDS, parseFocusedWindow, parseKeyguardShowing, parseTopActivity, promptOwner } from './adb/lock'
 import { restoreAutoRotate, toggleRotation } from './adb/rotation'
 import type { FileResult, MainToRenderer, RendererToMain, StartSessionRequest } from '../shared/ipc'
 
@@ -130,10 +129,12 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
       if (polling) return
       polling = true
       void (async () => {
-        const locked = await isLocked(adb, session.serial)
+        // One adb round trip for all three (was three sequential ones).
+        const [policy = '', topOut = '', focusOut = ''] = await adb.shellBatch(session.serial, LOCK_POLL_CMDS)
+        const locked = parseKeyguardShowing(policy)
         if (locked === null) return
-        const top = locked ? null : await topActivity(adb, session.serial)
-        const focus = locked ? null : await focusedWindow(adb, session.serial)
+        const top = locked ? null : parseTopActivity(topOut)
+        const focus = locked ? null : parseFocusedWindow(focusOut)
         // App lockers (e.g. com.nothing.applocker) draw an overlay window: check focus too.
         const appPrompt = isCredentialPrompt(top, focus) ? promptOwner(top, focus) : null
         const key = `${locked}|${appPrompt}`

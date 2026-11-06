@@ -29,8 +29,11 @@ function ago(at: number): string {
   return new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-/** Toolbar bell + popover listing recent notices, with their actions. */
-export function NotificationCenter(): ReactNode {
+/**
+ * Bell + popover listing recent notices, with their actions. In the toolbar it opens below; on the
+ * compact control strip it opens to the left (side="left"), beside the strip instead of over it.
+ */
+export function NotificationCenter({ side = 'bottom' }: { side?: 'bottom' | 'left' }): ReactNode {
   const notices = useNotices()
   const center = useNotificationCenter()
   const unread = notices.filter((n) => !n.read)
@@ -62,9 +65,18 @@ export function NotificationCenter(): ReactNode {
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
-        <TooltipContent side="bottom">App notifications</TooltipContent>
+        <TooltipContent side={side}>App notifications</TooltipContent>
       </Tooltip>
-      <PopoverContent align="end" sideOffset={8} className="w-72 p-0">
+      <PopoverContent
+        side={side}
+        align="end"
+        sideOffset={side === 'left' ? 12 : 8}
+        collisionPadding={8}
+        // Don't put a focus ring on "Clear all" just because the panel opened.
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        // Opened from the dark compact strip: match it.
+        className={cn('w-[min(20rem,calc(100vw-5rem))] p-0', side === 'left' && 'dark')}
+      >
         <div className="flex items-center justify-between border-b px-3 py-2">
           <span className="text-[13px] font-semibold">Notifications</span>
           {notices.length > 0 && (
@@ -79,7 +91,7 @@ export function NotificationCenter(): ReactNode {
             You’re all caught up.
           </div>
         ) : (
-          <ul className="max-h-80 divide-y overflow-y-auto">
+          <ul className="max-h-[min(22rem,calc(100vh-8rem))] divide-y overflow-y-auto">
             {notices.map((n) => (
               <li key={n.id} className="group flex gap-2 px-3 py-2 [&>svg]:mt-0.5 [&>svg]:size-4 [&>svg]:shrink-0">
                 {ICON[n.level]}

@@ -149,6 +149,12 @@ async function status(adb: Adb, serial: string): Promise<UnlockStatus> {
   }
 }
 
+/**
+ * Settings → Unlock → "Ask for Touch ID". Off by default (the user's choice: the saved PIN is
+ * typed directly). Agent (MCP) unlocks always require Touch ID regardless: a human approves.
+ */
+let requireTouchId = false
+
 const canTouchId = (): boolean => process.platform === 'darwin' && systemPreferences.canPromptTouchID()
 
 /**
@@ -271,19 +277,42 @@ const KEYCODE_DEL = 67
 /** Busy flag per device so ⌘L spam / two windows can't interleave two unlock sequences. */
 const inProgress = new Set<string>()
 
-async function unlock(adb: Adb, session: ScrcpySession, req: UnlockRequest): Promise<{ ok: boolean; message: string }> {
+/** keyguard: the phone's lock screen was unlocked (vs an app lock, or nothing to do). */
+type UnlockResult = { ok: boolean; message: string; keyguard?: boolean }
+
+async function unlock(adb: Adb, session: ScrcpySession, req: UnlockRequest, forceTouchId = false): Promise<UnlockResult> {
   const serial = session.serial
   const id = await deviceId(adb, serial)
   if (inProgress.has(id)) return { ok: false, message: 'An unlock is already in progress.' }
   inProgress.add(id)
   try {
-    return await unlockOnce(adb, session, req, id)
+    const r = await unlockOnce(adb, session, req, id, forceTouchId || requireTouchId)
+    // Lock screen done, and an app lock (e.g. WhatsApp behind com.nothing.applocker) now asks for
+    // the same PIN: type it once more. Same rules: verified by the failure counter, never retried.
+    if (r.ok && r.keyguard) {
+      const prompt = await waitFor(async () => (await status(adb, session.serial)).credentialPrompt, 1500, 250)
+      if (prompt) {
+        const app = await unlockOnce(adb, session, { ...req, remember: false }, id, false, true)
+        return app.ok ? { ok: true, message: `Unlocked the phone and ${app.message.replace(/^Unlocked /, '')}` } : { ok: false, message: `Phone unlocked, but the app lock didn’t open: ${app.message}` }
+      }
+    }
+    return r
   } finally {
     inProgress.delete(id)
   }
 }
 
-async function unlockOnce(adb: Adb, session: ScrcpySession, req: UnlockRequest, id: string): Promise<{ ok: boolean; message: string }> {
+async function unlockOnce(
+  adb: Adb,
+  session: ScrcpySession,
+  req: UnlockRequest,
+  id: string,
+  gateTouchId: boolean,
+  /** Chained right after the lock screen: reuse the PIN already released for this unlock. */
+  chained = false,
+): Promise<UnlockResult> {
+  const gateSaved = async (): Promise<{ ok: true } | { ok: false; message: string }> =>
+    gateTouchId && !chained ? confirmWithTouchId() : { ok: true }
   const serial = session.serial
   const [st, before] = await Promise.all([status(adb, serial), counters(adb, serial)])
 
@@ -312,7 +341,7 @@ async function unlockOnce(adb: Adb, session: ScrcpySession, req: UnlockRequest, 
     if (!needsSecret) return { ok: false, message: 'This phone has no PIN set, so there is nothing to type.' }
     if (fromStore) {
       if (!(id in readStore())) return { ok: false, message: 'Enter the phone’s PIN or password.' }
-      const gate = await confirmWithTouchId()
+      const gate = await gateSaved()
       if (!gate.ok) return gate
     }
     const secret = req.secret ?? (fromStore ? loadSecret(id) : null) ?? ''
@@ -324,7 +353,7 @@ async function unlockOnce(adb: Adb, session: ScrcpySession, req: UnlockRequest, 
 
   if (fromStore) {
     if (!(id in readStore())) return { ok: false, message: 'Enter the phone’s PIN or password.' }
-    const gate = await confirmWithTouchId()
+    const gate = await gateSaved()
     if (!gate.ok) return gate
   }
   const secret = req.secret ?? (fromStore ? loadSecret(id) : null) ?? ''
@@ -337,7 +366,7 @@ async function unlockOnce(adb: Adb, session: ScrcpySession, req: UnlockRequest, 
   for (let pass = 0; pass < 2; pass++) {
     if (await attempt(adb, session, needsSecret ? secret : null)) {
       if (req.remember && req.secret) saveSecret(id, req.secret)
-      return { ok: true, message: pass === 0 ? 'Unlocked.' : 'Unlocked (second try: the PIN screen was slow to appear).' }
+      return { ok: true, keyguard: true, message: pass === 0 ? 'Unlocked.' : 'Unlocked (second try: the PIN screen was slow to appear).' }
     }
     const after = await counters(adb, serial)
     if (before.failures !== null && after.failures !== null && after.failures > before.failures) {
@@ -372,7 +401,7 @@ export async function unlockForAgent(adb: Adb, session: ScrcpySession): Promise<
   if (!(id in readStore())) {
     return { ok: false, message: 'No PIN is saved for this phone. Ask the user to unlock it once in Mob Mirror (⌘L) with "Remember".' }
   }
-  return unlock(adb, session, {})
+  return unlock(adb, session, {}, true) // agents: always Touch ID, whatever the setting
 }
 
 export function registerUnlockIpc(getAdb: () => Adb | null, getSession: (webContentsId: number) => ScrcpySession | undefined): void {
@@ -394,6 +423,9 @@ export function registerUnlockIpc(getAdb: () => Adb | null, getSession: (webCont
       target: req?.target === 'screen' ? 'screen' : 'auto',
     }
     return unlock(adb, session, clean)
+  })
+  ipcMain.handle('unlock:set-require-touch-id', (_e, on: unknown) => {
+    requireTouchId = on === true
   })
   ipcMain.handle('unlock:forget', async (e) => {
     const { adb, session } = ctx(e.sender.id)

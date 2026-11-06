@@ -63,8 +63,10 @@ export function App(): ReactNode {
         setUnlockOpen(true)
         return
       }
-      if (st.saved && st.touchId && st.credential !== 'PATTERN') {
-        const id = toast.loading('Unlocking… confirm with Touch ID')
+      // Saved PIN: typed straight away (or after Touch ID when the user turned that on).
+      const touch = settingsRef.current.requireTouchId
+      if (st.saved && (!touch || st.touchId) && st.credential !== 'PATTERN') {
+        const id = toast.loading(touch ? 'Unlocking… confirm with Touch ID' : 'Unlocking…')
         const r = await window.mobMirror.unlock({})
         if (r.ok) {
           toast.success(r.message, { id })
@@ -179,6 +181,7 @@ export function App(): ReactNode {
     [updateSettings],
   )
   useEffect(() => applyTheme(settings.theme), [settings.theme])
+  useEffect(() => void window.mobMirror.setRequireTouchId(settings.requireTouchId).catch(() => {}), [settings.requireTouchId])
   const { setInputOptions, setAutoReconnect } = mirror
   useEffect(() => setAutoReconnect(settings.autoReconnect), [setAutoReconnect, settings.autoReconnect])
   useEffect(() => setPopups(settings.popups), [settings.popups])

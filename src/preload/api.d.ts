@@ -69,6 +69,8 @@ export interface MobMirrorApi {
   /** Toggles portrait ↔ landscape on the mirrored phone (auto-rotate is restored afterwards). */
   rotateDevice(): Promise<{ rotation: number; autoRotate: boolean } | null>
   /** Appearance preference for native UI (traffic lights, menus, dialogs). */
+  /** Ask for Touch ID before the saved PIN is typed (agent unlocks always ask). */
+  setRequireTouchId(on: boolean): Promise<void>
   setTheme(theme: 'system' | 'light' | 'dark'): Promise<void>
   /** Current list; also starts live tracking (see onDevicesChanged). */
   listDevices(): Promise<DeviceListInfo>

@@ -337,6 +337,16 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
             </>
           )}
 
+          {page === 'unlock' && (
+            <Group title="Saved PIN">
+              <Row
+                label="Ask for Touch ID first"
+                hint="Off: ⌘L types the saved PIN straight away. Agents (MCP) always need Touch ID, whatever this says."
+              >
+                <Toggle value={s.requireTouchId} onChange={(v) => set({ requireTouchId: v })} />
+              </Row>
+            </Group>
+          )}
           {page === 'unlock' &&
             (p.live ? (
               <Group title="Mirrored phone">
@@ -345,7 +355,7 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
                 </Row>
                 <Row
                   label="Saved PIN"
-                  hint={unlock?.saved ? 'Stored in your macOS Keychain. Released only after Touch ID.' : 'Unlock once with ⌘L and tick “Remember” to save it.'}
+                  hint={unlock?.saved ? (s.requireTouchId ? 'Encrypted in your macOS Keychain. Released after Touch ID.' : 'Encrypted in your macOS Keychain. Typed directly with ⌘L.') : 'Unlock once with ⌘L and tick “Remember” to save it.'}
                 >
                   {unlock?.saved ? (
                     <Button
@@ -365,7 +375,7 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
                     <span className="text-xs text-muted-foreground">Not saved</span>
                   )}
                 </Row>
-                <Row label="Touch ID" hint="Asked for directly when you press ⌘L.">
+                <Row label="Touch ID" hint="Used when “Ask for Touch ID first” is on, and for agent unlocks.">
                   <span className="text-xs text-muted-foreground">{unlock ? (unlock.touchId ? 'Available' : 'Not available') : '…'}</span>
                 </Row>
               </Group>

@@ -8,6 +8,10 @@ import { DeviceMessageParser, type DeviceMessage } from '@shared/scrcpy/device-m
 import { parseDeviceName, StreamDemuxer, type StreamEvent } from '@shared/scrcpy/stream'
 import type { Adb } from '../adb/adb'
 import { SocketReader } from './socket-reader'
+import { ControlQueue } from '@shared/scrcpy/control-queue'
+
+/** Control bytes in flight before input starts queueing (~4 KB ≈ 125 touch moves). */
+const CONTROL_HIGH_WATER = 4096
 
 export interface SessionOptions {
   serial: string
@@ -232,9 +236,33 @@ export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
     }
   }
 
+  /** Bytes handed to the socket whose write callback hasn't fired yet. */
+  private inFlight = 0
+  /** Messages held back while the socket is backed up; stale MOVEs coalesce (ControlQueue). */
+  private pendingControl = new ControlQueue()
+
   sendControl(msg: Uint8Array): void {
     if (!this.control || this.closed) return
-    this.control.write(msg)
+    // Backed up (Wi-Fi stall): queue instead of piling onto the socket, so stale drag positions
+    // collapse into the latest one. Once anything is queued, keep queueing to preserve order.
+    if (this.inFlight > CONTROL_HIGH_WATER || this.pendingControl.length) {
+      this.pendingControl.push(msg)
+      return
+    }
+    this.writeControl(msg)
+  }
+
+  private writeControl(data: Uint8Array): void {
+    const control = this.control
+    if (!control || this.closed) return
+    this.inFlight += data.length
+    control.write(data, () => {
+      this.inFlight -= data.length
+      if (this.inFlight <= CONTROL_HIGH_WATER / 4) {
+        const batch = this.pendingControl.drain()
+        if (batch) this.writeControl(batch)
+      }
+    })
   }
 
   close(error?: Error): void {

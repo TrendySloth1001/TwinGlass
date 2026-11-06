@@ -112,3 +112,13 @@ export function promptOwner(a: TopActivity | null, focusedWindow: string | null)
 export function isTypeableSecret(secret: string): boolean {
   return secret.length > 0 && secret.length <= 64 && /^[\x20-\x7e]+$/.test(secret)
 }
+
+/**
+ * The session's lock / app-lock poll as one batched shell call (see Adb.shellBatch): keyguard
+ * state, the resumed activity and the focused window, in that order.
+ */
+export const LOCK_POLL_CMDS = [
+  KEYGUARD_DUMP.slice(1).join(' '),
+  TOP_ACTIVITY_DUMP[1]!,
+  FOCUS_DUMP[1]!,
+]

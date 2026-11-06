@@ -47,6 +47,8 @@ export interface Settings {
   popups: PopupPref
   /** Stats strip under the mirror in the full view. */
   showStatusBar: boolean
+  /** Ask for Touch ID before typing the saved PIN (off: typed directly). */
+  requireTouchId: boolean
 }
 
 const DEFAULTS: Settings = {
@@ -73,6 +75,7 @@ const DEFAULTS: Settings = {
   autoReconnect: true,
   popups: 'all',
   showStatusBar: true,
+  requireTouchId: false,
 }
 
 export const DEFAULT_SETTINGS = DEFAULTS
