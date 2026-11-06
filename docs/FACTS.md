@@ -24,7 +24,8 @@ The phone shows up twice in `adb devices`: once as `192.168.0.13:<port>` and onc
 | electron-vite | 6.0.0 (vite ^6, ^7 or ^8) | npm |
 | vite | 8.3.6 | npm |
 | typescript | 7.0.2 (Go-native `tsc`; used for type-checking only) | npm |
-| vitest | 5.1.0 | npm |
+| vitest | 5.1.0 (engines: Node ^22.12, ^24 or >=26; it works on the dev machine's Node 25 but warns on install) | npm |
+| qrcode | 1.5.4 (MIT), used in main for the QR pairing SVG | npm |
 | electron-builder | 26.18.0 | npm |
 
 ## scrcpy 5.0.1 protocol
@@ -129,6 +130,16 @@ adb shell CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobi
   - Android 17 with adb 37 adds "adb Wi-Fi 2.0": the phone auto-connects on a trusted network.
 - **Legacy wireless (Android ≤10):** `adb tcpip 5555`, then `adb connect ip:5555`. This is unencrypted.
 - **mDNS backend:** platform-tools 37.0.1+ has only `libadbmdns`. `ADB_MDNS_OPENSCREEN` has no effect.
+  - On the dev machine, `adb mdns check` reports `Openscreen discovery`. This is correct for the server it talks to.
+- **What matters is the server, not the client.** Commands are handled by whichever adb server is already running.
+  - On the dev machine the server is **36.0.2**, from a second install at `/opt/homebrew/share/android-commandlinetools/platform-tools/adb`, with `usb_backend: LIBUSB` and `mdns_backend: OPENSCREEN`.
+  - The `adb` on PATH is a 37.0.0 client. The two coexist because both speak protocol 41.
+  - `adb server-status` shows the server's version and path. The app warns when client and server versions differ.
+- **`adb track-devices -l`** works even though `adb help` doesn't list it (verified 2026-11-06).
+  - It streams frames of 4 hex length digits plus a payload. The payload uses the same text format as `adb devices -l`, without the header line. An empty list arrives as `0000`.
+- **`adb connect` exits 0 even when it fails.** Classify the message instead: "connected to" or "already connected to" means success; "failed to connect" or "cannot connect" means failure.
+- **`adb disconnect <ip:port>`** prints `disconnected <ip:port>`. `adb track-devices` reflects the change within about a second (verified).
+- **The phone's Wi-Fi IP** comes from `adb shell ip -f inet addr show wlan0`, on the `inet a.b.c.d/nn` line.
 - **Redistribution:** the Android SDK license forbids redistributing Google's prebuilt platform-tools. adb built from AOSP is Apache-2.0. Policy: detect a system adb first.
 
 ## Known gotchas

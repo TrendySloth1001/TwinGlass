@@ -25,11 +25,19 @@
 - [x] Toolbar: Back, Home, Recents, volume, power, notifications, rotate, screen off
 - [ ] Verify keyboard, clipboard and toolbar on the device (needs a text field and the user present)
 
-## M3: Connectivity
-- [ ] Live device list via `adb track-devices`
-- [ ] Wireless pairing UI: 6-digit code and QR (`WIFI:T:ADB;S:studio-…;P:…;;` + mDNS)
-- [ ] Legacy `adb tcpip` flow for Android ≤10
-- [ ] Separate quality presets for USB (8 Mbps) and Wi-Fi (2–4 Mbps, max_size 1024)
+## M3: Connectivity (code-complete; ✅ marks items verified on the device)
+- [x] Live device list via `adb track-devices -l`, auto-restarted if the adb server goes away ✅ disconnect and reconnect reflected live
+- [x] Device cards show the API level; hints for unauthorized and offline transports
+- [x] Add-device dialog with three tabs:
+  - [x] QR pairing (`WIFI:T:ADB;S:studio-…;P:…;;`, then poll `adb mdns services`, then `adb pair`). The QR code renders; scanning it isn't tested yet.
+  - [x] Pairing code (ip:port + 6-digit code)
+  - [x] Connect by address ✅
+- [x] Disconnect a Wi-Fi transport (✕) ✅
+- [x] Legacy `adb tcpip 5555` for USB devices (the "Wi-Fi" button), with an auto-detected phone IP and connect retries
+- [x] Separate quality presets for USB (8 Mbps, full resolution) and Wi-Fi (4 Mbps, 1280)
+- [x] Warn when the adb server version differs from the client
+- [x] Mirroring verified over both the ip:port and the mDNS transport ✅
+- [ ] Needs the user: scan the QR code, pair with a code, test the USB cable and the tcpip button
 
 ## M4: Polish and packaging
 - [ ] Audio (Android 11+, opus → WebCodecs AudioDecoder)

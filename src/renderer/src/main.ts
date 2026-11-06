@@ -2,7 +2,8 @@
 import { AndroidKey } from '@shared/input/keycodes'
 import { collapsePanels, expandNotificationPanel, rotateDevice, setDisplayPower } from '@shared/scrcpy/control'
 import { QualityPreset, type MainToRenderer, type RendererToMain } from '@shared/ipc'
-import type { DeviceInfo, TransportInfo } from '../../preload/api'
+import type { DeviceInfo, DeviceListInfo, OpResult, TransportInfo } from '../../preload/api'
+import { setupAddDevice } from './add-device'
 import { InputController } from './input'
 import { VideoView } from './video-view'
 
@@ -37,34 +38,87 @@ function setStatus(text: string, error = false): void {
   status.classList.toggle('error', error)
 }
 
-async function refresh(): Promise<void> {
+function render({ devices, other }: DeviceListInfo): void {
   list.replaceChildren()
+  if (devices.length === 0 && other.length === 0) {
+    list.append(el('li', 'No devices. Plug in a phone with USB debugging on, or add a wireless device.', 'muted'))
+  }
+  for (const d of devices) list.append(deviceItem(d))
+  for (const t of other) {
+    const hint =
+      t.state === 'unauthorized'
+        ? ' (accept the "Allow USB debugging?" prompt on the phone)'
+        : t.state === 'offline'
+          ? ' (unlock the phone, or replug / re-enable wireless debugging)'
+          : ''
+    list.append(el('li', `${t.serial}: ${t.state}${hint}`, 'muted'))
+  }
+}
+
+async function refresh(): Promise<void> {
   try {
-    const { adbPath } = await window.mobMirror.adbStatus()
-    adbLabel.textContent = adbPath ? `adb: ${adbPath}` : 'adb not found. Install it with: brew install android-platform-tools'
-    const { devices, other } = await window.mobMirror.listDevices()
-    if (devices.length === 0 && other.length === 0) {
-      list.append(el('li', 'No devices. Turn on USB debugging or wireless debugging on the phone.', 'muted'))
-    }
-    for (const d of devices) list.append(deviceItem(d))
-    for (const t of other) {
-      const hint = t.state === 'unauthorized' ? ' (accept the prompt on the phone)' : ''
-      list.append(el('li', `${t.serial}: ${t.state}${hint}`, 'muted'))
-    }
+    render(await window.mobMirror.listDevices())
   } catch (e) {
-    list.append(el('li', String(e), 'error'))
+    list.replaceChildren(el('li', String(e), 'error'))
+  }
+}
+
+async function showAdbStatus(): Promise<void> {
+  const s = await window.mobMirror.adbStatus()
+  if (!s.adbPath) {
+    adbLabel.textContent = 'adb not found. Install it with: brew install android-platform-tools'
+    return
+  }
+  adbLabel.textContent = `adb ${s.clientVersion ?? '?'} · ${s.adbPath}`
+  const warn = $('adb-warning')
+  if (s.serverVersion && s.clientVersion && s.serverVersion !== s.clientVersion) {
+    warn.textContent =
+      `The running adb server is ${s.serverVersion} (${s.serverPath ?? 'another install'}), ` +
+      `but this app uses adb ${s.clientVersion}. Another tool probably started it. ` +
+      'If wireless pairing misbehaves, quit that tool and run "adb kill-server".'
+    warn.hidden = false
+  } else warn.hidden = true
+}
+
+/** Runs a device action from a button, showing the outcome in the status bar. */
+async function action(btn: HTMLButtonElement, label: string, run: () => Promise<OpResult>): Promise<void> {
+  btn.disabled = true
+  setStatus(`${label}…`)
+  try {
+    const r = await run()
+    setStatus(r.ok ? `${label}: ${r.message}` : `${label} failed: ${r.message}`, !r.ok)
+  } catch (e) {
+    setStatus(`${label} failed: ${e}`, true)
+  } finally {
+    btn.disabled = false
   }
 }
 
 function deviceItem(d: DeviceInfo): HTMLLIElement {
   const li = el('li', undefined, 'device')
-  li.append(el('div', d.model, 'model'))
+  const android = d.sdk ? ` · API ${d.sdk}` : ''
+  li.append(el('div', `${d.model}${android}`, 'model'))
+  const hasWifi = d.transports.some((t) => t.kind === 'wifi')
   d.transports.forEach((t, i) => {
     const row = el('div', undefined, 'transport')
     row.append(el('span', `${t.kind === 'usb' ? 'USB' : 'Wi-Fi'} · ${t.serial}`))
+    const actions = el('div', undefined, 'actions')
+    if (t.kind === 'usb' && !hasWifi) {
+      const wifi = el('button', 'Wi-Fi', 'small')
+      wifi.title = 'Switch this phone to Wi-Fi (adb tcpip 5555). Unencrypted; meant for Android 10 and older.'
+      wifi.addEventListener('click', () => void action(wifi, 'Enabling Wi-Fi', () => window.mobMirror.enableTcpip(t.serial)))
+      actions.append(wifi)
+    }
+    if (t.kind === 'wifi' && /^[\d.]+:\d+$/.test(t.serial)) {
+      const forget = el('button', '✕', 'small')
+      forget.title = 'Disconnect this Wi-Fi connection'
+      forget.addEventListener('click', () => void action(forget, 'Disconnecting', () => window.mobMirror.disconnect(t.serial)))
+      actions.append(forget)
+    }
     const btn = el('button', 'Mirror', i === 0 ? 'primary' : undefined)
     btn.addEventListener('click', () => void connect(t))
-    row.append(btn)
+    actions.append(btn)
+    row.append(actions)
     li.append(row)
   })
   return li
@@ -174,4 +228,7 @@ toolbar.addEventListener('click', (e) => {
 })
 
 $('refresh').addEventListener('click', () => void refresh())
+window.mobMirror.onDevicesChanged(render)
+setupAddDevice()
+void showAdbStatus()
 void refresh()

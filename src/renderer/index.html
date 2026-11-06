@@ -13,8 +13,61 @@
         <button id="refresh" title="Refresh devices">↻</button>
       </header>
       <ul id="devices"></ul>
+      <button id="add-device" class="primary wide">+ Add wireless device</button>
       <p id="adb" class="muted"></p>
+      <p id="adb-warning" class="warning" hidden></p>
     </aside>
+
+    <dialog id="add-dialog">
+      <form method="dialog" class="dialog-head">
+        <h2>Add a wireless device</h2>
+        <button value="close" title="Close">✕</button>
+      </form>
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="qr" aria-selected="true">QR code</button>
+        <button role="tab" data-tab="code">Pairing code</button>
+        <button role="tab" data-tab="connect">Connect by address</button>
+      </div>
+
+      <section data-panel="qr">
+        <ol class="steps">
+          <li>Connect the phone to the <b>same Wi-Fi</b> as this Mac.</li>
+          <li>On the phone: <b>Settings → Developer options → Wireless debugging</b> (turn it on).</li>
+          <li>Tap <b>Pair device with QR code</b> and scan:</li>
+        </ol>
+        <div id="qr-box" class="qr"></div>
+        <p id="qr-status" class="muted"></p>
+      </section>
+
+      <section data-panel="code" hidden>
+        <ol class="steps">
+          <li>On the phone: <b>Wireless debugging → Pair device with pairing code</b>.</li>
+          <li>Enter the <b>IP address &amp; port</b> and the <b>6-digit code</b> it shows.</li>
+        </ol>
+        <form id="pair-form" class="fields">
+          <label>IP address &amp; port <input name="hostPort" placeholder="192.168.0.13:37851" required /></label>
+          <label>Pairing code <input name="code" placeholder="123456" inputmode="numeric" maxlength="6" required /></label>
+          <button class="primary">Pair</button>
+        </form>
+        <p id="pair-status" class="muted"></p>
+      </section>
+
+      <section data-panel="connect" hidden>
+        <p class="muted">
+          For an already-paired phone: use the <b>IP address &amp; port</b> on its Wireless debugging screen
+          (it differs from the pairing port). For a phone set up with <code>adb tcpip</code>, use port 5555.
+        </p>
+        <form id="connect-form" class="fields">
+          <label>IP address &amp; port <input name="hostPort" placeholder="192.168.0.13:41233" required /></label>
+          <button class="primary">Connect</button>
+        </form>
+        <p id="connect-status" class="muted"></p>
+        <p class="muted">
+          <b>Android 10 or older?</b> Plug the phone in by USB and press <b>Wi-Fi</b> next to it in the device list.
+          That uses the older, unencrypted <code>adb tcpip</code> mode.
+        </p>
+      </section>
+    </dialog>
 
     <main id="mirror">
       <nav id="toolbar" hidden>

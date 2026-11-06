@@ -1,6 +1,7 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { Adb, findAdb } from './adb/adb'
+import { registerDevicesIpc, stopDeviceTracking } from './devices-ipc'
 import { registerSessionIpc, stopAllSessions } from './session-ipc'
 
 export function serverPath(): string {
@@ -30,11 +31,7 @@ function createWindow(): void {
   else void win.loadFile(join(__dirname, '../renderer/index.html'))
 }
 
-ipcMain.handle('adb:status', () => ({ adbPath: adb?.path ?? null }))
-ipcMain.handle('devices:list', async () => {
-  if (!adb) throw new Error('adb not found. Install it with: brew install android-platform-tools')
-  return adb.devices()
-})
+registerDevicesIpc(() => adb)
 registerSessionIpc(() => adb, serverPath)
 
 void app.whenReady().then(() => {
@@ -46,7 +43,10 @@ void app.whenReady().then(() => {
   })
 })
 
-app.on('before-quit', stopAllSessions)
+app.on('before-quit', () => {
+  stopAllSessions()
+  stopDeviceTracking()
+})
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
