@@ -20,9 +20,12 @@ import {
   CREDENTIAL_DUMP,
   isTypeableSecret,
   KEYGUARD_DUMP,
+  parseAwake,
   parseCredentialType,
   parseKeyguardShowing,
+  parseLockCounters,
   type CredentialType,
+  type LockCounters,
 } from './adb/lock'
 import type { ScrcpySession } from './scrcpy/session'
 
@@ -126,21 +129,81 @@ async function confirmWithTouchId(): Promise<{ ok: true } | { ok: false; message
     // macOS shows: “Mob Mirror” is trying to unlock your Android phone.
     await systemPreferences.promptTouchID('unlock your Android phone')
     return { ok: true }
-  } catch {
-    return { ok: false, message: 'Touch ID was cancelled or didn’t match. The phone was not touched.' }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message.toLowerCase() : ''
+    if (/lockout|locked/.test(msg)) {
+      return { ok: false, message: 'Touch ID is locked after too many tries. Unlock your Mac with its password, or type the phone PIN.' }
+    }
+    return { ok: false, message: 'Touch ID was cancelled or didn’t match. Nothing was sent to the phone.' }
   }
 }
 
-function press(session: ScrcpySession, keycode: number): void {
-  session.sendControl(injectKeycode(KeyAction.DOWN, keycode))
-  session.sendControl(injectKeycode(KeyAction.UP, keycode))
+function press(session: ScrcpySession, keycode: number, times = 1): void {
+  for (let i = 0; i < times; i++) {
+    session.sendControl(injectKeycode(KeyAction.DOWN, keycode))
+    session.sendControl(injectKeycode(KeyAction.UP, keycode))
+  }
 }
+
+async function counters(adb: Adb, serial: string): Promise<LockCounters> {
+  return parseLockCounters(await adb.runLoose(CREDENTIAL_DUMP, serial))
+}
+
+/** Polls until `check` returns true (or null/false after `timeoutMs`). */
+async function waitFor(check: () => Promise<boolean | null>, timeoutMs: number, stepMs = 150): Promise<boolean> {
+  const end = Date.now() + timeoutMs
+  for (;;) {
+    if ((await check()) === true) return true
+    if (Date.now() >= end) return false
+    await sleep(stepMs)
+  }
+}
+
+/** One wake → bouncer → type → Enter → verify pass. Returns true when the phone unlocked. */
+async function attempt(adb: Adb, session: ScrcpySession, secret: string | null): Promise<boolean> {
+  const serial = session.serial
+  press(session, AndroidKey.WAKEUP)
+  // Wait for the screen to actually be on instead of a fixed delay (slow when the phone was asleep).
+  await waitFor(async () => parseAwake(await adb.runLoose(['shell', 'dumpsys', 'power'], serial)), 2000)
+  // Shows the PIN/password bouncer (verified on Android 17: "prompting user for auth if necessary").
+  await adb.runLoose(['shell', 'wm', 'dismiss-keyguard'], serial)
+  await sleep(650) // bouncer slide-in animation; it is FLAG_SECURE so we can't watch it
+  if (secret) {
+    // Clear anything already typed (e.g. the user started on the phone); DEL on an empty field is a no-op.
+    press(session, KEYCODE_DEL, Math.min(secret.length + 4, 24))
+    session.sendControl(injectText(secret))
+    await sleep(120)
+    press(session, AndroidKey.ENTER)
+  }
+  return waitFor(async () => {
+    const locked = await isLocked(adb, serial)
+    return locked === null ? null : !locked
+  }, 3500, 200)
+}
+
+const KEYCODE_DEL = 67
+/** Busy flag per device so ⌘L spam / two windows can't interleave two unlock sequences. */
+const inProgress = new Set<string>()
 
 async function unlock(adb: Adb, session: ScrcpySession, req: UnlockRequest): Promise<{ ok: boolean; message: string }> {
   const serial = session.serial
   const id = await deviceId(adb, serial)
-  const st = await status(adb, serial)
+  if (inProgress.has(id)) return { ok: false, message: 'An unlock is already in progress.' }
+  inProgress.add(id)
+  try {
+    return await unlockOnce(adb, session, req, id)
+  } finally {
+    inProgress.delete(id)
+  }
+}
 
+async function unlockOnce(adb: Adb, session: ScrcpySession, req: UnlockRequest, id: string): Promise<{ ok: boolean; message: string }> {
+  const serial = session.serial
+  const [st, before] = await Promise.all([status(adb, serial), counters(adb, serial)])
+
+  if (before.lockoutSeconds > 0) {
+    return { ok: false, message: `The phone is locked out for ${Math.ceil(before.lockoutSeconds)} s after failed attempts. Try again later.` }
+  }
   if (st.credential === 'PATTERN') {
     return { ok: false, message: 'This phone uses a pattern lock, which can’t be typed. Switch it to a PIN or password to unlock from the Mac.' }
   }
@@ -152,6 +215,7 @@ async function unlock(adb: Adb, session: ScrcpySession, req: UnlockRequest): Pro
 
   // Checked before Touch ID, so an unlocked phone never triggers a fingerprint prompt.
   if (st.locked === false) {
+    press(session, AndroidKey.WAKEUP) // screen may just be off (not locked yet): turn it on
     if (req.remember && req.secret) saveSecret(id, req.secret)
     return { ok: true, message: 'The phone is already unlocked.' }
   }
@@ -164,30 +228,35 @@ async function unlock(adb: Adb, session: ScrcpySession, req: UnlockRequest): Pro
   const secret = req.secret ?? (fromStore ? loadSecret(id) : null) ?? ''
   if (needsSecret && !secret) return { ok: false, message: 'Enter the phone’s PIN or password.' }
 
-  press(session, AndroidKey.WAKEUP)
-  await sleep(350)
-  // Shows the PIN/password bouncer (verified available on Android 17: "prompting user for auth if necessary").
-  await adb.runLoose(['shell', 'wm', 'dismiss-keyguard'], serial)
-  await sleep(700)
-  if (needsSecret) {
-    session.sendControl(injectText(secret))
-    await sleep(150)
-    press(session, AndroidKey.ENTER)
+  // Up to two passes. A second pass happens ONLY if the phone's failure counter did not move, i.e.
+  // the PIN never reached the bouncer (it wasn't up yet) and no attempt was consumed. A wrong PIN
+  // (counter +1) is never retried.
+  let reached = false
+  for (let pass = 0; pass < 2; pass++) {
+    if (await attempt(adb, session, needsSecret ? secret : null)) {
+      if (req.remember && req.secret) saveSecret(id, req.secret)
+      return { ok: true, message: pass === 0 ? 'Unlocked.' : 'Unlocked (second try: the PIN screen was slow to appear).' }
+    }
+    const after = await counters(adb, serial)
+    if (before.failures !== null && after.failures !== null && after.failures > before.failures) {
+      reached = true
+      break
+    }
+    if (before.failures === null || after.failures === null) break // can't tell: don't risk a retry
   }
 
-  for (let i = 0; i < 14; i++) {
-    await sleep(250)
-    if ((await isLocked(adb, serial)) === false) {
-      if (req.remember && req.secret) saveSecret(id, req.secret)
-      return { ok: true, message: 'Unlocked.' }
+  if (reached) {
+    if (fromStore) forgetSecret(id) // never let a stale saved PIN burn more attempts
+    return {
+      ok: false,
+      message:
+        (fromStore ? 'The saved PIN was rejected (it may have changed) and has been forgotten. ' : 'The phone rejected the PIN. ') +
+        'Android limits failed attempts, so Mob Mirror never retries a wrong PIN.',
     }
   }
-  if (fromStore) forgetSecret(id) // never let a stale saved PIN burn more attempts
   return {
     ok: false,
-    message:
-      (fromStore ? 'The saved PIN didn’t work (it may have changed) and has been forgotten. ' : 'The phone is still locked: the PIN may be wrong. ') +
-      'Android limits failed attempts, so Mob Mirror never retries on its own.',
+    message: 'Couldn’t reach the PIN screen (no attempt was used). Wake the phone, then try again.',
   }
 }
 

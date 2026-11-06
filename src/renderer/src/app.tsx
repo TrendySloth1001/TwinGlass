@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 import type { TransportInfo } from '../../preload/api'
 import { ControlsHelp } from '@/components/controls-help'
 import { MirrorStage } from '@/components/mirror-stage'
@@ -31,14 +32,50 @@ export function App(): ReactNode {
   const { connect, runAction } = mirror
   const live = mirror.state.phase === 'live'
 
+  const [unlockError, setUnlockError] = useState<string | null>(null)
+  const unlocking = useRef(false)
+
+  /**
+   * ⌘L / toolbar / banner. With a saved PIN and Touch ID available, go straight to the system
+   * Touch ID prompt (no extra click); the dialog only opens when a PIN must be typed or it failed.
+   */
+  const quickUnlock = useCallback(async () => {
+    if (unlocking.current) return
+    unlocking.current = true
+    try {
+      const st = await window.mobMirror.unlockStatus()
+      if (st.locked === false) {
+        await window.mobMirror.unlock({}) // just wakes the screen
+        toast('The phone is already unlocked')
+        return
+      }
+      if (st.saved && st.touchId && st.credential !== 'PATTERN') {
+        const id = toast.loading('Unlocking… confirm with Touch ID')
+        const r = await window.mobMirror.unlock({})
+        if (r.ok) {
+          toast.success(r.message, { id })
+          return
+        }
+        toast.dismiss(id)
+        setUnlockError(r.message)
+      } else setUnlockError(null)
+      setUnlockOpen(true)
+    } catch (e) {
+      setUnlockError(String(e))
+      setUnlockOpen(true)
+    } finally {
+      unlocking.current = false
+    }
+  }, [])
+
   /** One dispatcher for the Device menu, toolbar and banner: some actions need app-level UI. */
   const dispatch = useCallback(
     (action: DeviceAction) => {
       if (action === 'unlock') {
-        if (live) setUnlockOpen(true)
+        if (live) void quickUnlock()
       } else runAction(action)
     },
-    [live, runAction],
+    [live, quickUnlock, runAction],
   )
 
   const onMirror = useCallback(
@@ -88,7 +125,7 @@ export function App(): ReactNode {
         <StatusBar state={mirror.state} />
       </main>
       <ControlsHelp open={helpOpen} onOpenChange={setHelpOpen} />
-      <UnlockDialog open={unlockOpen} onOpenChange={setUnlockOpen} />
+      <UnlockDialog open={unlockOpen} onOpenChange={setUnlockOpen} initialError={unlockError} />
     </div>
   )
 }

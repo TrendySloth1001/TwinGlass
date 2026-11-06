@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { isTypeableSecret, parseCredentialType, parseKeyguardShowing } from '../src/main/adb/lock'
+import {
+  isTypeableSecret,
+  parseAwake,
+  parseCredentialType,
+  parseIsoDurationSeconds,
+  parseKeyguardShowing,
+  parseLockCounters,
+} from '../src/main/adb/lock'
 
 describe('lock state parsing', () => {
   it('reads isKeyguardShowing from dumpsys window (Android 17 format)', () => {
@@ -19,6 +26,21 @@ describe('lock state parsing', () => {
     expect(parseCredentialType('CredentialType: PASSWORD')).toBe('PASSWORD')
     expect(parseCredentialType('CredentialType: NONE')).toBe('NONE')
     expect(parseCredentialType('')).toBe('UNKNOWN')
+  })
+
+  it('reads failure counter and lockout from dumpsys lock_settings (Android 17 format)', () => {
+    const out = '    numFailures=0\n    timeSinceBootOfLastFailure=PT0S\n    lockoutEndTime=PT0S\n    numFailures=0\n'
+    expect(parseLockCounters(out)).toEqual({ failures: 0, lockoutSeconds: 0 })
+    expect(parseLockCounters('numFailures=5\nlockoutEndTime=PT29.5S')).toEqual({ failures: 5, lockoutSeconds: 29.5 })
+    expect(parseLockCounters('')).toEqual({ failures: null, lockoutSeconds: 0 })
+    expect(parseIsoDurationSeconds('PT1M30S')).toBe(90)
+    expect(parseIsoDurationSeconds('PT2H')).toBe(7200)
+  })
+
+  it('reads wakefulness from dumpsys power', () => {
+    expect(parseAwake('  mWakefulness=Awake\n')).toBe(true)
+    expect(parseAwake('  mWakefulness=Asleep\n')).toBe(false)
+    expect(parseAwake('')).toBeNull()
   })
 
   it('only accepts secrets that text injection can type reliably', () => {

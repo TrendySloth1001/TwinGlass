@@ -18,7 +18,16 @@ const LABEL: Record<UnlockStatusInfo['credential'], string> = {
   UNKNOWN: 'PIN or password',
 }
 
-export function UnlockDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }): ReactNode {
+export function UnlockDialog({
+  open,
+  onOpenChange,
+  initialError,
+}: {
+  open: boolean
+  onOpenChange: (o: boolean) => void
+  /** Why a direct Touch ID unlock failed (shown when the dialog opens as the fallback). */
+  initialError?: string | null
+}): ReactNode {
   const [status, setStatus] = useState<UnlockStatusInfo | null>(null)
   const [secret, setSecret] = useState('')
   const [remember, setRemember] = useState(false)
@@ -28,10 +37,10 @@ export function UnlockDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     if (!open) return
     setSecret('')
     setRemember(false)
-    setResult({ kind: 'idle' })
+    setResult(initialError ? { kind: 'error', text: initialError } : { kind: 'idle' })
     setStatus(null)
     window.mobMirror.unlockStatus().then(setStatus, (e: unknown) => setResult({ kind: 'error', text: String(e) }))
-  }, [open])
+  }, [open, initialError])
 
   const run = async (req: { secret?: string; remember?: boolean }): Promise<void> => {
     setResult({ kind: 'busy' })
