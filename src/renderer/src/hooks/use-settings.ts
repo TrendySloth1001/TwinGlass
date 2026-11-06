@@ -3,6 +3,7 @@ import type { AudioMode } from '@shared/ipc'
 import type { ThemePref } from '@/hooks/use-theme'
 import type { PopupPref } from '@/lib/notify'
 import { QUALITY_LABELS, type CodecPreference, type Quality } from '@shared/quality'
+import type { FrameColor, FrameStyle } from '@/lib/phone-frames'
 
 const KEY = 'mob-mirror:settings'
 
@@ -49,6 +50,9 @@ export interface Settings {
   showStatusBar: boolean
   /** Ask for Touch ID before typing the saved PIN (off: typed directly). */
   requireTouchId: boolean
+  /** Phone frame drawn around the mirror, and its finish. */
+  frame: FrameStyle
+  frameColor: FrameColor
 }
 
 const DEFAULTS: Settings = {
@@ -76,6 +80,8 @@ const DEFAULTS: Settings = {
   popups: 'all',
   showStatusBar: true,
   requireTouchId: false,
+  frame: 'none',
+  frameColor: 'black',
 }
 
 export const DEFAULT_SETTINGS = DEFAULTS
@@ -93,6 +99,8 @@ const ALLOWED: Partial<Record<keyof Settings, readonly unknown[]>> = {
   popups: ['all', 'errors', 'off'],
   maxFps: [0, 30, 60, 90, 120],
   scrollSpeed: [0.5, 1, 1.5, 2.5],
+  frame: ['none', 'modern', 'minimal', 'classic'],
+  frameColor: ['black', 'graphite', 'silver', 'white', 'sand', 'blue', 'green'],
 }
 
 /**

@@ -33,6 +33,9 @@ The dates are when each item was asked for (2026-11-06 unless noted).
 - ✅ **Fingerprint-sensor phones:** the lock screen shows a fingerprint overlay, and the app taps outside the sensor to reach the PIN pad. Verified: unlock in 4 s.
 - ✅ **WhatsApp's own lock (system BiometricPrompt):** detected; the app taps "Use PIN" and types the PIN. Verified end to end. Prompts that accept only biometrics never get the PIN typed.
 - After the lock screen opens, if an app lock asks for the PIN next, it is typed once more automatically.
+- ✅ **Manual PIN entry is always available** (2026-11-06, "make sure of it"). The unlock dialog always has a PIN field, even with a saved PIN, for app locks with their own PIN.
+  - Ways in: "Type PIN…" on the lock banner, ⌥⌘L, and "Type PIN to unlock…" in the strip menu.
+  - "Remember" is offered only for the phone's lock screen, never for an app-lock PIN.
 - **Unlocking locked apps.** Nothing's `com.nothing.applocker` draws an **overlay window**, so detection uses the focused window as well as the activity.
   - The overlay detection still needs the user to open a locked app to confirm it.
 
@@ -42,6 +45,12 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - The mirror fills the window edge to edge, with a control rail on the right.
   - The aspect ratio is locked to the phone's.
   - The **full view** (devices, settings, toolbar) is one click away (rail button, ⇧⌘M).
+- ✅ **Phone frames** (2026-11-06). Settings → Window → Phone frame, a visual picker:
+  - Styles: None, Modern (punch-hole), Minimal, Classic (earpiece and home button).
+  - Seven finishes.
+  - Side buttons work (volume, power), and so does Classic's home button.
+  - The compact window takes the exact phone shape (transparent around it); in the full view the phone is centred with a shadow.
+  - The designs are generic, not copies of a brand's phone.
 - ✅ Sidebar: docked or floating, collapsible, with sections. The floating panel stays inside the stage.
 - ✅ Responsive layout down to 480 px. The toolbar overflows into a menu and the sidebar floats automatically when narrow.
 - ✅ Notifications:

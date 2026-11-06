@@ -6,6 +6,8 @@ import { toast } from 'sonner'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { Ripple } from '@/components/ui/ripple'
 import type { Phase } from '@/hooks/use-mirror'
+import type { DeviceAction } from '@shared/shortcuts'
+import { FRAME_COLORS, type FrameColor, type FrameSpec } from '@/lib/phone-frames'
 import { cn } from '@/lib/utils'
 
 interface MirrorStageProps {
@@ -24,6 +26,39 @@ interface MirrorStageProps {
   reconnect: { attempt: number; reason: string } | null
   /** Shown over the stage while nothing is mirrored (the connect screen). */
   idleContent: ReactNode
+  /** Phone frame around the mirror (null = none). Only drawn while a video is showing. */
+  frame: FrameSpec | null
+  frameColor: FrameColor
+  /** Video aspect (width / height); the framed screen must match it exactly. */
+  aspect: number
+  /** Compact window: the frame fills the window exactly (no margin, transparent around it). */
+  fit: boolean
+  /** Side buttons / home button on the frame. */
+  onAction: (a: DeviceAction) => void
+}
+
+/** A physical button on the frame: works like the real one. */
+function FrameButton({
+  label,
+  className,
+  onClick,
+  background,
+}: {
+  label: string
+  className: string
+  onClick: () => void
+  background?: string
+}): ReactNode {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      style={background ? { background } : undefined}
+      className={cn('absolute cursor-pointer transition-[filter] hover:brightness-125 active:brightness-90', className)}
+    />
+  )
 }
 
 async function dropFiles(fileList: FileList): Promise<void> {
@@ -49,9 +84,17 @@ export function MirrorStage({
   onTypePin,
   reconnect,
   idleContent,
+  frame: frameProp,
+  frameColor,
+  aspect,
+  fit,
+  onAction,
 }: MirrorStageProps): ReactNode {
   const [dragging, setDragging] = useState(false)
   const live = phase === 'live'
+  // A frame needs the video's shape; while connecting/idle the plain stage is shown.
+  const frame = frameProp && aspect > 0 && (live || phase === 'reconnecting') ? frameProp : null
+  const color = FRAME_COLORS[frameColor]
 
   // What an agent (via MCP) just did: shown for a few seconds so the user always knows.
   const [agent, setAgent] = useState<{ summary: string; at: number } | null>(null)
@@ -83,18 +126,90 @@ export function MirrorStage({
   return (
     <div
       // Follows the app theme (light grey / near-black); the compact phone block forces dark.
-      className="relative min-h-0 flex-1 overflow-hidden bg-stage"
+      // container-type size: the framed phone is sized from the stage with cqw/cqh units.
+      className={cn('relative min-h-0 flex-1 overflow-hidden [container-type:size]', !(frame && fit) && 'bg-stage')}
       onDragOver={onDragOver}
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
     >
-      {/* Always mounted: the decoder and input controller attach to this element. */}
-      <canvas
-        ref={canvasRef}
-        tabIndex={0}
-        className={cn('block size-full cursor-default object-contain outline-none', !live && 'invisible')}
-      />
-      <div ref={overlayRef} className="pointer-events-none absolute inset-0 overflow-hidden" />
+      {/* The tree body > glass > screen > canvas never changes (the decoder is bound to the
+          canvas); without a frame the wrappers simply fill the stage. */}
+      <div
+        className={cn(frame ? 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2' : 'absolute inset-0')}
+        style={
+          frame
+            ? {
+                // --sw = screen width: the largest that fits both ways. Every radius derives from it,
+                // so corners stay circular and concentric (screen, glass, rim).
+                ['--sw' as string]: `min(100cqw - ${2 * (frame.rim + frame.side) + frame.buttons + (fit ? 0 : 48)}px, (100cqh - ${2 * frame.rim + frame.top + frame.bottom + (fit ? 0 : 48)}px) * ${aspect})`,
+                width: `calc(var(--sw) + ${2 * (frame.rim + frame.side)}px)`,
+                marginLeft: -frame.buttons / 2,
+                padding: frame.rim,
+                borderRadius: `calc(var(--sw) * ${frame.screenRadius} + ${frame.side + frame.rim}px)`,
+                background: `linear-gradient(145deg, ${color.light}, ${color.dark})`,
+                boxShadow: fit
+                  ? 'inset 0 0 0 1px rgb(255 255 255 / 0.18)'
+                  : 'inset 0 0 0 1px rgb(255 255 255 / 0.18), 0 24px 60px -12px rgb(0 0 0 / 0.55)',
+              }
+            : undefined
+        }
+      >
+        <div
+          className={cn(frame ? 'relative bg-black' : 'size-full')}
+          style={
+            frame
+              ? {
+                  padding: `${frame.top}px ${frame.side}px ${frame.bottom}px`,
+                  borderRadius: `calc(var(--sw) * ${frame.screenRadius} + ${frame.side}px)`,
+                }
+              : undefined
+          }
+        >
+          <div
+            className={cn('relative', frame ? 'overflow-hidden' : 'size-full')}
+            style={frame ? { aspectRatio: String(aspect), borderRadius: `calc(var(--sw) * ${frame.screenRadius})` } : undefined}
+          >
+            {/* Always mounted: the decoder and input controller attach to this element. */}
+            <canvas
+              ref={canvasRef}
+              tabIndex={0}
+              className={cn('block size-full cursor-default object-contain outline-none', !live && 'invisible')}
+            />
+            <div ref={overlayRef} className="pointer-events-none absolute inset-0 overflow-hidden" />
+            {frame?.punchHole && (
+              <div
+                className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-full bg-black shadow-[inset_0_0_0_1.5px_rgb(255_255_255/0.08)]"
+                style={{ top: '1.1%', width: '3%', aspectRatio: '1' }}
+              />
+            )}
+          </div>
+          {frame?.style === 'classic' && (
+            <>
+              {/* Earpiece and front camera in the forehead, home button in the chin. */}
+              <div className="pointer-events-none absolute top-0 left-1/2 flex -translate-x-1/2 items-center gap-3" style={{ height: frame.top }}>
+                <div className="size-2 rounded-full bg-neutral-800 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1)]" />
+                <div className="h-1.5 w-14 rounded-full bg-neutral-800 shadow-[inset_0_1px_1px_rgb(0_0_0/0.8)]" />
+                <div className="size-2" />
+              </div>
+              <div className="absolute bottom-0 left-1/2 grid -translate-x-1/2 place-items-center" style={{ height: frame.bottom }}>
+                <FrameButton
+                  label="Home"
+                  onClick={() => onAction('home')}
+                  className="relative! h-9 w-9 rounded-full border border-white/15 bg-white/[0.03]"
+                />
+              </div>
+            </>
+          )}
+        </div>
+        {frame && (
+          <>
+            {/* Right edge, like most Android phones: volume rocker above the power key. */}
+            <FrameButton label="Volume up" background={`linear-gradient(90deg, ${color.dark}, ${color.light})`} onClick={() => onAction('volumeUp')} className="top-[17%] -right-[3px] h-[7%] w-[4px] rounded-r-sm" />
+            <FrameButton label="Volume down" background={`linear-gradient(90deg, ${color.dark}, ${color.light})`} onClick={() => onAction('volumeDown')} className="top-[24.5%] -right-[3px] h-[7%] w-[4px] rounded-r-sm" />
+            <FrameButton label="Power" background={`linear-gradient(90deg, ${color.dark}, ${color.light})`} onClick={() => onAction('power')} className="top-[35%] -right-[3px] h-[6%] w-[4px] rounded-r-sm" />
+          </>
+        )}
+      </div>
 
       {phase === 'idle' && (
         <div className="absolute inset-0 overflow-y-auto">

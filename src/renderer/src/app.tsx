@@ -8,6 +8,7 @@ import { ConnectPanel } from '@/components/connect-panel'
 import { ControlRail } from '@/components/control-rail'
 import { MirrorStage } from '@/components/mirror-stage'
 import { NAV_BAR_HEIGHT, NavBar } from '@/components/nav-bar'
+import { frameExtra, frameSpec } from '@/lib/phone-frames'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { applyTheme } from '@/hooks/use-theme'
 import { setPopups } from '@/lib/notify'
@@ -210,9 +211,11 @@ export function App(): ReactNode {
   const vh = mirror.state.stats?.height ?? 0
   const aspect = vw && vh ? Math.round((vw / vh) * 1000) / 1000 : 0 // rounded: only re-fit on real changes (rotation)
   useEffect(() => {
-    if (compact && aspect) void window.mobMirror.setWindowLayout('compact', aspect, settings.navBar ? NAV_BAR_HEIGHT : 0)
+    const fx = frameExtra(frameSpec(settings.frame))
+    if (compact && aspect)
+      void window.mobMirror.setWindowLayout('compact', aspect, { width: fx.width, height: fx.height + (settings.navBar ? NAV_BAR_HEIGHT : 0) })
     else if (!compact) void window.mobMirror.setWindowLayout('full')
-  }, [compact, aspect, settings.navBar])
+  }, [compact, aspect, settings.navBar, settings.frame])
 
   /** The toolbar owns the window's top-left corner (traffic lights) unless a docked sidebar is shown. */
   // Narrow windows: a docked sidebar would squash the mirror, so it floats over it instead.
@@ -239,9 +242,9 @@ export function App(): ReactNode {
       />
       )}
       {/* Compact: the phone is one rounded dark block; the rail floats beside it (see-through gap). */}
-      <main className={cn('flex min-w-0 flex-1 flex-col', compact && 'dark overflow-hidden rounded-xl bg-stage')}>
+      <main className={cn('flex min-w-0 flex-1 flex-col', compact && (settings.frame === 'none' ? 'dark overflow-hidden rounded-xl bg-stage' : 'dark'))}>
         {compact ? (
-          <CompactTitleBar name={mirror.state.deviceName} transport={mirror.state.transport?.kind ?? null} />
+          <CompactTitleBar name={mirror.state.deviceName} transport={mirror.state.transport?.kind ?? null} floating={settings.frame !== 'none'} />
         ) : (
         <MirrorToolbar
           onCompact={live ? () => updateSettings({ viewMode: 'compact' }) : undefined}
@@ -265,6 +268,11 @@ export function App(): ReactNode {
           appPrompt={mirror.state.appPrompt}
           onUnlock={() => dispatch('unlock')}
           onTypePin={() => dispatch('unlockManual')}
+          frame={frameSpec(settings.frame)}
+          frameColor={settings.frameColor}
+          aspect={vw && vh ? vw / vh : 0}
+          fit={compact}
+          onAction={dispatch}
           reconnect={mirror.state.reconnect}
           idleContent={
             <ConnectPanel
