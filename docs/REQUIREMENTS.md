@@ -110,10 +110,10 @@ The dates are when each item was asked for (2026-11-06 unless noted).
 - ✅ **Tile mirror windows** (Window menu, ⌥⌘T): side by side, equal height, each keeping its shape.
 - ✅ **Background errors** are logged and shown as a notification instead of Electron's blocking error dialog.
 - ✅ **Palette ranking** is our own (exact > prefix > word > substring > tight fuzzy). Verified Enter targets: calc → Calculator, home → Home button, mac screen → share action, a link → open, other text → copy.
-- **Mac screen on the phone (prototype built, 2026-11-06).**
+- ✅ **Mac screen on the phone (prototype, 2026-11-06).**
   - How it works: screen → hardware H.264 (WebCodecs, realtime) → a local server (127.0.0.1 with a random token) → `adb reverse` → the phone's Chrome page (WebCodecs decode, full screen).
   - Start it with ⌥⌘P, ⌘K → "Mac screen", or the Phone menu. A status pill with Stop shows while it runs.
-  - Verified: the phone opens the page. **Blocked until the user allows Screen Recording** for Electron (System Settings → Privacy & Security → Screen Recording, then reopen); the app now says so, with an Open Settings button.
+  - ✅ **Verified end to end on the A024** (2026-11-06): the live Mac screen showed in the phone's Chrome over `adb reverse`, with 1 viewer. Screen Recording had to be granted for Electron first (System Settings → Privacy & Security → Screen Recording; add it with ⇧⌘G to `node_modules/electron/dist`), then the app restarted.
 - ✅ **Updates: notify-only.**
   - Verified fact: Squirrel.Mac / electron-updater can't auto-install an unsigned app.
   - The app checks GitHub Releases (package.json `mobMirror.updateRepo`) or a JSON feed daily, and offers Download. Settings → Advanced → Check now.

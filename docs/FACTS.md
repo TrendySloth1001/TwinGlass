@@ -235,3 +235,9 @@ adb shell CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobi
   - The sequence is: tap it, wait about 700 ms, type the PIN, press Enter. The prompt closes and the app resumes. Verified end to end.
   - Prompts without that button are biometric-only, and the PIN is never typed there.
 - **Dev note.** During quick successive `electron-vite dev --watch` restarts, the old Electron sometimes survived. It quits normally on SIGTERM, so electron-vite lost track of it. If "No handler registered" errors appear, look for two Electron processes.
+
+## Mac screen → phone (verified 2026-11-06, A024 Android 17, Electron 45)
+- getDisplayMedia, then WebCodecs VideoEncoder (`avc1.640033`, realtime, Annex-B), then a local HTTP stream, then `adb reverse tcp:P tcp:P`, then Chrome on the phone (WebCodecs VideoDecoder). Works, also over wireless adb.
+- `session.setDisplayMediaRequestHandler` must be registered after `app.whenReady()`. Before that it silently fails and getDisplayMedia rejects with "Not supported".
+- Without macOS Screen Recording permission, `desktopCapturer.getSources` returns no screens, and the handler callback throws "Video was requested, but no video stream was provided". `getMediaAccessStatus('screen')` reports "denied" even for an app that was never asked.
+- The dev build needs `node_modules/electron/dist/Electron.app` added under Screen Recording, followed by an app restart (a macOS rule).
