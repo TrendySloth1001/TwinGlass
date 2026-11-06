@@ -5,7 +5,7 @@
 //             phone's (follows rotation), so resizing never letterboxes.
 import { BrowserWindow, ipcMain, screen, type Rectangle } from 'electron'
 
-/** Must match the renderer's compact chrome (h-7 title strip, w-14 rail). */
+/** Must match the renderer's compact chrome (h-7 title strip; w-12 rail + gap-2). */
 export const COMPACT_TITLE = 28
 export const COMPACT_RAIL = 56
 
@@ -39,6 +39,14 @@ function applyCompact(win: BrowserWindow, aspect: number): void {
   win.setContentSize(videoW + COMPACT_RAIL, videoH + COMPACT_TITLE, true)
   win.setAspectRatio(aspect, { width: COMPACT_RAIL, height: COMPACT_TITLE })
   win.setWindowButtonPosition({ x: 10, y: 7 })
+  refreshShadow(win)
+}
+
+/** A transparent window's shadow follows its painted pixels: recompute after the shape changes. */
+function refreshShadow(win: BrowserWindow): void {
+  setTimeout(() => {
+    if (!win.isDestroyed()) win.invalidateShadow()
+  }, 150)
 }
 
 function applyFull(win: BrowserWindow): void {
@@ -49,6 +57,7 @@ function applyFull(win: BrowserWindow): void {
   const b = fullBounds.get(win.id)
   if (b) win.setBounds(b, true)
   win.setWindowButtonPosition({ x: 16, y: 16 })
+  refreshShadow(win)
 }
 
 export function registerWindowLayoutIpc(): void {

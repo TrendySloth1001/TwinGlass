@@ -40,7 +40,10 @@ function createWindow(autoConnect?: { serial: string; kind: string }): BrowserWi
     title: 'Mob Mirror',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 16 },
-    backgroundColor: '#1c1c1c',
+    // Transparent so the compact view can float the control rail beside the phone with a
+    // see-through gap. The full view paints its own opaque background.
+    transparent: true,
+    backgroundColor: '#00000000',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

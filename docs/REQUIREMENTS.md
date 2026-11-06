@@ -50,7 +50,7 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - With no phone: USB-debugging help and Pair over Wi-Fi; the list updates live.
   - Auto-connect: the last phone, or the only phone the first time, is mirrored when it appears (edge-triggered, so Disconnect stays disconnected).
   - The toolbar hides phone controls and Disconnect when idle.
-- ✅ Compact frame: the title strip and the rail are one flush surface (no floating card or gaps).
+- ✅ **Compact view: floating control rail** (2026-11-06). The phone (title strip and mirror) is one rounded dark block. The rail is a separate pill, with a **see-through strip** between them. The window is transparent, and the strip doubles as a drag handle. The full view paints its own opaque, rounded background.
 - **No feature may require restarting the app.**
   - Settings apply live and are queued.
   - adb is re-detected if it was missing.

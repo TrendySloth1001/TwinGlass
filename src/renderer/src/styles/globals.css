@@ -119,7 +119,8 @@
     @apply h-full;
   }
   body {
-    @apply bg-background text-foreground antialiased select-none;
+    /* The window is transparent (compact view floats the rail); views paint their own background. */
+    @apply bg-transparent text-foreground antialiased select-none;
     font-size: 13px;
   }
   input,

@@ -8,7 +8,7 @@ import type { ReactNode } from 'react'
  */
 export function CompactTitleBar({ name, transport }: { name: string; transport: 'usb' | 'wifi' | null }): ReactNode {
   return (
-    <div className="flex h-7 shrink-0 items-center border-b border-sidebar-border bg-sidebar justify-center gap-1.5 pr-3 pl-[72px] text-[11px] font-medium text-muted-foreground [-webkit-app-region:drag]">
+    <div className="flex h-7 shrink-0 items-center justify-center gap-1.5 pr-3 pl-[72px] text-[11px] font-medium text-neutral-400 [-webkit-app-region:drag]">
       <span className="truncate">{name || 'Mob Mirror'}</span>
       {transport === 'usb' && <Usb className="size-3 shrink-0" />}
       {transport === 'wifi' && <Wifi className="size-3 shrink-0" />}

@@ -187,7 +187,7 @@ export function App(): ReactNode {
   const toolbarOwnsCorner = sidebarLayout === 'floating' || !settings.sidebarOpen
 
   return (
-    <div className={cn('relative flex h-full', compact && 'bg-sidebar')}>
+    <div className={cn('relative flex h-full', !compact && 'overflow-hidden rounded-[12px] bg-background')}>
       {!compact && (
       <Sidebar
         list={devices.list}
@@ -203,7 +203,8 @@ export function App(): ReactNode {
         onSettingsChange={onSettingsChange}
       />
       )}
-      <main className="flex min-w-0 flex-1 flex-col">
+      {/* Compact: the phone is one rounded dark block; the rail floats beside it (see-through gap). */}
+      <main className={cn('flex min-w-0 flex-1 flex-col', compact && 'dark overflow-hidden rounded-xl bg-stage')}>
         {compact ? (
           <CompactTitleBar name={mirror.state.deviceName} transport={mirror.state.transport?.kind ?? null} />
         ) : (
@@ -240,17 +241,19 @@ export function App(): ReactNode {
             />
           }
         />
-          {compact && (
-            <ControlRail
-              mirror={mirror}
-              onAction={dispatch}
-              onShowHelp={() => setHelpOpen(true)}
-              onFullView={() => updateSettings({ viewMode: 'full' })}
-            />
-          )}
         </div>
         {!compact && <StatusBar state={mirror.state} />}
       </main>
+      {/* The see-through strip between phone and rail: also a handle to move the window. */}
+      {compact && <div aria-hidden className="w-2 shrink-0 [-webkit-app-region:drag]" />}
+      {compact && (
+        <ControlRail
+          mirror={mirror}
+          onAction={dispatch}
+          onShowHelp={() => setHelpOpen(true)}
+          onFullView={() => updateSettings({ viewMode: 'full' })}
+        />
+      )}
       <ControlsHelp open={helpOpen} onOpenChange={setHelpOpen} />
       <UnlockDialog open={unlockOpen} onOpenChange={setUnlockOpen} initialError={unlockError} />
     </div>
