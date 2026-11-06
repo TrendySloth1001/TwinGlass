@@ -129,6 +129,11 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - Installed on the A024; Mob Mirror opens it automatically, with Chrome as the fallback.
   - **Verified:** extend at full 2800×1260 is **p50 40 ms / p95 45 ms** (Chrome: 43 / 53 ms at 1846×1200).
   - **Touch → Mac verified:** a tap at the phone's centre put the Mac pointer at (2499, 583), the second display's centre. Accessibility granted.
+  - ✅ **"Connect back to my Mac" from the phone** (2026-11-06).
+    - The link service is `127.0.0.1:47123`, reversed to every phone with the app. It pairs automatically: the Mac's secret key reaches only the app, through an adb broadcast to a receiver that requires DUMP.
+    - Companion home screen: status dot plus Mac name; **Show Mac screen**, **Use as second display**, **Open viewer**, **Stop sharing**. The viewer offers **Reconnect** when the stream drops.
+    - Verified: tapping Show Mac screen on the phone started the share on the Mac (1 viewer), and Stop sharing on the phone stopped it.
+  - ✅ **Mac Settings → Phone app:** per phone, installed version and paired state, **Install / Update** (bundled APK) and **Pair**.
 - ✅ **Updates: notify-only.**
   - Verified fact: Squirrel.Mac / electron-updater can't auto-install an unsigned app.
   - The app checks GitHub Releases (package.json `mobMirror.updateRepo`) or a JSON feed daily, and offers Download. Settings → Advanced → Check now.

@@ -14,7 +14,13 @@ export interface MacScreenState {
 }
 
 /** "Show Mac screen on phone": capture + encode here, stream via main, view in the phone's Chrome. */
-export function useMacScreen(): { state: MacScreenState; toggle: (mode?: 'mirror' | 'extend') => void; stop: () => void } {
+export function useMacScreen(): {
+  state: MacScreenState
+  toggle: (mode?: 'mirror' | 'extend') => void
+  /** Start if not already running (companion requests). */
+  start: (mode: 'mirror' | 'extend') => void
+  stop: () => void
+} {
   const [state, setState] = useState<MacScreenState>({ running: false, starting: false, viewers: 0, latencyMs: null, mode: 'mirror' })
   const sender = useRef<MacScreenSender | null>(null)
 
@@ -104,5 +110,12 @@ export function useMacScreen(): { state: MacScreenState; toggle: (mode?: 'mirror
     [start, stop, state.running, state.starting],
   )
 
-  return { state, toggle, stop }
+  const startIfIdle = useCallback(
+    (mode: 'mirror' | 'extend') => {
+      if (!sender.current && !state.starting) void start(mode)
+    },
+    [start, state.starting],
+  )
+
+  return { state, toggle, start: startIfIdle, stop }
 }

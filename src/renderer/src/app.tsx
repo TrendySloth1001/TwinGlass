@@ -48,6 +48,10 @@ export function App(): ReactNode {
   const macScreen = useMacScreen()
   const macScreenToggle = useRef(macScreen.toggle)
   macScreenToggle.current = macScreen.toggle
+  const macScreenStart = useRef(macScreen.start)
+  macScreenStart.current = macScreen.start
+  const macScreenStop = useRef(macScreen.stop)
+  macScreenStop.current = macScreen.stop
   const [palette, setPalette] = useState<{ open: boolean; mode: PaletteMode }>({ open: false, mode: 'all' })
   /** Framed phone body (viewport px): the compact strip and nav dock attach to it. */
   const [phoneRect, setPhoneRect] = useState<PhoneRect | null>(null)
@@ -199,6 +203,9 @@ export function App(): ReactNode {
         if (cmd === 'open-settings') setSettingsOpen(true)
         else if (cmd === 'toggle-mac-screen') macScreenToggle.current('mirror')
         else if (cmd === 'toggle-extend-display') macScreenToggle.current('extend')
+        // From the companion app (phone asked): explicit start / stop, never a toggle.
+        else if (cmd === 'start-mac-screen' || cmd === 'start-extend-display') macScreenStart.current(cmd === 'start-extend-display' ? 'extend' : 'mirror')
+        else if (cmd === 'stop-mac-screen') macScreenStop.current()
         else if (cmd === 'open-palette') setPalette({ open: true, mode: 'all' })
         else if (cmd === 'open-clipboard') setPalette({ open: true, mode: 'clipboard' })
         else if (cmd === 'send-clipboard') {

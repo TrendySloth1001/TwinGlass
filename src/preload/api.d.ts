@@ -121,6 +121,10 @@ export interface MobMirrorApi {
   checkForUpdate(): Promise<UpdateInfo>
   downloadUpdate(url: string): Promise<void>
   onUpdateAvailable(cb: (u: UpdateInfo) => void): () => void
+  /** Companion app: per-phone install / link state; re-pair; install the bundled APK. */
+  companionStatus(): Promise<{ port: number; phones: { id: string; model: string; serial: string; installed: boolean; version: string | null; linked: boolean }[] }>
+  companionRelink(): Promise<boolean>
+  companionInstall(serial: string): Promise<boolean>
   setTrayVisible(on: boolean): Promise<void>
   /** Launch at login; without an argument just reads it. */
   setLoginItem(on?: boolean): Promise<boolean>
@@ -149,7 +153,7 @@ export interface MobMirrorApi {
   onDeviceAction(cb: (action: DeviceAction) => void): () => void
   /** View menu commands (toggle sidebar ⌘\, float/dock ⌥⌘\). */
   onUiCommand(
-    cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view' | 'open-settings' | 'open-palette' | 'open-clipboard' | 'send-clipboard' | 'toggle-mac-screen' | 'toggle-extend-display') => void,
+    cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view' | 'open-settings' | 'open-palette' | 'open-clipboard' | 'send-clipboard' | 'toggle-mac-screen' | 'toggle-extend-display' | 'start-mac-screen' | 'start-extend-display' | 'stop-mac-screen') => void,
   ): () => void
   /** compact: phone-shaped window locked to `aspect` (video width / height); full: restore. */
   /** extra: chrome around the video besides the title strip and rail (nav bar, phone frame). */

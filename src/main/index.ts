@@ -12,6 +12,7 @@ import { registerClipboardHistoryIpc, startClipboardHistory } from './clipboard-
 import { setTrayVisible, startTrayUpdates } from './tray'
 import { registerMacScreenIpc, stopMacScreen } from './mac-screen'
 import { registerUpdateIpc } from './update-check'
+import { startCompanionLink, stopCompanionLink } from './companion-link'
 import { trackDevices } from './devices-ipc'
 import { registerAgentIpc, stopAgentServer } from './agent-ipc'
 
@@ -123,6 +124,7 @@ void app.whenReady().then(() => {
   createWindow()
   startClipboardHistory()
   startTrayUpdates(trayDeps)
+  startCompanionLink(getAdb)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
@@ -139,6 +141,7 @@ process.on('uncaughtException', reportMainError('uncaught exception'))
 process.on('unhandledRejection', reportMainError('unhandled rejection'))
 
 app.on('before-quit', () => {
+  stopCompanionLink()
   stopMacScreen(getAdb())
   stopAllSessions()
   stopDeviceTracking()

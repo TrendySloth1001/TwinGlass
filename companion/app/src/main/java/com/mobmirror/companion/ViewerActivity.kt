@@ -42,6 +42,7 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback {
     private lateinit var token: String
     private lateinit var surface: SurfaceView
     private lateinit var hud: TextView
+    private lateinit var reconnect: android.widget.Button
     private val main = Handler(Looper.getMainLooper())
 
     @Volatile private var running = false
@@ -78,6 +79,22 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback {
         val root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
         root.addView(surface, FrameLayout.LayoutParams(-1, -1, Gravity.CENTER))
         root.addView(hud, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = 24 })
+        // Shown when the stream drops: ask the Mac (via the link) to share again; it reopens the viewer.
+        reconnect = android.widget.Button(this).apply {
+            text = "Reconnect"
+            isAllCaps = false
+            visibility = View.GONE
+            setOnClickListener {
+                visibility = View.GONE
+                say("Reconnecting…")
+                thread {
+                    val st = Link.status(this@ViewerActivity)
+                    val ok = if (st?.sharing == true) Link.open(this@ViewerActivity) else Link.start(this@ViewerActivity, intent.getStringExtra("mode") ?: "mirror")
+                    main.post { if (ok) finish() else { say("Can’t reach your Mac. Is Mob Mirror open?"); visibility = View.VISIBLE } }
+                }
+            }
+        }
+        root.addView(reconnect, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
         setContentView(root)
         surface.setOnTouchListener { _, e -> onTouch(e); true }
         immersive()
@@ -147,7 +164,10 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback {
                 }
             }
         } catch (e: Exception) {
-            if (running) say("The Mac stopped sharing (${e.message ?: e.javaClass.simpleName}).")
+            if (running) {
+                say("The Mac stopped sharing (${e.message ?: e.javaClass.simpleName}).")
+                main.post { reconnect.visibility = View.VISIBLE }
+            }
         }
     }
 

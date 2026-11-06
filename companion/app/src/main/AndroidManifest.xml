@@ -19,6 +19,15 @@
             </intent-filter>
         </activity>
 
+        <!-- Mob Mirror (Mac) hands over its link key here, through an adb "am broadcast" with
+             string extras key and mac, and an int extra port (see src/main/companion-link.ts).
+             android.permission.DUMP: the adb shell has it, ordinary apps can't, so no other app can
+             plant a key. -->
+        <receiver
+            android:name=".LinkReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP" />
+
         <!-- Opened by Mob Mirror on the Mac: am start -n com.mobmirror.companion/.ViewerActivity -d <url> -->
         <activity
             android:name=".ViewerActivity"

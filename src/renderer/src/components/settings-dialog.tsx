@@ -7,6 +7,7 @@ import {
   MousePointer2,
   RefreshCw,
   RotateCcw,
+  Smartphone,
   SlidersHorizontal,
   Wrench,
 } from 'lucide-react'
@@ -74,7 +75,7 @@ function MiniPhone({ style, color }: { style: FrameStyle; color: FrameColor }): 
   )
 }
 
-type Page = 'general' | 'window' | 'mirroring' | 'input' | 'unlock' | 'agents' | 'advanced'
+type Page = 'general' | 'window' | 'mirroring' | 'input' | 'unlock' | 'companion' | 'agents' | 'advanced'
 
 const PAGES: { id: Page; label: string; icon: ReactNode }[] = [
   { id: 'general', label: 'General', icon: <SlidersHorizontal /> },
@@ -82,6 +83,7 @@ const PAGES: { id: Page; label: string; icon: ReactNode }[] = [
   { id: 'mirroring', label: 'Mirroring', icon: <MonitorSmartphone /> },
   { id: 'input', label: 'Mouse & keyboard', icon: <MousePointer2 /> },
   { id: 'unlock', label: 'Unlock', icon: <Fingerprint /> },
+  { id: 'companion', label: 'Phone app', icon: <Smartphone /> },
   { id: 'agents', label: 'Agents', icon: <Bot /> },
   { id: 'advanced', label: 'Advanced', icon: <Wrench /> },
 ]
@@ -168,6 +170,13 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
   // Launch at login lives in macOS (login items), not in our settings: read it when shown.
   const [loginItem, setLoginItem] = useState<boolean | null>(null)
   const [update, setUpdate] = useState<UpdateInfo | null>(null)
+  type CompanionPhone = Awaited<ReturnType<typeof window.mobMirror.companionStatus>>['phones'][number]
+  const [companion, setCompanion] = useState<CompanionPhone[] | null>(null)
+  const [installing, setInstalling] = useState<string | null>(null)
+  const loadCompanion = (): void => void window.mobMirror.companionStatus().then((st) => setCompanion(st.phones), () => setCompanion([]))
+  useEffect(() => {
+    if (p.open && page === 'companion') loadCompanion()
+  }, [p.open, page])
   useEffect(() => {
     if (p.open && page === 'advanced') void window.mobMirror.checkForUpdate().then(setUpdate, () => {})
   }, [p.open, page])
@@ -500,6 +509,61 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
             ) : (
               <p className="text-sm text-muted-foreground">Mirror a phone to see and manage its unlock settings.</p>
             ))}
+
+          {page === 'companion' && (
+            <>
+              <p className="mb-4 text-xs text-muted-foreground">
+                The Mob Mirror app on your phone gives faster, sharper Mac screen sharing, touch control of the Mac, and lets
+                you start sharing from the phone (“connect back to my Mac”). It pairs by itself over USB.
+              </p>
+              <Group title="Phones">
+                {companion === null && <div className="py-3 text-xs text-muted-foreground">Checking phones…</div>}
+                {companion?.length === 0 && <div className="py-3 text-xs text-muted-foreground">Connect a phone to see its app status.</div>}
+                {companion?.map((ph) => (
+                  <Row
+                    key={ph.id}
+                    label={ph.model}
+                    hint={
+                      !ph.installed
+                        ? 'App not installed.'
+                        : ph.linked
+                          ? `App ${ph.version ?? ''} · paired: start sharing from the phone.`
+                          : `App ${ph.version ?? ''} · not paired yet.`
+                    }
+                  >
+                    <div className="flex items-center gap-2">
+                      {ph.installed && !ph.linked && (
+                        <Button size="sm" variant="outline" onClick={() => void window.mobMirror.companionRelink().then(loadCompanion)}>
+                          Pair
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant={ph.installed ? 'outline' : 'default'}
+                        disabled={installing === ph.serial}
+                        onClick={() => {
+                          setInstalling(ph.serial)
+                          window.mobMirror
+                            .companionInstall(ph.serial)
+                            .then(
+                              () => toast.success(`Mob Mirror app ${ph.installed ? 'updated' : 'installed'} on ${ph.model}`),
+                              (e: unknown) => toast.error('Couldn’t install the app', { description: e instanceof Error ? e.message : String(e) }),
+                            )
+                            .finally(() => {
+                              setInstalling(null)
+                              loadCompanion()
+                            })
+                        }}
+                      >
+                        {installing === ph.serial ? <RefreshCw className="animate-spin" /> : null}
+                        {ph.installed ? 'Update' : 'Install'}
+                      </Button>
+                    </div>
+                  </Row>
+                ))}
+              </Group>
+            </>
+          )}
 
           {page === 'agents' && (
             <Group>
