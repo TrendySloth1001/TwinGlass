@@ -23,6 +23,15 @@ export function videoParams(quality: Quality, kind: 'usb' | 'wifi'): VideoParams
   return TABLE[q][kind]
 }
 
+/** Short names for the closed select (the full description shows in the list). */
+export const QUALITY_SHORT: Record<Quality, string> = {
+  auto: 'Auto',
+  max: 'Maximum',
+  high: 'High',
+  balanced: 'Balanced',
+  smooth: 'Smooth',
+}
+
 export const QUALITY_LABELS: Record<Quality, string> = {
   auto: 'Auto (High on USB, Balanced on Wi-Fi)',
   max: 'Maximum: native resolution, highest bitrate',

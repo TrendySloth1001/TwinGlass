@@ -99,7 +99,6 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
       maxFps: req.maxFps,
       videoCodec: req.videoCodec === 'h265' ? 'h265' : 'h264',
       audio: req.audio ?? 'off',
-      showTouches: req.showTouches === true,
       stayAwake: true,
     })
     if (wc.isDestroyed() || generation.get(wc.id) !== gen) {

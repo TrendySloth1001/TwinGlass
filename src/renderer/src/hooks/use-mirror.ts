@@ -110,6 +110,8 @@ export interface Mirror {
   toggleMute: () => void
   screenshot: () => Promise<void>
   toggleRecording: () => Promise<void>
+  /** Turns the touch dots on the mirror on/off immediately (no restart). */
+  setShowTouches: (on: boolean) => void
 }
 
 export function useMirror(
@@ -119,6 +121,10 @@ export function useMirror(
   const [state, setState] = useState<MirrorState>(IDLE)
   const engine = useRef<Engine | null>(null)
   const busy = useRef(false)
+  /** Latest request that arrived while a connect was in flight: run it next instead of dropping it. */
+  const queued = useRef<{ t: TransportInfo; opts: ConnectOptions } | null>(null)
+  /** "Show touches" draws the app's own dots on the mirror; changes apply instantly. */
+  const showTouches = useRef(false)
   const attempt = useRef(0)
   const patch = useCallback((p: Partial<MirrorState>) => setState((s) => ({ ...s, ...p })), [])
   // Latest state for callbacks (side effects stay out of setState updaters: StrictMode runs them twice).
@@ -150,6 +156,7 @@ export function useMirror(
 
   // Set below; lets the port's "closed" handler start a reconnect without a dependency cycle.
   const reconnectRef = useRef<(t: TransportInfo, opts: ConnectOptions, reason: string) => void>(() => {})
+  const connectRef = useRef<(t: TransportInfo, opts: ConnectOptions) => Promise<void>>(async () => {})
 
   /**
    * One connection attempt. `mode: 'reconnect'` keeps the reconnecting UI, stays quiet on errors and
@@ -161,7 +168,10 @@ export function useMirror(
       const canvas = canvasRef.current
       if (!canvas) return false
       if (mode === 'fresh') {
-        if (busy.current) return false
+        if (busy.current) {
+          queued.current = { t, opts }
+          return false
+        }
         busy.current = true
         teardown(true)
         setState({ ...IDLE, phase: 'connecting', transport: t })
@@ -172,7 +182,6 @@ export function useMirror(
         const request = {
           serial: t.serial,
           audio: audioMode,
-          showTouches: opts.showTouches,
           ...videoParams(opts.quality, t.kind),
         }
         try {
@@ -193,7 +202,7 @@ export function useMirror(
         const post = (data: Uint8Array): void => port.postMessage({ t: 'control', data } satisfies RendererToMain)
         const overlay = overlayRef.current ? new TouchOverlay(overlayRef.current, canvas) : null
         const input = new InputController(canvas, () => video.size, post, (points, size) =>
-          points.length ? overlay?.show(points, size) : overlay?.clear(),
+          points.length && showTouches.current ? overlay?.show(points, size) : overlay?.clear(),
         )
         const recorder = new Recorder()
 
@@ -235,7 +244,12 @@ export function useMirror(
         }
         return false
       } finally {
-        if (mode === 'fresh') busy.current = false
+        if (mode === 'fresh') {
+          busy.current = false
+          const next = queued.current
+          queued.current = null
+          if (next) void connectRef.current(next.t, next.opts)
+        }
       }
     },
     [canvasRef, overlayRef, patch, teardown],
@@ -247,12 +261,21 @@ export function useMirror(
   const connect = useCallback(
     async (t: TransportInfo, opts: ConnectOptions): Promise<void> => {
       last.current = { t, opts }
+      showTouches.current = opts.showTouches
       // Disconnect (or unmount, or a reconnect loop) is cancelled by bumping this.
       const gen = ++attempt.current
       await connectOnce(t, opts, gen, 'fresh')
     },
     [connectOnce],
   )
+
+  connectRef.current = connect
+
+  const setShowTouches = useCallback((on: boolean) => {
+    showTouches.current = on
+    if (last.current) last.current = { ...last.current, opts: { ...last.current.opts, showTouches: on } }
+    if (!on) engine.current?.overlay?.clear()
+  }, [])
 
   /** Applies new session settings now: restarts the live mirror on the same transport (~1 s). */
   const restart = useCallback(
@@ -426,5 +449,6 @@ export function useMirror(
     toggleMute,
     screenshot,
     toggleRecording,
+    setShowTouches,
   }
 }

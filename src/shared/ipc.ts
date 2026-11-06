@@ -10,8 +10,6 @@ export interface StartSessionRequest {
   videoBitRate?: number
   maxFps?: number
   audio?: AudioMode
-  /** Phone draws a dot where each touch lands (scrcpy show_touches; restored on disconnect). */
-  showTouches?: boolean
   videoCodec?: 'h264' | 'h265'
 }
 

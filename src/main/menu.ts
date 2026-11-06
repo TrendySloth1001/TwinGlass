@@ -28,6 +28,17 @@ export function installMenu(): void {
     {
       label: 'View',
       submenu: [
+        {
+          label: 'Toggle Sidebar',
+          accelerator: 'CommandOrControl+\\',
+          click: () => BrowserWindow.getFocusedWindow()?.webContents.send('ui:command', 'toggle-sidebar'),
+        },
+        {
+          label: 'Float / Dock Sidebar',
+          accelerator: 'CommandOrControl+Alt+\\',
+          click: () => BrowserWindow.getFocusedWindow()?.webContents.send('ui:command', 'toggle-sidebar-layout'),
+        },
+        { type: 'separator' },
         { role: 'togglefullscreen' },
         { type: 'separator' },
         // No ⌘R here: it rotates the phone. Reload stays available for development.

@@ -29,16 +29,16 @@ export function StatusBar({ state }: { state: MirrorState }): ReactNode {
   }
   const s = state.stats
   return (
-    <footer className="flex h-7 shrink-0 items-center gap-4 border-t px-3 text-[11px] text-muted-foreground tabular-nums">
+    <footer className="@container flex h-7 shrink-0 items-center gap-4 overflow-hidden border-t px-3 text-[11px] whitespace-nowrap text-muted-foreground tabular-nums">
       <span className="flex items-center gap-1">
         <Gauge className="size-3" /> {s ? `${s.width}×${s.height} · ${s.fps} fps` : '…'}
       </span>
-      <span className="flex items-center gap-1">
+      <span className="hidden items-center gap-1 @2xl:flex">
         <Cpu className="size-3" /> {s?.codec ?? '…'} · {s?.hardware ?? '…'} decode
       </span>
       {s && (
         <span
-          className="flex items-center gap-1"
+          className="hidden items-center gap-1 @md:flex"
           title={
             'Mac-side latency: packet received → frame on screen (IPC + decode + draw).\n' +
             `IPC ${s.latency.ipcMs.toFixed(1)} ms · decode ${s.latency.decodeMs.toFixed(1)} ms · decoder queue ${s.latency.queue}\n` +
@@ -48,7 +48,7 @@ export function StatusBar({ state }: { state: MirrorState }): ReactNode {
           <Timer className="size-3" /> {s.latency.appMs.toFixed(0)} ms app · {s.latency.jitterMs.toFixed(0)} ms jitter
         </span>
       )}
-      <span className="flex items-center gap-1">
+      <span className="hidden items-center gap-1 @xl:flex">
         <Music className="size-3" /> {AUDIO_LABEL[state.audio]}
         {state.muted && ' (muted)'}
       </span>

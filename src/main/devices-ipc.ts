@@ -51,6 +51,18 @@ export function registerDevicesIpc(getAdb: () => Adb | null): void {
   })
 
   ipcMain.handle('wireless:disconnect', async (_e, serial: string) => need().disconnect(serial))
+
+  // Replaces an adb server started by another tool (older version) with this app's adb.
+  // Paired Wi-Fi phones reconnect via mDNS; live mirrors reconnect automatically.
+  ipcMain.handle('adb:restart-server', async () => {
+    const adb = need()
+    await adb.runLoose(['kill-server'], undefined, 10000)
+    await adb.runLoose(['start-server'], undefined, 20000)
+    tracker?.stop()
+    tracker = null
+    latest = null
+    return adb.status()
+  })
   ipcMain.handle('wireless:tcpip', async (_e, serial: string) => need().enableTcpip(serial))
 
   ipcMain.handle('wireless:qr:start', async (e) => {

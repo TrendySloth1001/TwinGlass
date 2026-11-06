@@ -10,9 +10,22 @@ export interface Settings {
   showTouches: boolean
   quality: Quality
   codec: CodecPreference
+  /** docked: beside the mirror; floating: glass panel over the mirror (takes no space). */
+  sidebarLayout: 'docked' | 'floating'
+  sidebarOpen: boolean
+  /** Collapsed sidebar sections. */
+  closedSections: string[]
 }
 
-const DEFAULTS: Settings = { audio: 'off', showTouches: false, quality: 'auto', codec: 'auto' }
+const DEFAULTS: Settings = {
+  audio: 'off',
+  showTouches: false,
+  quality: 'auto',
+  codec: 'auto',
+  sidebarLayout: 'docked',
+  sidebarOpen: true,
+  closedSections: ['agents'],
+}
 
 function load(): Settings {
   try {

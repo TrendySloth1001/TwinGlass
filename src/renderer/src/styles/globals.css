@@ -29,6 +29,7 @@
   --brand: oklch(0.62 0.19 255);
   --stage: oklch(0.18 0 0);
   --sidebar: oklch(0.97 0 0);
+  --sidebar-border: oklch(0.9 0 0);
 }
 
 .dark {
@@ -55,6 +56,7 @@
   --brand: oklch(0.7 0.16 255);
   --stage: oklch(0.1 0 0);
   --sidebar: oklch(0.18 0 0);
+  --sidebar-border: oklch(1 0 0 / 9%);
 }
 
 @theme inline {
@@ -85,6 +87,7 @@
   --color-brand: var(--brand);
   --color-stage: var(--stage);
   --color-sidebar: var(--sidebar);
+  --color-sidebar-border: var(--sidebar-border);
   --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
   --animate-border-beam: border-beam 6s linear infinite;
   @keyframes border-beam {

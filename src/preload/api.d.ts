@@ -62,6 +62,8 @@ export type QrState =
 
 export interface MobMirrorApi {
   adbStatus(): Promise<AdbStatusInfo>
+  /** kill-server + start-server with this app's adb (fixes a version mismatch). */
+  restartAdbServer(): Promise<AdbStatusInfo>
   /** Current list; also starts live tracking (see onDevicesChanged). */
   listDevices(): Promise<DeviceListInfo>
   onDevicesChanged(cb: (list: DeviceListInfo) => void): () => void
@@ -81,6 +83,8 @@ export interface MobMirrorApi {
   openDeviceWindow(serial: string, kind: 'usb' | 'wifi'): Promise<void>
   /** Device menu items / their shortcuts (⌘B back, ⇧⌘H home…), sent to the focused window. */
   onDeviceAction(cb: (action: DeviceAction) => void): () => void
+  /** View menu commands (toggle sidebar ⌘\, float/dock ⌥⌘\). */
+  onUiCommand(cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout') => void): () => void
   /** Lock type/state of the mirrored phone and whether a secret is saved for it. */
   unlockStatus(): Promise<UnlockStatusInfo>
   /** Wakes the phone, shows the bouncer and types the secret (omit `secret` to use the saved one). */

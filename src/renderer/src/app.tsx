@@ -10,6 +10,7 @@ import { UnlockDialog } from '@/components/unlock-dialog'
 import type { DeviceAction } from '@shared/shortcuts'
 import { useDevices } from '@/hooks/use-devices'
 import { useMirror } from '@/hooks/use-mirror'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { useSettings } from '@/hooks/use-settings'
 
 /** Windows opened via "Mirror in new window" carry #connect=<serial>&kind=<usb|wifi>. */
@@ -25,6 +26,8 @@ export function App(): ReactNode {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
   const devices = useDevices()
+  /** Effective sidebar layout, readable from callbacks defined before it is computed. */
+  const sidebarLayoutRef = useRef<'docked' | 'floating'>('docked')
   const mirror = useMirror(canvasRef, overlayRef)
   const [settings, updateSettings] = useSettings()
   const [helpOpen, setHelpOpen] = useState(false)
@@ -81,25 +84,32 @@ export function App(): ReactNode {
   )
 
   const onMirror = useCallback(
-    (t: TransportInfo, deviceId?: string) =>
+    (t: TransportInfo, deviceId?: string) => {
+      // A floating sidebar would cover the mirror that is about to start: tuck it away.
+      if (sidebarLayoutRef.current === 'floating') updateSettings({ sidebarOpen: false })
       void connect(t, {
         audio: settings.audio,
         showTouches: settings.showTouches,
         quality: settings.quality,
         codec: settings.codec,
         deviceId,
-      }),
-    [connect, settings.audio, settings.showTouches, settings.quality, settings.codec],
+      })
+    },
+    [connect, settings.audio, settings.showTouches, settings.quality, settings.codec, updateSettings],
   )
 
   /** Session settings apply immediately: restart a live mirror with the new values. */
   const { restart } = mirror
+  const { setShowTouches } = mirror
   const onSettingsChange = useCallback(
     (patch: Partial<typeof settings>) => {
       updateSettings(patch)
-      void restart(patch)
+      // Touch dots are drawn by the app: instant. Quality/codec/audio need a new stream: restart.
+      if (patch.showTouches !== undefined) setShowTouches(patch.showTouches)
+      const { showTouches: _ignored, ...streamPatch } = patch
+      if (Object.keys(streamPatch).length) void restart(streamPatch)
     },
-    [restart, updateSettings],
+    [restart, setShowTouches, updateSettings],
   )
 
   // Device menu shortcuts (⌘B back, ⇧⌘H home, …) arrive from main for the focused window.
@@ -118,8 +128,27 @@ export function App(): ReactNode {
     }
   }, [onMirror])
 
+  // View menu: ⌘\ toggles the sidebar, ⌥⌘\ switches docked <-> floating.
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
+  useEffect(
+    () =>
+      window.mobMirror.onUiCommand((cmd) => {
+        const s = settingsRef.current
+        if (cmd === 'toggle-sidebar') updateSettings({ sidebarOpen: !s.sidebarOpen })
+        else updateSettings({ sidebarLayout: s.sidebarLayout === 'floating' ? 'docked' : 'floating', sidebarOpen: true })
+      }),
+    [updateSettings],
+  )
+  /** The toolbar owns the window's top-left corner (traffic lights) unless a docked sidebar is shown. */
+  // Narrow windows: a docked sidebar would squash the mirror, so it floats over it instead.
+  const narrow = useMediaQuery('(max-width: 899px)')
+  const sidebarLayout = narrow ? 'floating' : settings.sidebarLayout
+  sidebarLayoutRef.current = sidebarLayout
+  const toolbarOwnsCorner = sidebarLayout === 'floating' || !settings.sidebarOpen
+
   return (
-    <div className="flex h-full">
+    <div className="relative flex h-full">
       <Sidebar
         list={devices.list}
         error={devices.error}
@@ -129,10 +158,19 @@ export function App(): ReactNode {
         connecting={mirror.state.phase === 'connecting'}
         onMirror={onMirror}
         settings={settings}
+        layout={sidebarLayout}
+        layoutLocked={narrow}
         onSettingsChange={onSettingsChange}
       />
       <main className="flex min-w-0 flex-1 flex-col">
-        <MirrorToolbar mirror={mirror} onAction={dispatch} onShowHelp={() => setHelpOpen(true)} />
+        <MirrorToolbar
+          mirror={mirror}
+          onAction={dispatch}
+          onShowHelp={() => setHelpOpen(true)}
+          ownsCorner={toolbarOwnsCorner}
+          sidebarOpen={settings.sidebarOpen}
+          onToggleSidebar={() => updateSettings({ sidebarOpen: !settings.sidebarOpen })}
+        />
         <MirrorStage
           canvasRef={canvasRef}
           overlayRef={overlayRef}

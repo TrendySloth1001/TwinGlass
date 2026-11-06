@@ -25,6 +25,7 @@ function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
 
 const api: MobMirrorApi = {
   adbStatus: () => ipcRenderer.invoke('adb:status'),
+  restartAdbServer: () => ipcRenderer.invoke('adb:restart-server'),
   listDevices: () => ipcRenderer.invoke('devices:list'),
   onDevicesChanged: (cb) => subscribe('devices:changed', cb),
   startSession: (req) => ipcRenderer.invoke('session:start', req),
@@ -40,6 +41,7 @@ const api: MobMirrorApi = {
   onQrState: (cb) => subscribe('wireless:qr:state', cb),
   openDeviceWindow: (serial, kind) => ipcRenderer.invoke('window:open-device', serial, kind),
   onDeviceAction: (cb) => subscribe('device:action', cb),
+  onUiCommand: (cb) => subscribe('ui:command', cb),
   unlockStatus: () => ipcRenderer.invoke('unlock:status'),
   unlock: (req) => ipcRenderer.invoke('unlock:run', req),
   forgetUnlockSecret: () => ipcRenderer.invoke('unlock:forget'),

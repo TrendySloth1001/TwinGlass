@@ -21,8 +21,9 @@ function createWindow(autoConnect?: { serial: string; kind: string }): BrowserWi
   const win = new BrowserWindow({
     width: 1180,
     height: 900,
-    minWidth: 720,
-    minHeight: 520,
+    // The layout adapts down to this (toolbar overflow menu, floating sidebar, compact status bar).
+    minWidth: 480,
+    minHeight: 420,
     title: 'Mob Mirror',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 16 },
