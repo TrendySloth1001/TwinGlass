@@ -1,10 +1,13 @@
 // Bridges a ScrcpySession to one renderer over a dedicated MessagePort.
 // Electron's MessagePortMain can't transfer ArrayBuffers, so packets are structured-cloned.
 // At a few Mbps of H.264 that copy is negligible.
+import { statSync } from 'node:fs'
+import { basename, extname } from 'node:path'
 import { clipboard, ipcMain, MessageChannelMain, type WebContents } from 'electron'
+import { scanFile } from '@shared/scrcpy/control'
 import type { Adb } from './adb/adb'
 import { ScrcpySession } from './scrcpy/session'
-import type { MainToRenderer, RendererToMain, StartSessionRequest } from '../shared/ipc'
+import type { FileResult, MainToRenderer, RendererToMain, StartSessionRequest } from '../shared/ipc'
 
 const sessions = new Map<number, ScrcpySession>()
 
@@ -26,6 +29,7 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
       maxSize: req.maxSize,
       videoBitRate: req.videoBitRate,
       maxFps: req.maxFps,
+      audio: req.audio ?? 'off',
       stayAwake: true,
     })
     sessions.set(wc.id, session)
@@ -34,6 +38,7 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
     const post = (m: MainToRenderer): void => port1.postMessage(m)
 
     session.on('video', (ev) => post({ t: 'video', ev }))
+    session.on('audio', (ev) => post({ t: 'audio', ev }))
     session.on('deviceMessage', (msg) => {
       // The device clipboard changed (autosync, or after GET_CLIPBOARD): mirror it to the Mac.
       if (msg.type === 'clipboard') clipboard.writeText(msg.text)
@@ -59,6 +64,33 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
   })
 
   ipcMain.handle('session:stop', (e) => stop(e.sender.id))
+
+  // Drag & drop onto the mirror: APKs are installed, anything else goes to /sdcard/Download.
+  ipcMain.handle('files:drop', async (e, paths: string[]): Promise<FileResult[]> => {
+    const adb = getAdb()
+    const session = sessions.get(e.sender.id)
+    if (!adb || !session) return [{ name: '', ok: false, message: 'Start mirroring a device first.' }]
+    const results: FileResult[] = []
+    for (const p of paths) {
+      const name = basename(p)
+      try {
+        if (!statSync(p).isFile()) throw new Error('folders are not supported')
+        if (extname(p).toLowerCase() === '.apk') {
+          const out = (await adb.runLoose(['install', '-r', p], session.serial, 300_000)).trim()
+          const ok = /\bSuccess\b/.test(out)
+          results.push({ name, ok, message: ok ? 'installed' : out.split('\n').pop() || out })
+        } else {
+          const dest = `/sdcard/Download/${name}`
+          await adb.push(session.serial, p, dest)
+          session.sendControl(scanFile(dest))
+          results.push({ name, ok: true, message: `copied to ${dest}` })
+        }
+      } catch (err) {
+        results.push({ name, ok: false, message: err instanceof Error ? err.message : String(err) })
+      }
+    }
+    return results
+  })
   ipcMain.handle('clipboard:read', () => clipboard.readText())
   ipcMain.handle('clipboard:write', (_e, text: string) => clipboard.writeText(text))
 }

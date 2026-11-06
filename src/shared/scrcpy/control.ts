@@ -137,6 +137,17 @@ export function setDisplayPower(on: boolean): Uint8Array {
   return Uint8Array.of(ControlType.SET_DISPLAY_POWER, on ? 1 : 0)
 }
 
+/** Asks the device media scanner to index a pushed file (so it shows up in Gallery/Files). */
+export function scanFile(devicePath: string): Uint8Array {
+  const bytes = utf8Truncate(devicePath, 256)
+  const buf = new Uint8Array(5 + bytes.length)
+  const v = new DataView(buf.buffer)
+  v.setUint8(0, ControlType.SCAN_FILE)
+  v.setUint32(1, bytes.length)
+  buf.set(bytes, 5)
+  return buf
+}
+
 export function startApp(name: string): Uint8Array {
   const bytes = utf8Truncate(name, 255)
   const buf = new Uint8Array(2 + bytes.length)

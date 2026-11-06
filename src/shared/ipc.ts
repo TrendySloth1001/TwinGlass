@@ -2,15 +2,25 @@
 import type { DeviceMessage } from './scrcpy/device-messages'
 import type { StreamEvent } from './scrcpy/stream'
 
+export type AudioMode = 'off' | 'mac' | 'both'
+
 export interface StartSessionRequest {
   serial: string
   maxSize?: number
   videoBitRate?: number
   maxFps?: number
+  audio?: AudioMode
+}
+
+export interface FileResult {
+  name: string
+  ok: boolean
+  message: string
 }
 
 export type MainToRenderer =
   | { t: 'video'; ev: StreamEvent }
+  | { t: 'audio'; ev: StreamEvent }
   | { t: 'device'; msg: DeviceMessage }
   | { t: 'log'; line: string }
   | { t: 'closed'; error?: string }

@@ -1,7 +1,8 @@
 import { join } from 'node:path'
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { Adb, findAdb } from './adb/adb'
 import { registerDevicesIpc, stopDeviceTracking } from './devices-ipc'
+import { closeAllRecordings, registerMediaIpc } from './media-ipc'
 import { registerSessionIpc, stopAllSessions } from './session-ipc'
 
 export function serverPath(): string {
@@ -12,14 +13,17 @@ export function serverPath(): string {
 
 let adb: Adb | null = null
 
-function createWindow(): void {
+/** @param autoConnect transport serial to start mirroring as soon as the window loads */
+function createWindow(autoConnect?: { serial: string; kind: string }): BrowserWindow {
   const win = new BrowserWindow({
-    width: 1100,
+    width: 1180,
     height: 900,
-    minWidth: 640,
-    minHeight: 480,
+    minWidth: 720,
+    minHeight: 520,
     title: 'Mob Mirror',
-    backgroundColor: '#111',
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 16, y: 16 },
+    backgroundColor: '#1c1c1c',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -27,12 +31,19 @@ function createWindow(): void {
       nodeIntegration: false,
     },
   })
-  if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL)
-  else void win.loadFile(join(__dirname, '../renderer/index.html'))
+  const hash = autoConnect ? `connect=${encodeURIComponent(autoConnect.serial)}&kind=${autoConnect.kind}` : ''
+  if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(`${process.env.ELECTRON_RENDERER_URL}#${hash}`)
+  else void win.loadFile(join(__dirname, '../renderer/index.html'), { hash })
+  return win
 }
+
+ipcMain.handle('window:open-device', (_e, serial: string, kind: string) => {
+  createWindow({ serial, kind })
+})
 
 registerDevicesIpc(() => adb)
 registerSessionIpc(() => adb, serverPath)
+registerMediaIpc()
 
 void app.whenReady().then(() => {
   const path = findAdb()
@@ -46,6 +57,7 @@ void app.whenReady().then(() => {
 app.on('before-quit', () => {
   stopAllSessions()
   stopDeviceTracking()
+  closeAllRecordings()
 })
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

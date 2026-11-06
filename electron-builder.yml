@@ -1,0 +1,27 @@
+# macOS packaging. Local builds are unsigned; see docs/RELEASE.md for signing + notarization.
+appId: org.mobmirror.app
+productName: Mob Mirror
+copyright: Copyright © 2026
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - package.json
+# The scrcpy server is pushed to the phone at runtime; ship it next to the app, outside the asar.
+extraResources:
+  - from: resources/scrcpy-server-v5.0.1
+    to: scrcpy-server-v5.0.1
+asar: true
+mac:
+  category: public.app-category.utilities
+  target:
+    - target: dmg
+      arch: [arm64]
+  # null = skip code signing (local/dev builds). For releases set CSC_LINK / CSC_KEY_PASSWORD
+  # (Developer ID Application certificate) and remove this line.
+  identity: null
+  hardenedRuntime: true
+  minimumSystemVersion: '13.0'
+dmg:
+  title: Mob Mirror

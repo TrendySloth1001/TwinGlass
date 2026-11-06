@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
 import type { MobMirrorApi } from './api'
 
 // A MessagePort can't cross contextBridge, so forward it to the page with window.postMessage
@@ -29,6 +29,15 @@ const api: MobMirrorApi = {
   startQrPairing: () => ipcRenderer.invoke('wireless:qr:start'),
   cancelQrPairing: () => ipcRenderer.invoke('wireless:qr:cancel'),
   onQrState: (cb) => subscribe('wireless:qr:state', cb),
+  openDeviceWindow: (serial, kind) => ipcRenderer.invoke('window:open-device', serial, kind),
+  // Sandboxed renderers have no File.path; webUtils is the supported replacement.
+  pathForFile: (file) => webUtils.getPathForFile(file),
+  dropFiles: (paths) => ipcRenderer.invoke('files:drop', paths),
+  saveScreenshot: (png, deviceName) => ipcRenderer.invoke('media:screenshot', png, deviceName),
+  startRecording: (deviceName, ext) => ipcRenderer.invoke('media:record:start', deviceName, ext),
+  writeRecording: (id, chunk) => ipcRenderer.invoke('media:record:chunk', id, chunk),
+  stopRecording: (id) => ipcRenderer.invoke('media:record:stop', id),
+  reveal: (path) => ipcRenderer.invoke('media:reveal', path),
 }
 
 contextBridge.exposeInMainWorld('mobMirror', api)

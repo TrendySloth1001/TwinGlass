@@ -1,0 +1,210 @@
+// Owns one mirroring session: MessagePort, video decoder, audio player, input and recorder.
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { toast } from 'sonner'
+import { QualityPreset, type AudioMode, type MainToRenderer, type RendererToMain } from '@shared/ipc'
+import { setDisplayPower } from '@shared/scrcpy/control'
+import type { TransportInfo } from '../../../preload/api'
+import { AudioPlayer } from '@/engine/audio-player'
+import { InputController } from '@/engine/input'
+import { Recorder } from '@/engine/recorder'
+import { VideoView, type VideoStats } from '@/engine/video-view'
+
+export type Phase = 'idle' | 'connecting' | 'live'
+
+export interface MirrorState {
+  phase: Phase
+  transport: TransportInfo | null
+  deviceName: string
+  stats: VideoStats | null
+  audio: AudioPlayer['state'] | 'off'
+  muted: boolean
+  screenOff: boolean
+  recordingSince: number | null
+}
+
+const IDLE: MirrorState = {
+  phase: 'idle',
+  transport: null,
+  deviceName: '',
+  stats: null,
+  audio: 'off',
+  muted: false,
+  screenOff: false,
+  recordingSince: null,
+}
+
+interface Engine {
+  port: MessagePort
+  video: VideoView
+  input: InputController
+  audio: AudioPlayer | null
+  recorder: Recorder
+  timer: number
+}
+
+function waitForPort(): Promise<{ port: MessagePort; deviceName: string }> {
+  return new Promise((resolve) => {
+    const onMessage = (e: MessageEvent): void => {
+      if (e.source !== window || e.data?.type !== 'mob-mirror:session-port' || !e.ports[0]) return
+      window.removeEventListener('message', onMessage)
+      resolve({ port: e.ports[0], deviceName: e.data.deviceName as string })
+    }
+    window.addEventListener('message', onMessage)
+  })
+}
+
+const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
+
+export interface Mirror {
+  state: MirrorState
+  connect: (t: TransportInfo, audio: AudioMode) => Promise<void>
+  disconnect: () => void
+  send: (msg: Uint8Array) => void
+  pressKey: (keycode: number) => void
+  toggleScreenOff: () => void
+  toggleMute: () => void
+  screenshot: () => Promise<void>
+  toggleRecording: () => Promise<void>
+}
+
+export function useMirror(canvasRef: RefObject<HTMLCanvasElement | null>): Mirror {
+  const [state, setState] = useState<MirrorState>(IDLE)
+  const engine = useRef<Engine | null>(null)
+  const busy = useRef(false)
+  const patch = useCallback((p: Partial<MirrorState>) => setState((s) => ({ ...s, ...p })), [])
+
+  const teardown = useCallback(
+    (notifyMain: boolean) => {
+      const e = engine.current
+      if (!e) return
+      engine.current = null
+      clearInterval(e.timer)
+      if (e.recorder.active) void e.recorder.stop()
+      e.input.dispose()
+      e.video.dispose()
+      e.audio?.dispose()
+      if (notifyMain) e.port.postMessage({ t: 'stop' } satisfies RendererToMain)
+      e.port.close()
+      setState(IDLE)
+    },
+    [],
+  )
+
+  const send = useCallback((data: Uint8Array) => {
+    engine.current?.port.postMessage({ t: 'control', data } satisfies RendererToMain)
+  }, [])
+
+  const connect = useCallback(
+    async (t: TransportInfo, audioMode: AudioMode) => {
+      const canvas = canvasRef.current
+      if (busy.current || !canvas) return
+      busy.current = true
+      teardown(true)
+      setState({ ...IDLE, phase: 'connecting', transport: t })
+      try {
+        const portPromise = waitForPort()
+        await window.mobMirror.startSession({ serial: t.serial, audio: audioMode, ...QualityPreset[t.kind] })
+        const { port, deviceName } = await portPromise
+
+        const video = new VideoView(canvas, (e) => toast.error(`Video: ${e.message}`), () => {})
+        const audio = audioMode === 'off' ? null : new AudioPlayer((e) => toast.error(`Audio: ${e.message}`))
+        const post = (data: Uint8Array): void => port.postMessage({ t: 'control', data } satisfies RendererToMain)
+        const input = new InputController(canvas, () => video.size, post, () => window.mobMirror.readClipboard())
+        const recorder = new Recorder()
+
+        port.onmessage = ({ data }: MessageEvent<MainToRenderer>) => {
+          if (data.t === 'video') video.handle(data.ev)
+          else if (data.t === 'audio') audio?.handle(data.ev)
+          else if (data.t === 'log') console.debug('[scrcpy]', data.line.trimEnd())
+          else if (data.t === 'closed') {
+            teardown(false)
+            if (data.error) toast.error('Disconnected', { description: data.error })
+            else toast('Disconnected')
+          }
+        }
+        port.start()
+
+        const timer = window.setInterval(() => {
+          patch({ stats: video.stats(), audio: audio ? audio.state : 'off' })
+        }, 1000)
+
+        engine.current = { port, video, input, audio, recorder, timer }
+        setState({ ...IDLE, phase: 'live', transport: t, deviceName, audio: audio ? 'waiting' : 'off' })
+        canvas.focus()
+      } catch (e) {
+        setState(IDLE)
+        toast.error('Could not start mirroring', { description: errMsg(e) })
+      } finally {
+        busy.current = false
+      }
+    },
+    [canvasRef, patch, teardown],
+  )
+
+  const disconnect = useCallback(() => {
+    teardown(true)
+    void window.mobMirror.stopSession()
+  }, [teardown])
+
+  const pressKey = useCallback((keycode: number) => engine.current?.input.pressKey(keycode), [])
+
+  // Side effects stay out of setState updaters (StrictMode runs updaters twice in development).
+  const stateRef = useRef(state)
+  stateRef.current = state
+
+  const toggleScreenOff = useCallback(() => {
+    const off = !stateRef.current.screenOff
+    send(setDisplayPower(!off))
+    patch({ screenOff: off })
+  }, [patch, send])
+
+  const toggleMute = useCallback(() => {
+    const muted = !stateRef.current.muted
+    if (engine.current?.audio) engine.current.audio.muted = muted
+    patch({ muted })
+  }, [patch])
+
+  const screenshot = useCallback(async () => {
+    const canvas = canvasRef.current
+    if (!canvas || !engine.current) return
+    try {
+      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'))
+      if (!blob) throw new Error('nothing to capture yet')
+      const path = await window.mobMirror.saveScreenshot(new Uint8Array(await blob.arrayBuffer()), state.deviceName)
+      toast.success('Screenshot saved', {
+        description: path,
+        action: { label: 'Show in Finder', onClick: () => void window.mobMirror.reveal(path) },
+      })
+    } catch (e) {
+      toast.error('Screenshot failed', { description: errMsg(e) })
+    }
+  }, [canvasRef, state.deviceName])
+
+  const toggleRecording = useCallback(async () => {
+    const e = engine.current
+    const canvas = canvasRef.current
+    if (!e || !canvas) return
+    try {
+      if (e.recorder.active) {
+        patch({ recordingSince: null })
+        const path = await e.recorder.stop()
+        if (path) {
+          toast.success('Recording saved', {
+            description: path,
+            action: { label: 'Show in Finder', onClick: () => void window.mobMirror.reveal(path) },
+          })
+        }
+      } else {
+        await e.recorder.start(canvas, e.audio?.stream ?? null, state.deviceName)
+        patch({ recordingSince: Date.now() })
+      }
+    } catch (err) {
+      patch({ recordingSince: null })
+      toast.error('Recording failed', { description: errMsg(err) })
+    }
+  }, [canvasRef, patch, state.deviceName])
+
+  useEffect(() => () => teardown(true), [teardown])
+
+  return { state, connect, disconnect, send, pressKey, toggleScreenOff, toggleMute, screenshot, toggleRecording }
+}

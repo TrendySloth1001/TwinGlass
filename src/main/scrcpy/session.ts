@@ -18,11 +18,19 @@ export interface SessionOptions {
   maxFps?: number
   control?: boolean
   stayAwake?: boolean
+  /**
+   * off: no audio. mac: audio_source=output (mutes the phone while mirroring, scrcpy default).
+   * both: audio_source=playback + audio_dup (Android 13+, keeps the phone playing; apps may opt out).
+   */
+  audio?: AudioMode
   logLevel?: 'verbose' | 'debug' | 'info' | 'warn' | 'error'
 }
 
+export type AudioMode = 'off' | 'mac' | 'both'
+
 export interface ScrcpySessionEvents {
   video: [StreamEvent]
+  audio: [StreamEvent]
   deviceMessage: [DeviceMessage]
   log: [string]
   closed: [Error | undefined]
@@ -54,11 +62,16 @@ export function buildServerArgs(scid: string, o: SessionOptions): string[] {
     `scid=${scid}`,
     `log_level=${o.logLevel ?? 'info'}`,
     'tunnel_forward=true',
-    'audio=false',
     `control=${o.control ?? true}`,
     'video_codec=h264',
     `stay_awake=${o.stayAwake ?? false}`,
   ]
+  const audio = o.audio ?? 'off'
+  if (audio === 'off') args.push('audio=false')
+  else {
+    args.push('audio=true', 'audio_codec=opus')
+    if (audio === 'both') args.push('audio_source=playback', 'audio_dup=true')
+  }
   if (o.maxSize) args.push(`max_size=${o.maxSize}`)
   if (o.videoBitRate) args.push(`video_bit_rate=${o.videoBitRate}`)
   if (o.maxFps) args.push(`max_fps=${o.maxFps}`)
@@ -76,9 +89,14 @@ export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
     private readonly port: number,
     private readonly server: ChildProcess,
     private readonly video: Socket,
+    private readonly audio: Socket | null,
     private readonly control: Socket | null,
   ) {
     super()
+  }
+
+  get serial(): string {
+    return this.opts.serial
   }
 
   static async start(adb: Adb, opts: SessionOptions): Promise<ScrcpySession> {
@@ -128,8 +146,10 @@ export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
       }
       if (!video || !videoReader) throw new Error(`could not connect to scrcpy-server: ${logs.join('')}`)
 
+      // Socket order is fixed by the server: video, audio, control (disabled ones are skipped).
+      const audio = (opts.audio ?? 'off') !== 'off' ? await openSocket(port) : null
       const control = (opts.control ?? true) ? await openSocket(port) : null
-      const session = new ScrcpySession(adb, opts, port, server, video, control)
+      const session = new ScrcpySession(adb, opts, port, server, video, audio, control)
       session.deviceName = parseDeviceName(await videoReader.readExact(DEVICE_NAME_FIELD_LENGTH))
 
       server.stdout?.off('data', onLog)
@@ -165,6 +185,17 @@ export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
         this.close(e as Error)
       }
     })
+    if (this.audio) {
+      const audioDemuxer = new StreamDemuxer()
+      this.audio.on('data', (chunk: Buffer) => {
+        try {
+          for (const ev of audioDemuxer.push(chunk)) this.emit('audio', ev)
+        } catch (e) {
+          this.close(e as Error)
+        }
+      })
+      // Audio may end on its own (e.g. capture unsupported); that should not end the session.
+    }
     if (this.control) {
       const parser = new DeviceMessageParser()
       this.control.on('data', (chunk: Buffer) => {
@@ -187,6 +218,7 @@ export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
     if (this.closed) return
     this.closed = true
     this.video.destroy()
+    this.audio?.destroy()
     this.control?.destroy()
     this.server.kill()
     void this.adb.removeForward(this.opts.serial, this.port).catch(() => {})
