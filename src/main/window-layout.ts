@@ -12,6 +12,8 @@ export const COMPACT_TITLE = TITLE
 export const COMPACT_RAIL = RAIL
 
 const fullBounds = new Map<number, Rectangle>()
+/** Current compact aspect lock per window (re-applied after tiling). */
+const compactLock = new Map<number, { aspect: number; extra: { width: number; height: number } }>()
 const mode = new Map<number, 'full' | 'compact'>()
 /** Last compact content height per window and orientation, so rotating back restores the size. */
 const compactHeight = new Map<string, number>()
@@ -43,6 +45,7 @@ function applyCompact(win: BrowserWindow, aspect: number, extra = { width: 0, he
   win.setMinimumSize(Math.round(220 * Math.min(aspect, 1)) + RAIL, 320)
   win.setContentSize(videoW + RAIL, videoH + TITLE, true)
   win.setAspectRatio(aspect, { width: RAIL, height: TITLE })
+  compactLock.set(win.id, { aspect, extra: { width: RAIL, height: TITLE } })
   win.setWindowButtonPosition({ x: 10, y: 7 })
   refreshShadow(win)
 }
@@ -57,6 +60,7 @@ function refreshShadow(win: BrowserWindow): void {
 function applyFull(win: BrowserWindow): void {
   if (mode.get(win.id) === 'full') return
   mode.set(win.id, 'full')
+  compactLock.delete(win.id)
   win.setAspectRatio(0)
   win.setMinimumSize(480, 420)
   const b = fullBounds.get(win.id)
@@ -78,4 +82,37 @@ export function registerWindowLayoutIpc(): void {
   ipcMain.handle('window:always-on-top', (e, on: unknown) => {
     BrowserWindow.fromWebContents(e.sender)?.setAlwaysOnTop(on === true, 'floating')
   })
+}
+
+/**
+ * Window → Tile Mirror Windows: all windows side by side on the focused window's display, the same
+ * height, each keeping its own shape (phone aspect). Scaled down together if they don't fit.
+ */
+export function tileWindows(): void {
+  const wins = BrowserWindow.getAllWindows().filter((w) => !w.isMinimized() && !w.isFullScreen())
+  if (!wins.length) return
+  const ref = BrowserWindow.getFocusedWindow() ?? wins[0]!
+  const work = screen.getDisplayMatching(ref.getBounds()).workArea
+  const pad = 12
+  const sizes = wins.map((w) => {
+    const [cw = 400, ch = 800] = w.getContentSize()
+    return { w, ratio: cw / ch }
+  })
+  let h = work.height - 2 * pad
+  const total = (hh: number): number => sizes.reduce((n, s) => n + s.ratio * hh, 0) + pad * (sizes.length + 1)
+  if (total(h) > work.width) h = Math.floor((work.width - pad * (sizes.length + 1)) / sizes.reduce((n, s) => n + s.ratio, 0))
+  let x = work.x + Math.max(pad, Math.round((work.width - total(h)) / 2) + pad)
+  for (const s of sizes) {
+    const width = Math.round(s.ratio * h)
+    s.w.setAspectRatio(0) // re-applied by the renderer's next layout pass; setBounds must not fight it
+    s.w.setContentBounds({ x, y: work.y + pad, width, height: h }, true)
+    x += width + pad
+  }
+  // Compact windows lock their aspect again (same ratio) once the move is done.
+  setTimeout(() => {
+    for (const s of sizes) {
+      const lock = compactLock.get(s.w.id)
+      if (lock && !s.w.isDestroyed()) s.w.setAspectRatio(lock.aspect, lock.extra)
+    }
+  }, 400)
 }

@@ -17,6 +17,7 @@ import {
   promptOwner,
 } from './adb/lock'
 import { restoreAutoRotate, toggleRotation } from './adb/rotation'
+import { notePhoneClipboard } from './clipboard-history'
 import type { FileResult, MainToRenderer, RendererToMain, StartSessionRequest } from '../shared/ipc'
 
 const sessions = new Map<number, ScrcpySession>()
@@ -123,7 +124,10 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
     session.on('audio', (ev) => post({ t: 'audio', ev }))
     session.on('deviceMessage', (msg) => {
       // The device clipboard changed (autosync, or after GET_CLIPBOARD): mirror it to the Mac.
-      if (msg.type === 'clipboard') clipboard.writeText(msg.text)
+      if (msg.type === 'clipboard') {
+        notePhoneClipboard(msg.text) // history: this copy came from the phone
+        clipboard.writeText(msg.text)
+      }
       post({ t: 'device', msg })
     })
     session.on('log', (line) => post({ t: 'log', line }))
@@ -265,4 +269,11 @@ export function findSessionBySerials(
 
 export function stopAllSessions(): void {
   for (const id of [...sessions.keys()]) stop(id)
+}
+
+/** Transport serials mirrored right now, with the window showing each (menu bar icon). */
+export function mirroredSerials(): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const [wcId, s] of sessions) out.set(s.serial, wcId)
+  return out
 }

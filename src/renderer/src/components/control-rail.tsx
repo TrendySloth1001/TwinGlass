@@ -14,6 +14,7 @@ import {
   PanelLeftOpen,
   Power,
   RotateCw,
+  Search,
   Settings,
   Settings2,
   Square,
@@ -85,6 +86,8 @@ interface ControlRailProps {
   /** Leave compact mode: the full view with devices, settings and the toolbar. */
   onFullView: () => void
   onOpenSettings: () => void
+  /** ⌘K command palette (apps, send to phone, clipboard history). */
+  onOpenPalette: () => void
   /** Extra classes / style (e.g. margins that align the strip with a framed phone). */
   className?: string
   style?: CSSProperties
@@ -94,7 +97,7 @@ interface ControlRailProps {
  * Vertical controls on the right of the compact mirror window. Primary actions are always
  * visible; the rest sit in a menu. When the window is short, the middle section scrolls.
  */
-export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSettings, className, style }: ControlRailProps): ReactNode {
+export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSettings, onOpenPalette, className, style }: ControlRailProps): ReactNode {
   const { state } = mirror
   const live = state.phase === 'live'
   const recording = state.recordingSince !== null
@@ -195,6 +198,9 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSe
 
       <div className="flex shrink-0 flex-col items-center gap-0.5 pt-1">
         <Sep />
+        <RailButton label="Open app, send to phone, clipboard" shortcut="⌘K" onClick={onOpenPalette}>
+          <Search />
+        </RailButton>
         <NotificationCenter side="left" />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

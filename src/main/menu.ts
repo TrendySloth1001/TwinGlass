@@ -2,6 +2,7 @@
 // equivalents before the page, so ⌘-shortcuts can't be reliably caught with keydown in the renderer.
 import { BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron'
 import { SHORTCUTS, type ShortcutDef } from '@shared/shortcuts'
+import { tileWindows } from './window-layout'
 
 function deviceItems(): MenuItemConstructorOptions[] {
   const items: MenuItemConstructorOptions[] = []
@@ -17,6 +18,8 @@ function deviceItems(): MenuItemConstructorOptions[] {
   }
   return items
 }
+
+const uiCommand = (cmd: string): void => BrowserWindow.getFocusedWindow()?.webContents.send('ui:command', cmd)
 
 export function installMenu(): void {
   const template: MenuItemConstructorOptions[] = [
@@ -70,7 +73,25 @@ export function installMenu(): void {
         { role: 'toggleDevTools' },
       ],
     },
-    { role: 'windowMenu' },
+    {
+      label: 'Phone',
+      submenu: [
+        { label: 'Open App… / Command Palette', accelerator: 'CommandOrControl+K', click: () => uiCommand('open-palette') },
+        { label: 'Clipboard History…', accelerator: 'CommandOrControl+Shift+V', click: () => uiCommand('open-clipboard') },
+        { label: 'Send Mac Clipboard to Phone', accelerator: 'CommandOrControl+Shift+O', click: () => uiCommand('send-clipboard') },
+      ],
+    },
+    {
+      role: 'windowMenu',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        { type: 'separator' },
+        { label: 'Tile Mirror Windows', accelerator: 'CommandOrControl+Alt+T', click: tileWindows },
+        { type: 'separator' },
+        { role: 'front' },
+      ],
+    },
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }

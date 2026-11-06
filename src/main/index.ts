@@ -7,6 +7,9 @@ import { installMenu } from './menu'
 import { registerWindowLayoutIpc } from './window-layout'
 import { getSession, registerSessionIpc, stopAllSessions } from './session-ipc'
 import { registerUnlockIpc } from './unlock-ipc'
+import { registerPhoneAppsIpc } from './phone-apps'
+import { registerClipboardHistoryIpc, startClipboardHistory } from './clipboard-history'
+import { setTrayVisible, startTrayUpdates } from './tray'
 import { registerAgentIpc, stopAgentServer } from './agent-ipc'
 
 export function serverPath(): string {
@@ -71,6 +74,31 @@ registerUnlockIpc(getAdb, getSession)
 void app.whenReady().then(() => registerAgentIpc(getAdb)) // needs app paths (userData)
 registerMediaIpc()
 registerWindowLayoutIpc()
+registerPhoneAppsIpc(getAdb, serverPath, getSession)
+registerClipboardHistoryIpc()
+
+/** Menu bar icon actions: mirror in an idle window (or a new one), show the app. */
+const trayDeps = {
+  getAdb,
+  mirror: (t: { serial: string; kind: 'usb' | 'wifi' }) => {
+    const idle = BrowserWindow.getAllWindows().find((w) => !getSession(w.webContents.id))
+    if (idle) {
+      idle.show()
+      idle.focus()
+      idle.webContents.send('ui:connect', t)
+    } else createWindow(t)
+  },
+  showApp: () => {
+    const w = BrowserWindow.getAllWindows()[0] ?? createWindow()
+    w.show()
+    w.focus()
+  },
+}
+ipcMain.handle('app:set-tray', (_e, on: unknown) => setTrayVisible(on === true, trayDeps))
+ipcMain.handle('app:login-item', (_e, on: unknown) => {
+  if (typeof on === 'boolean') app.setLoginItemSettings({ openAtLogin: on })
+  return app.getLoginItemSettings().openAtLogin
+})
 // Appearance from the app's settings (System / Light / Dark): native parts follow it too.
 ipcMain.handle('app:theme', (_e, t: unknown) => {
   nativeTheme.themeSource = t === 'light' || t === 'dark' ? t : 'system'
@@ -80,10 +108,22 @@ void app.whenReady().then(() => {
   getAdb()
   installMenu()
   createWindow()
+  startClipboardHistory()
+  startTrayUpdates(trayDeps)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
+
+// A bug in a background task must not freeze the app behind Electron's modal error box:
+// log it and tell the windows (shown as an in-app notification).
+const reportMainError = (kind: string) => (err: unknown) => {
+  const message = err instanceof Error ? `${err.message}` : String(err)
+  console.error(`[main] ${kind}:`, err)
+  for (const w of BrowserWindow.getAllWindows()) w.webContents.send('app:error', message)
+}
+process.on('uncaughtException', reportMainError('uncaught exception'))
+process.on('unhandledRejection', reportMainError('unhandled rejection'))
 
 app.on('before-quit', () => {
   stopAllSessions()

@@ -62,3 +62,15 @@ export function splitBatchOutput(out: string, marker: string, count: number): st
   while (res.length < count) res.push('')
   return res
 }
+
+export interface Battery {
+  level: number
+  charging: boolean
+}
+
+/** `dumpsys battery`: "level: 87", "AC powered: true" / "USB powered: true" / "Wireless powered". */
+export function parseBattery(out: string): Battery | null {
+  const level = /^\s*level:\s*(\d+)/m.exec(out)
+  if (!level) return null
+  return { level: Number(level[1]), charging: /^\s*(AC|USB|Wireless|Dock) powered:\s*true/im.test(out) }
+}

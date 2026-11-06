@@ -97,13 +97,29 @@ The dates are when each item was asked for (2026-11-06 unless noted).
 - ✅ **Settings:** each field is validated on load (bad or old value: default) and synced across windows.
 - ✅ **Error boundary:** a UI crash shows the error with a "Reload window" button instead of a blank window.
 
-## Backlog (ideas the user shared, 2026-11-06; not started)
-- Drag and drop, both ways, with resumable transfers (phone → Mac too).
-- URL handoff: open a URL copied on the Mac on the phone.
-- Notification actions: reply, dismiss and open phone notifications from the Mac.
-- Clipboard history with search.
-- Quick app launcher for installed Android apps.
-
+## Desktop integration (asked 2026-11-06: "start building all of the above")
+- ✅ **⌘K command palette** (also the search button on the strip and toolbar).
+  - Phone apps with real names, from scrcpy-server's `list_apps` mode (about 0.75 s, cached for 5 minutes). ↵ opens the app.
+  - Paste a link → **Open on phone**. Any text → **Copy / Paste to phone**.
+  - Recent clipboard items and phone actions.
+  - Verified: "calc" → Calculator, "whats" → WhatsApp, a link → open, other text → copy; launching Calculator brought it to the front.
+- ✅ **Clipboard history** (⇧⌘V): Mac and phone copies, labelled by source. It is in memory only (max 100 items), skips password-manager copies (nspasteboard concealed types), and can be turned off in Settings → Mouse & keyboard. Verified.
+- ✅ **Send Mac clipboard to phone** (⇧⌘O): a link opens on the phone; anything else lands in its clipboard.
+- ✅ **Menu bar icon:** phones with battery % and charging state, connection type, Mirror / Show mirror, Tile windows, Launch at login, Quit. Toggle it in Settings → General.
+- ✅ **Launch at login** (Settings → General, and the menu bar icon).
+- ✅ **Tile mirror windows** (Window menu, ⌥⌘T): side by side, equal height, each keeping its shape.
+- ✅ **Background errors** are logged and shown as a notification instead of Electron's blocking error dialog.
+- Next, in order:
+  1. Two-way file transfer with progress and **resume**: a custom chunked protocol over `adb exec-in/exec-out` with `dd` offsets, because adb push/pull can't resume.
+  2. Phone notifications on the Mac (read via `dumpsys notification`; clicking one opens the app). **Reply/Dismiss need a companion app on the phone.**
+  3. Recording upgrades: taps drawn into the video, trim, GIF export.
+  4. Keyboard mapping for games.
+  5. Webcam mode: the phone camera in a window (scrcpy `video_source=camera`). A system-wide Mac camera needs a signed Camera Extension.
+  6. **Mac screen on the phone:**
+     - mirror first (capture → hardware H.264 → the phone's browser over `adb reverse`/Wi-Fi; touch controls the Mac with the Accessibility permission)
+     - **extend** second (virtual display via the private `CGVirtualDisplay`, as DeskPad and BetterDisplay do; a dummy HDMI plug is the fallback)
+  7. App icon and first-run onboarding.
+  8. Signed app and auto-update. **This needs the user's Apple Developer account.**
 ## Agents (MCP)
 - ✅ Coding agents (Claude Code and others) can control the phone through the local MCP server. It is off by default and protected by a token.
 - On hold: no new agent features unless the user asks.

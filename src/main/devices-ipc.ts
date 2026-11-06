@@ -12,6 +12,28 @@ const broadcast = (channel: string, payload: unknown): void => {
   for (const w of BrowserWindow.getAllWindows()) w.webContents.send(channel, payload)
 }
 
+const subscribers = new Set<(list: DeviceList) => void>()
+
+/** Starts live tracking (once) and returns the current list. Shared by the renderer and the tray. */
+export async function trackDevices(adb: Adb): Promise<DeviceList> {
+  if (!tracker) {
+    tracker = adb.track()
+    tracker.on('change', (list) => {
+      latest = list
+      broadcast('devices:changed', list)
+      for (const s of subscribers) s(list)
+    })
+    tracker.on('error', (e) => console.error('[track-devices]', e))
+  }
+  return latest ?? (latest = await adb.devices())
+}
+
+/** Device list changes (main-process consumers, e.g. the menu bar icon). */
+export function onDevicesChanged(cb: (list: DeviceList) => void): () => void {
+  subscribers.add(cb)
+  return () => subscribers.delete(cb)
+}
+
 export function registerDevicesIpc(getAdb: () => Adb | null): void {
   const need = (): Adb => {
     const adb = getAdb()
@@ -24,18 +46,7 @@ export function registerDevicesIpc(getAdb: () => Adb | null): void {
     return adb ? adb.status() : { adbPath: null }
   })
 
-  ipcMain.handle('devices:list', async () => {
-    const adb = need()
-    if (!tracker) {
-      tracker = adb.track()
-      tracker.on('change', (list) => {
-        latest = list
-        broadcast('devices:changed', list)
-      })
-      tracker.on('error', (e) => console.error('[track-devices]', e))
-    }
-    return latest ?? (latest = await adb.devices())
-  })
+  ipcMain.handle('devices:list', async () => trackDevices(need()))
 
   ipcMain.handle('wireless:pair', async (_e, hostPort: string, code: string) => {
     const hp = normalizeHostPort(hostPort)

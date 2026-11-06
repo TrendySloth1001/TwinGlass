@@ -53,6 +53,10 @@ export interface Settings {
   /** Phone frame drawn around the mirror, and its finish. */
   frame: FrameStyle
   frameColor: FrameColor
+  /** Menu bar icon with phones, battery and one-click mirroring. */
+  showTray: boolean
+  /** Keep a searchable clipboard history (memory only; skips password-manager copies). */
+  clipboardHistory: boolean
 }
 
 const DEFAULTS: Settings = {
@@ -82,6 +86,8 @@ const DEFAULTS: Settings = {
   requireTouchId: false,
   frame: 'none',
   frameColor: 'black',
+  showTray: true,
+  clipboardHistory: true,
 }
 
 export const DEFAULT_SETTINGS = DEFAULTS

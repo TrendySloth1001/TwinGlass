@@ -6,13 +6,14 @@ import { ControlsHelp } from '@/components/controls-help'
 import { CompactTitleBar } from '@/components/compact-title-bar'
 import { ConnectPanel } from '@/components/connect-panel'
 import { ControlRail } from '@/components/control-rail'
+import { CommandPalette, type PaletteMode } from '@/components/command-palette'
 import { MirrorStage, type PhoneRect } from '@/components/mirror-stage'
 import { NAV_BAR_HEIGHT, NavBar } from '@/components/nav-bar'
 import { frameExtra, frameSpec } from '@/lib/phone-frames'
 import { FRAMED_TITLE, GAP, NAV, RAIL_WIDTH, TITLE } from '@shared/compact-layout'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { applyTheme } from '@/hooks/use-theme'
-import { setPopups } from '@/lib/notify'
+import { notify, setPopups } from '@/lib/notify'
 import { MirrorToolbar } from '@/components/mirror-toolbar'
 import { Sidebar } from '@/components/sidebar'
 import { StatusBar } from '@/components/status-bar'
@@ -42,6 +43,7 @@ export function App(): ReactNode {
   const [settings, updateSettings] = useSettings()
   const [helpOpen, setHelpOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [palette, setPalette] = useState<{ open: boolean; mode: PaletteMode }>({ open: false, mode: 'all' })
   /** Framed phone body (viewport px): the compact strip and nav dock attach to it. */
   const [phoneRect, setPhoneRect] = useState<PhoneRect | null>(null)
   const [viewportW, setViewportW] = useState(window.innerWidth)
@@ -190,6 +192,17 @@ export function App(): ReactNode {
       window.mobMirror.onUiCommand((cmd) => {
         const s = settingsRef.current
         if (cmd === 'open-settings') setSettingsOpen(true)
+        else if (cmd === 'open-palette') setPalette({ open: true, mode: 'all' })
+        else if (cmd === 'open-clipboard') setPalette({ open: true, mode: 'clipboard' })
+        else if (cmd === 'send-clipboard') {
+          void window.mobMirror
+            .readClipboard()
+            .then((t: string) => (t ? window.mobMirror.sendToPhone(t, 'auto') : Promise.reject(new Error('The Mac clipboard is empty.'))))
+            .then(
+              (r) => toast.success(r.kind === 'opened' ? 'Opened on the phone' : 'Copied to the phone'),
+              (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
+            )
+        }
         else if (cmd === 'toggle-view') updateSettings({ viewMode: s.viewMode === 'compact' ? 'full' : 'compact' })
         else if (cmd === 'toggle-sidebar') updateSettings({ sidebarOpen: !s.sidebarOpen })
         else updateSettings({ sidebarLayout: s.sidebarLayout === 'floating' ? 'docked' : 'floating', sidebarOpen: true })
@@ -197,6 +210,11 @@ export function App(): ReactNode {
     [updateSettings],
   )
   useEffect(() => applyTheme(settings.theme), [settings.theme])
+  useEffect(() => void window.mobMirror.setTrayVisible(settings.showTray).catch(() => {}), [settings.showTray])
+  useEffect(() => void window.mobMirror.setClipboardHistoryEnabled(settings.clipboardHistory).catch(() => {}), [settings.clipboardHistory])
+  // The menu bar icon asked this window to mirror a phone.
+  useEffect(() => window.mobMirror.onConnectRequest((t) => onMirror({ ...t, state: 'device' })), [onMirror])
+  useEffect(() => window.mobMirror.onAppError((m) => notify('error', 'Something went wrong in the background', { description: m })), [])
   useEffect(() => void window.mobMirror.setRequireTouchId(settings.requireTouchId).catch(() => {}), [settings.requireTouchId])
   const { setInputOptions, setAutoReconnect } = mirror
   useEffect(() => setAutoReconnect(settings.autoReconnect), [setAutoReconnect, settings.autoReconnect])
@@ -272,6 +290,7 @@ export function App(): ReactNode {
           onAction={dispatch}
           onShowHelp={() => setHelpOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
+          onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
           ownsCorner={toolbarOwnsCorner}
           sidebarOpen={settings.sidebarOpen}
           onToggleSidebar={() => updateSettings({ sidebarOpen: !settings.sidebarOpen })}
@@ -336,6 +355,7 @@ export function App(): ReactNode {
           onAction={dispatch}
           onShowHelp={() => setHelpOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
+          onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
           onFullView={() => updateSettings({ viewMode: 'full' })}
         />
       )}
@@ -345,6 +365,13 @@ export function App(): ReactNode {
         </div>
       )}
       <ControlsHelp open={helpOpen} onOpenChange={setHelpOpen} />
+      <CommandPalette
+        open={palette.open}
+        mode={palette.mode}
+        onOpenChange={(open) => setPalette((p) => ({ ...p, open }))}
+        live={live}
+        onAction={dispatch}
+      />
       <SettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}

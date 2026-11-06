@@ -165,6 +165,11 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
   const set = p.onSettingsChange
 
   const [unlock, setUnlock] = useState<UnlockStatusInfo | null>(null)
+  // Launch at login lives in macOS (login items), not in our settings: read it when shown.
+  const [loginItem, setLoginItem] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (p.open && page === 'general') void window.mobMirror.setLoginItem().then(setLoginItem, () => setLoginItem(null))
+  }, [p.open, page])
   useEffect(() => {
     if (!p.open || page !== 'unlock' || !p.live) return
     void window.mobMirror.unlockStatus().then(setUnlock, () => setUnlock(null))
@@ -227,6 +232,18 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
                 </Row>
                 <Row label="Reconnect after a drop" hint="If Wi-Fi or the cable drops, keep trying for 90 s (USB or Wi-Fi).">
                   <Toggle value={s.autoReconnect} onChange={(v) => set({ autoReconnect: v })} />
+                </Row>
+              </Group>
+              <Group title="Mac">
+                <Row label="Menu bar icon" hint="Your phones with battery and connection, and one-click mirroring.">
+                  <Toggle value={s.showTray} onChange={(v) => set({ showTray: v })} />
+                </Row>
+                <Row label="Launch at login" hint="Start Mob Mirror when you log in to your Mac.">
+                  <Switch
+                    checked={loginItem === true}
+                    disabled={loginItem === null}
+                    onCheckedChange={(v) => void window.mobMirror.setLoginItem(v).then(setLoginItem)}
+                  />
                 </Row>
               </Group>
               <Group title="Notifications">
@@ -421,6 +438,12 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
                 </Row>
               </Group>
               <Group title="Clipboard">
+                <Row
+                  label="Clipboard history"
+                  hint="⇧⌘V or ⌘K to search what you copied on the Mac or the phone. Kept in memory only; password-manager copies are skipped."
+                >
+                  <Toggle value={s.clipboardHistory} onChange={(v) => set({ clipboardHistory: v })} />
+                </Row>
                 <Row label="Copy from the phone automatically" hint="Text copied on the phone lands in the Mac clipboard. ⌘V always pastes to the phone.">
                   <Toggle value={s.clipboardSync} onChange={(v) => set({ clipboardSync: v })} />
                 </Row>

@@ -21,6 +21,19 @@ export interface DeviceListInfo {
   other: TransportInfo[]
 }
 
+export interface PhoneAppInfo {
+  label: string
+  pkg: string
+  system: boolean
+}
+
+export interface ClipItemInfo {
+  id: number
+  text: string
+  at: number
+  source: 'mac' | 'phone'
+}
+
 export interface OpResult {
   ok: boolean
   message: string
@@ -68,6 +81,25 @@ export interface MobMirrorApi {
   restartAdbServer(): Promise<AdbStatusInfo>
   /** Toggles portrait ↔ landscape on the mirrored phone (auto-rotate is restored afterwards). */
   rotateDevice(): Promise<{ rotation: number; autoRotate: boolean } | null>
+  /** Installed apps with labels (from the phone, cached 5 min; fresh = re-read). */
+  listApps(fresh?: boolean): Promise<PhoneAppInfo[]>
+  launchApp(pkg: string): Promise<void>
+  /** auto: a link opens on the phone, other text goes to its clipboard. copy / paste: clipboard (and paste). */
+  sendToPhone(text: string, mode?: 'auto' | 'copy' | 'paste'): Promise<{ kind: 'opened'; url: string } | { kind: 'copied' } | { kind: 'pasted' }>
+  clipboardHistory(): Promise<{ enabled: boolean; items: ClipItemInfo[] }>
+  setClipboardHistoryEnabled(on: boolean): Promise<void>
+  clearClipboardHistory(): Promise<void>
+  removeClipboardItem(id: number): Promise<void>
+  /** Puts an item back on the Mac clipboard. */
+  useClipboardItem(id: number): Promise<boolean>
+  onClipboardHistoryChanged(cb: () => void): () => void
+  /** The menu bar icon asked this window to mirror a phone. */
+  onConnectRequest(cb: (t: { serial: string; kind: 'usb' | 'wifi' }) => void): () => void
+  /** A background error in the main process (logged; shown as a notification). */
+  onAppError(cb: (message: string) => void): () => void
+  setTrayVisible(on: boolean): Promise<void>
+  /** Launch at login; without an argument just reads it. */
+  setLoginItem(on?: boolean): Promise<boolean>
   /** Appearance preference for native UI (traffic lights, menus, dialogs). */
   /** Ask for Touch ID before the saved PIN is typed (agent unlocks always ask). */
   setRequireTouchId(on: boolean): Promise<void>
@@ -92,7 +124,9 @@ export interface MobMirrorApi {
   /** Device menu items / their shortcuts (⌘B back, ⇧⌘H home…), sent to the focused window. */
   onDeviceAction(cb: (action: DeviceAction) => void): () => void
   /** View menu commands (toggle sidebar ⌘\, float/dock ⌥⌘\). */
-  onUiCommand(cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view' | 'open-settings') => void): () => void
+  onUiCommand(
+    cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view' | 'open-settings' | 'open-palette' | 'open-clipboard' | 'send-clipboard') => void,
+  ): () => void
   /** compact: phone-shaped window locked to `aspect` (video width / height); full: restore. */
   /** extra: chrome around the video besides the title strip and rail (nav bar, phone frame). */
   setWindowLayout(layout: 'compact' | 'full', aspect?: number, extra?: { width: number; height: number }): Promise<void>
