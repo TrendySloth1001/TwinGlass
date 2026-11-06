@@ -118,7 +118,7 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSe
       style={{ width: RAIL_WIDTH, ...style }}
       aria-label="Phone controls"
       className={cn(
-        'dark flex shrink-0 flex-col items-center rounded-2xl border border-sidebar-border bg-sidebar py-1.5 text-foreground [-webkit-app-region:no-drag]',
+        'flex shrink-0 flex-col items-center rounded-2xl border border-sidebar-border bg-sidebar py-1.5 text-foreground [-webkit-app-region:no-drag]',
         className,
       )}
     >
@@ -202,7 +202,7 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSe
               <Ellipsis />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="left" align="end" className="dark w-60">
+          <DropdownMenuContent side="left" align="end" className="w-60">
             {/* Only what the strip doesn't already show: no duplicates. */}
             {!roomy && (
               <>

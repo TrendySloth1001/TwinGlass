@@ -30,7 +30,7 @@ export function CompactTitleBar({
         {/* Behind the native traffic lights (x 10, y 7, ~52 px wide): 22 px pill centred on y 14. */}
         <div aria-hidden className={`absolute top-[3px] left-[3px] h-[22px] w-[66px] ${dock}`} />
         <span
-          className={`absolute top-[3px] flex h-[22px] min-w-0 -translate-x-1/2 items-center gap-1.5 px-2.5 text-neutral-300 ${dock}`}
+          className={`absolute top-[3px] flex h-[22px] min-w-0 -translate-x-1/2 items-center gap-1.5 px-2.5 text-foreground ${dock}`}
           // Centred on the phone body; never under the traffic-light pill (75 px on each side).
           style={{ left: `calc(50% - ${inset / 2}px)`, maxWidth: `calc(100% - ${150 + inset}px)` }}
         >
@@ -43,7 +43,7 @@ export function CompactTitleBar({
   }
   return (
     <div
-      className="flex shrink-0 items-center justify-center gap-1.5 pr-3 pl-[72px] text-[11px] font-medium text-neutral-400 [-webkit-app-region:drag]"
+      className="flex shrink-0 items-center justify-center gap-1.5 pr-3 pl-[72px] text-[11px] font-medium text-muted-foreground [-webkit-app-region:drag]"
       style={{ height: TITLE }}
     >
       <span className="contents">

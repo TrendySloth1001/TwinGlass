@@ -74,8 +74,7 @@ export function NotificationCenter({ side = 'bottom' }: { side?: 'bottom' | 'lef
         collisionPadding={8}
         // Don't put a focus ring on "Clear all" just because the panel opened.
         onOpenAutoFocus={(e) => e.preventDefault()}
-        // Opened from the dark compact strip: match it.
-        className={cn('w-[min(20rem,calc(100vw-5rem))] p-0', side === 'left' && 'dark')}
+        className="w-[min(20rem,calc(100vw-5rem))] p-0"
       >
         <div className="flex items-center justify-between border-b px-3 py-2">
           <span className="text-[13px] font-semibold">Notifications</span>

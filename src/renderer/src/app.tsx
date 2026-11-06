@@ -257,7 +257,7 @@ export function App(): ReactNode {
       />
       )}
       {/* Compact: the phone is one rounded dark block; the rail floats beside it (see-through gap). */}
-      <main className={cn('flex min-w-0 flex-1 flex-col', compact && (settings.frame === 'none' ? 'dark overflow-hidden rounded-xl bg-stage' : 'dark'))}>
+      <main className={cn('flex min-w-0 flex-1 flex-col', compact && settings.frame === 'none' && 'overflow-hidden rounded-xl bg-stage')}>
         {compact ? (
           <CompactTitleBar
             name={mirror.state.deviceName}
@@ -340,7 +340,7 @@ export function App(): ReactNode {
         />
       )}
       {framed && settings.navBar && phoneRect && (
-        <div className="dark absolute" style={{ top: phoneRect.y + phoneRect.height, left: phoneRect.x, width: phoneRect.width }}>
+        <div className="absolute" style={{ top: phoneRect.y + phoneRect.height, left: phoneRect.x, width: phoneRect.width }}>
           <NavBar onAction={dispatch} disabled={!live} floating />
         </div>
       )}

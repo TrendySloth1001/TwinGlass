@@ -8,14 +8,16 @@ import {
   TriangleAlertIcon,
 } from "lucide-react"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
+import { useResolvedTheme } from "@/hooks/use-theme"
 
-// Electron app: follow the macOS appearance directly (no next-themes).
+// Electron app: follows the app's own theme setting (System / Light / Dark), no next-themes.
 // Styled with the app's shadcn tokens (popover surface, muted description, outline buttons) rather
 // than sonner's saturated "richColors", so notices read calmly over the phone mirror.
 const Toaster = ({ ...props }: ToasterProps) => {
+  const theme = useResolvedTheme()
   return (
     <Sonner
-      theme="system"
+      theme={theme}
       className="toaster group"
       visibleToasts={3}
       gap={6}
