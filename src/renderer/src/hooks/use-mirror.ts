@@ -12,7 +12,8 @@ import { Recorder } from '@/engine/recorder'
 import { TouchOverlay } from '@/engine/touch-overlay'
 import { VideoView, type VideoStats } from '@/engine/video-view'
 
-export type Phase = 'idle' | 'connecting' | 'live'
+/** `reconnecting`: the link died unexpectedly (Wi-Fi drop, cable pulled); retrying automatically. */
+export type Phase = 'idle' | 'connecting' | 'live' | 'reconnecting'
 
 export interface MirrorState {
   phase: Phase
@@ -25,6 +26,8 @@ export interface MirrorState {
   recordingSince: number | null
   /** Lock screen showing on the phone (null = unknown yet). The PIN screen itself is black. */
   locked: boolean | null
+  /** While reconnecting: attempt number and why the link dropped. */
+  reconnect: { attempt: number; reason: string } | null
 }
 
 const IDLE: MirrorState = {
@@ -37,7 +40,12 @@ const IDLE: MirrorState = {
   screenOff: false,
   recordingSince: null,
   locked: null,
+  reconnect: null,
 }
+
+/** How long to keep trying after an unexpected drop (the router deauth + rejoin seen in the logs takes seconds). */
+const RECONNECT_WINDOW_MS = 90_000
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 interface Engine {
   port: MessagePort
@@ -68,6 +76,8 @@ const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(
 export interface ConnectOptions {
   audio: AudioMode
   showTouches: boolean
+  /** Hardware id (ro.serialno): lets a reconnect find the phone on another transport (USB/Wi-Fi). */
+  deviceId?: string
 }
 
 export interface Mirror {
@@ -117,16 +127,24 @@ export function useMirror(
     engine.current?.port.postMessage({ t: 'control', data } satisfies RendererToMain)
   }, [])
 
-  const connect = useCallback(
-    async (t: TransportInfo, opts: ConnectOptions) => {
+  // Set below; lets the port's "closed" handler start a reconnect without a dependency cycle.
+  const reconnectRef = useRef<(t: TransportInfo, opts: ConnectOptions, reason: string) => void>(() => {})
+
+  /**
+   * One connection attempt. `mode: 'reconnect'` keeps the reconnecting UI, stays quiet on errors and
+   * reuses the caller's generation, so Disconnect/another Mirror click still cancels it.
+   */
+  const connectOnce = useCallback(
+    async (t: TransportInfo, opts: ConnectOptions, gen: number, mode: 'fresh' | 'reconnect'): Promise<boolean> => {
       const audioMode = opts.audio
       const canvas = canvasRef.current
-      if (busy.current || !canvas) return
-      busy.current = true
-      teardown(true)
-      // Disconnect (or unmount) while connecting bumps this; main also cancels its side.
-      const gen = ++attempt.current
-      setState({ ...IDLE, phase: 'connecting', transport: t })
+      if (!canvas) return false
+      if (mode === 'fresh') {
+        if (busy.current) return false
+        busy.current = true
+        teardown(true)
+        setState({ ...IDLE, phase: 'connecting', transport: t })
+      }
       const wait = waitForPort()
       try {
         await window.mobMirror.startSession({
@@ -138,7 +156,7 @@ export function useMirror(
         const { port, deviceName } = await wait.promise
         if (gen !== attempt.current) {
           port.close()
-          return
+          return false
         }
 
         const video = new VideoView(canvas, (e) => toast.error(`Video: ${e.message}`), () => {})
@@ -157,7 +175,8 @@ export function useMirror(
           else if (data.t === 'lock') patch({ locked: data.locked })
           else if (data.t === 'closed') {
             teardown(false)
-            if (data.error) toast.error('Disconnected', { description: data.error })
+            if (data.unexpected) reconnectRef.current(t, opts, data.error ?? 'The connection closed')
+            else if (data.error) toast.error('Disconnected', { description: data.error })
             else toast('Disconnected')
           }
         }
@@ -177,17 +196,66 @@ export function useMirror(
         )
         setState({ ...IDLE, phase: 'live', transport: t, deviceName, audio: audio ? 'waiting' : 'off' })
         canvas.focus()
+        return true
       } catch (e) {
         wait.cancel()
-        if (gen !== attempt.current) return // cancelled by the user: not an error
-        setState(IDLE)
-        toast.error('Could not start mirroring', { description: errMsg(e) })
+        if (gen !== attempt.current) return false // cancelled by the user: not an error
+        if (mode === 'fresh') {
+          setState(IDLE)
+          toast.error('Could not start mirroring', { description: errMsg(e) })
+        }
+        return false
       } finally {
-        busy.current = false
+        if (mode === 'fresh') busy.current = false
       }
     },
     [canvasRef, overlayRef, patch, teardown],
   )
+
+  const connect = useCallback(
+    async (t: TransportInfo, opts: ConnectOptions): Promise<void> => {
+      // Disconnect (or unmount, or a reconnect loop) is cancelled by bumping this.
+      const gen = ++attempt.current
+      await connectOnce(t, opts, gen, 'fresh')
+    },
+    [connectOnce],
+  )
+
+  /**
+   * After an unexpected drop: wait for the phone to come back on any transport (USB preferred, then
+   * the Wi-Fi mDNS name that survives IP changes) and restart the mirror, for up to 90 s.
+   */
+  const reconnect = useCallback(
+    (lost: TransportInfo, opts: ConnectOptions, reason: string) => {
+      const gen = ++attempt.current
+      const started = Date.now()
+      setState({ ...IDLE, phase: 'reconnecting', transport: lost, reconnect: { attempt: 0, reason } })
+      void (async () => {
+        for (let n = 1; Date.now() - started < RECONNECT_WINDOW_MS; n++) {
+          await sleep(Math.min(1000 * n, 4000))
+          if (gen !== attempt.current) return
+          patch({ reconnect: { attempt: n, reason } })
+          const { devices } = await window.mobMirror.listDevices().catch(() => ({ devices: [] }))
+          const dev = devices.find((d) => (opts.deviceId && d.id === opts.deviceId) || d.transports.some((x) => x.serial === lost.serial))
+          const next = dev?.transports[0]
+          if (!next) continue
+          if (await connectOnce(next, { ...opts, deviceId: dev.id }, gen, 'reconnect')) {
+            toast.success('Reconnected', { description: `via ${next.kind === 'usb' ? 'USB' : 'Wi-Fi'} (${next.serial})` })
+            return
+          }
+        }
+        if (gen !== attempt.current) return
+        setState(IDLE)
+        toast.error('Connection lost', {
+          description: `${reason}. The phone didn’t come back within 90 s (check its Wi-Fi or the cable).`,
+          action: { label: 'Retry', onClick: () => void connect(lost, opts) },
+          duration: 15000,
+        })
+      })()
+    },
+    [connect, connectOnce, patch],
+  )
+  reconnectRef.current = reconnect
 
   const disconnect = useCallback(() => {
     attempt.current++

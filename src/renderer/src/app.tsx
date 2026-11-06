@@ -79,7 +79,8 @@ export function App(): ReactNode {
   )
 
   const onMirror = useCallback(
-    (t: TransportInfo) => void connect(t, { audio: settings.audio, showTouches: settings.showTouches }),
+    (t: TransportInfo, deviceId?: string) =>
+      void connect(t, { audio: settings.audio, showTouches: settings.showTouches, deviceId }),
     [connect, settings.audio, settings.showTouches],
   )
 
@@ -121,6 +122,7 @@ export function App(): ReactNode {
           recording={mirror.state.recordingSince !== null}
           locked={mirror.state.locked === true}
           onUnlock={() => dispatch('unlock')}
+          reconnect={mirror.state.reconnect}
         />
         <StatusBar state={mirror.state} />
       </main>

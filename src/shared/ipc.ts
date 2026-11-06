@@ -28,7 +28,8 @@ export type MainToRenderer =
   | { t: 'log'; line: string }
   /** Lock screen shown / dismissed on the phone (polled by main, sent on change). */
   | { t: 'lock'; locked: boolean }
-  | { t: 'closed'; error?: string }
+  /** `unexpected`: not requested by the user (link died, server exited) -> the renderer reconnects. */
+  | { t: 'closed'; error?: string; unexpected: boolean }
 
 export type RendererToMain = { t: 'control'; data: Uint8Array } | { t: 'stop' }
 

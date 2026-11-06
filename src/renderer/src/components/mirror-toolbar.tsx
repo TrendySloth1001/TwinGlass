@@ -165,7 +165,7 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp }: ToolbarProps): R
         <Button
           variant="outline"
           size="sm"
-          disabled={!live}
+          disabled={state.phase === 'idle'}
           className="text-destructive [-webkit-app-region:no-drag]"
           onClick={() => onAction("disconnect")}
         >

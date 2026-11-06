@@ -19,7 +19,7 @@ interface DeviceCardProps {
   /** Serial of the transport currently mirrored in this window, if any. */
   activeSerial: string | null
   connecting: boolean
-  onMirror: (t: TransportInfo) => void
+  onMirror: (t: TransportInfo, deviceId: string) => void
 }
 
 async function run(label: string, op: () => Promise<OpResult>): Promise<void> {
@@ -70,7 +70,7 @@ export function DeviceCard({ device, activeSerial, connecting, onMirror }: Devic
                 size="xs"
                 variant={i === 0 && !active ? 'default' : 'outline'}
                 disabled={connecting || active}
-                onClick={() => onMirror(t)}
+                onClick={() => onMirror(t, device.id)}
               >
                 {connecting && active ? <Loader2 className="animate-spin" /> : <Play />}
                 {active ? 'Live' : 'Mirror'}

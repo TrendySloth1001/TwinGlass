@@ -17,6 +17,7 @@ interface MirrorStageProps {
   /** Phone's lock screen is showing (its PIN screen is black in the mirror). */
   locked: boolean
   onUnlock: () => void
+  reconnect: { attempt: number; reason: string } | null
 }
 
 async function dropFiles(fileList: FileList): Promise<void> {
@@ -31,7 +32,15 @@ async function dropFiles(fileList: FileList): Promise<void> {
   else toast.success(results.length === 1 ? 'Done' : `${results.length} files done`, { id, description: lines })
 }
 
-export function MirrorStage({ canvasRef, overlayRef, phase, recording, locked, onUnlock }: MirrorStageProps): ReactNode {
+export function MirrorStage({
+  canvasRef,
+  overlayRef,
+  phase,
+  recording,
+  locked,
+  onUnlock,
+  reconnect,
+}: MirrorStageProps): ReactNode {
   const [dragging, setDragging] = useState(false)
   const live = phase === 'live'
 
@@ -97,6 +106,22 @@ export function MirrorStage({ canvasRef, overlayRef, phase, recording, locked, o
         <div className="absolute inset-0 grid place-items-center">
           <div className="flex items-center gap-2 text-sm text-neutral-300">
             <Loader2 className="size-4 animate-spin" /> Starting mirror…
+          </div>
+        </div>
+      )}
+
+      {phase === 'reconnecting' && (
+        <div className="absolute inset-0 grid place-items-center">
+          <div className="flex max-w-80 flex-col items-center gap-2 text-center">
+            <div className="flex items-center gap-2 text-sm font-medium text-white">
+              <Loader2 className="size-4 animate-spin" /> Reconnecting…
+              {reconnect && reconnect.attempt > 0 && (
+                <span className="font-normal text-neutral-400">attempt {reconnect.attempt}</span>
+              )}
+            </div>
+            <div className="text-xs text-neutral-400">
+              {reconnect?.reason}. Waiting for the phone to come back on USB or Wi-Fi. Use Disconnect to stop.
+            </div>
           </div>
         </div>
       )}

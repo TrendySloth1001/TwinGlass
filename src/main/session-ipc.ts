@@ -25,10 +25,44 @@ function bump(id: number): number {
   return g
 }
 
+/** Sessions closed on purpose (Disconnect, new device, window closed): no auto-reconnect. */
+const intentional = new WeakSet<ScrcpySession>()
+
 function stop(webContentsId: number): void {
   bump(webContentsId)
-  sessions.get(webContentsId)?.close()
+  const s = sessions.get(webContentsId)
+  if (s) {
+    intentional.add(s)
+    s.close()
+  }
   sessions.delete(webContentsId)
+}
+
+/**
+ * Wi-Fi links can die silently (verified in the adb log: "SSL_read failed: Operation timed out"
+ * after the router deauthenticated the phone), leaving sockets hanging for minutes. Ping the
+ * transport; two failed pings in a row = connection lost, so the renderer can reconnect quickly.
+ */
+function startWatchdog(adb: Adb, session: ScrcpySession): () => void {
+  let misses = 0
+  let busy = false
+  const timer = setInterval(() => {
+    if (busy) return
+    busy = true
+    adb
+      .run(['get-state'], session.serial, 3000)
+      .then((out) => {
+        misses = out.trim() === 'device' ? 0 : misses + 1
+      })
+      .catch(() => {
+        misses++
+      })
+      .finally(() => {
+        busy = false
+        if (misses >= 2) session.close(new Error('Connection to the phone was lost'))
+      })
+  }, 4000)
+  return () => clearInterval(timer)
 }
 
 /** Registers cleanup once per window, before any await, so closing mid-start is never missed. */
@@ -101,9 +135,11 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
         .finally(() => (polling = false))
     }, 2500)
 
+    const stopWatchdog = startWatchdog(adb, session)
     session.once('closed', (err) => {
       clearInterval(lockTimer)
-      post({ t: 'closed', error: err?.message })
+      stopWatchdog()
+      post({ t: 'closed', error: err?.message, unexpected: !intentional.has(session) })
       port1.close()
       if (sessions.get(wc.id) === session) sessions.delete(wc.id)
     })

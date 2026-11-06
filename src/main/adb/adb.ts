@@ -146,8 +146,9 @@ export class Adb {
       d.transports.push(t)
       byId.set(id, d)
     })
-    // Stable order: USB first, then IP:port before mDNS names, then alphabetical.
-    const rank = (t: AdbTransport): number => (t.kind === 'usb' ? 0 : /^[\d.[]/.test(t.serial) ? 1 : 2)
+    // Preferred first: USB, then the mDNS name (adb re-resolves it, so it survives the phone getting a
+    // new IP after a Wi-Fi drop), then raw ip:port (dies on IP change). Alphabetical within a rank.
+    const rank = (t: AdbTransport): number => (t.kind === 'usb' ? 0 : /^[\d.[]/.test(t.serial) ? 2 : 1)
     for (const d of byId.values()) d.transports.sort((a, b) => rank(a) - rank(b) || a.serial.localeCompare(b.serial))
     const devices = [...byId.values()].sort((a, b) => a.model.localeCompare(b.model) || a.id.localeCompare(b.id))
     return { devices, other }

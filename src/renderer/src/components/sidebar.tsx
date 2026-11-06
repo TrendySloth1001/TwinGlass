@@ -21,7 +21,7 @@ interface SidebarProps {
   refresh: () => void
   activeSerial: string | null
   connecting: boolean
-  onMirror: (t: TransportInfo) => void
+  onMirror: (t: TransportInfo, deviceId: string) => void
   settings: Settings
   onSettingsChange: (patch: Partial<Settings>) => void
 }
