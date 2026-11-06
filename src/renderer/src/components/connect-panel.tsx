@@ -10,8 +10,6 @@ import {
   Copy,
   Ellipsis,
   Loader2,
-  MonitorSmartphone,
-  MonitorUp,
   Play,
   QrCode,
   RefreshCw,
@@ -31,7 +29,6 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Kbd } from '@/components/ui/kbd'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { FrameColor, FrameStyle } from '@/lib/phone-frames'
 
 type Details = Awaited<ReturnType<typeof window.mobMirror.deviceDetails>>
@@ -45,8 +42,6 @@ interface ConnectPanelProps {
   /** Hardware id of the phone mirrored last time (listed first). */
   lastDevice: string | null
   onMirror: (t: TransportInfo, deviceId: string) => void
-  /** Mac → phone: show the Mac screen, or use the phone as a second display. */
-  onMacScreen: (mode: 'mirror' | 'extend') => void
   onOpenPalette: () => void
   onOpenClipboard: () => void
   onOpenSettings: () => void
@@ -69,7 +64,6 @@ function PhoneCard({
   last,
   connecting,
   onMirror,
-  onMacScreen,
   frame,
   frameColor,
 }: {
@@ -77,7 +71,6 @@ function PhoneCard({
   last: boolean
   connecting: boolean
   onMirror: ConnectPanelProps['onMirror']
-  onMacScreen: ConnectPanelProps['onMacScreen']
   frame: FrameStyle
   frameColor: FrameColor
 }): ReactNode {
@@ -136,26 +129,6 @@ function PhoneCard({
             Mirror
             <span className="ml-1 text-xs opacity-60">{best.kind === 'usb' ? 'USB' : 'Wi-Fi'}</span>
           </Button>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" onClick={() => onMacScreen('mirror')}>
-                <MonitorUp /> Mac screen on phone
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="flex items-center gap-2">
-              Show your Mac screen on the phone <Kbd>⌥⌘P</Kbd>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" onClick={() => onMacScreen('extend')}>
-                <MonitorSmartphone /> Second display
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="flex items-center gap-2">
-              Use the phone as an extra Mac display <Kbd>⇧⌥⌘P</Kbd>
-            </TooltipContent>
-          </Tooltip>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" aria-label={`More for ${device.model}`}>
@@ -249,7 +222,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
           {adbMissing
             ? 'Mob Mirror talks to Android phones through adb. Install it once:'
             : devices.length
-              ? 'Mirror and control it, or bring your Mac to it.'
+              ? 'Mirror it on your Mac and control it with the mouse and keyboard.'
               : 'Use a USB cable for the lowest latency, or Wi-Fi to go wireless.'}
         </p>
       </div>
@@ -285,7 +258,6 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
           last={d.id === p.lastDevice}
           connecting={p.connecting}
           onMirror={p.onMirror}
-          onMacScreen={p.onMacScreen}
           frame={p.frame}
           frameColor={p.frameColor}
         />

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Talks to Mob Mirror on the Mac through `adb reverse` (localhost) or the LAN. -->
+    <!-- Talks to Mob Mirror on the Mac through `adb reverse` (localhost). -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
@@ -28,12 +28,5 @@
             android:exported="true"
             android:permission="android.permission.DUMP" />
 
-        <!-- Opened by Mob Mirror on the Mac: am start -n com.mobmirror.companion/.ViewerActivity -d <url> -->
-        <activity
-            android:name=".ViewerActivity"
-            android:exported="true"
-            android:screenOrientation="sensorLandscape"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
-            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen" />
     </application>
 </manifest>

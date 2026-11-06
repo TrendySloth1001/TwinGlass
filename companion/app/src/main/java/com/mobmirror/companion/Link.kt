@@ -21,7 +21,7 @@ object Link {
     const val DEFAULT_PORT = 47123
     private const val PREFS = "link"
 
-    data class Status(val mac: String, val sharing: Boolean, val mode: String?, val viewers: Int)
+    data class Status(val mac: String, val version: String)
 
     fun save(ctx: Context, key: String, mac: String, port: Int) {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -44,17 +44,7 @@ object Link {
         c.connectTimeout = 1500; c.readTimeout = 2000
         if (c.responseCode != 200) return null
         val j = JSONObject(c.inputStream.bufferedReader().readText())
-        Status(j.optString("mac", "Mac"), j.optBoolean("sharing"), j.optString("mode").ifEmpty { null }, j.optInt("viewers"))
+        Status(j.optString("mac", "Mac"), j.optString("version", ""))
     }.getOrNull()
 
-    /** Ask the Mac to share ("mirror" or "extend"); the Mac then opens the viewer on this phone. */
-    fun start(ctx: Context, mode: String): Boolean = post(ctx, "/link/start", "&mode=$mode")
-    fun open(ctx: Context): Boolean = post(ctx, "/link/open")
-    fun stop(ctx: Context): Boolean = post(ctx, "/link/stop")
-
-    private fun post(ctx: Context, path: String, query: String = ""): Boolean = runCatching {
-        val c = url(ctx, path, query).openConnection() as HttpURLConnection
-        c.requestMethod = "POST"; c.connectTimeout = 2000; c.readTimeout = 5000
-        c.responseCode in 200..299
-    }.getOrDefault(false)
 }

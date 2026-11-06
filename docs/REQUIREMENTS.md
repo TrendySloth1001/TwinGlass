@@ -65,9 +65,10 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - One card per phone:
     - a phone picture in the chosen frame finish
     - name, maker, Android version, battery and charging (refreshed every 30 s), USB / Wi-Fi, and a "Last used" tag
-    - actions: **Mirror**, **Mac screen on phone**, **Second display**, and ⋯ (mirror over a specific link, new window, also connect over Wi-Fi)
+    - actions: **Mirror**, and ⋯ (mirror over a specific link, new window, also connect over Wi-Fi). The Mac-screen buttons were removed with the feature.
   - A shortcut strip: ⌘K Open an app, ⇧⌘V Clipboard, ⌘, Settings, Add a phone over Wi-Fi.
-  - Guidance cards for no phone, a phone waiting for "Allow", and missing adb. The ripple is softened behind the cards. Responsive down to 520 px.
+  - Guidance cards for no phone, a phone waiting for "Allow", and missing adb. Responsive down to 520 px.
+  - **Background** (user: "better, expanded and large"): full-window signal waves travelling outward, a slow brand-tinted aurora and a faint dot grid. Theme-aware and still with Reduce motion (components/stage-backdrop.tsx).
 - (Earlier:) **Home screen: keep the existing design, only enhance it** (the user said "the current home screen is best", 2026-11-06).
   - One-click "Mirror <phone> · USB/Wi-Fi" buttons, with the last-used phone listed first.
   - A "Tap Allow" state for unauthorized phones and a missing-adb install hint.
@@ -103,6 +104,12 @@ The dates are when each item was asked for (2026-11-06 unless noted).
 - ✅ **adb:** at most 4 commands at once per phone (FIFO); the lock poll is one batched shell round trip instead of three.
 - ✅ **Settings:** each field is validated on load (bad or old value: default) and synced across windows.
 - ✅ **Error boundary:** a UI crash shows the error with a "Reload window" button instead of a blank window.
+
+## Scope decision (2026-11-06)
+- **Removed at the user's request:** "Mac screen on phone" and "phone as second display". That covers the streaming server, the virtual-display and touch-input helpers, the phone viewer page, the companion viewer and its share buttons, the menu and ⌘K actions, and the status pill.
+- **Mob Mirror focuses on mirroring and controlling the phone.** The code is in git history (last at commit 5dcf91d) if it's ever wanted back.
+- **The companion app stays** (automatic pairing, connection status, Settings → Phone app) as the base for planned features such as notifications.
+- The items below about Mac screen, extend, latency and touch → Mac are kept as a record of what was built and measured.
 
 ## Desktop integration (asked 2026-11-06: "start building all of the above")
 - ✅ **⌘K command palette** (also the search button on the strip and toolbar).

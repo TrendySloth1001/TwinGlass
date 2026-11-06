@@ -59,19 +59,3 @@ export async function restoreAutoRotate(adb: Adb, serial: string): Promise<void>
   await adb.runLoose(['shell', 'cmd window user-rotation -d 0 free'], serial, 5000).catch(() => {})
 }
 
-/**
- * Hold the phone in landscape (extend mode: the second display is wide). Returns a function that
- * restores the previous rotation mode. Auto-rotate is given back if it was on.
- */
-export async function holdLandscape(adb: Adb, serial: string): Promise<() => Promise<void>> {
-  const before = await readRotation(adb, serial)
-  await adb.runLoose(['shell', 'cmd window user-rotation -d 0 lock 1'], serial, 5000)
-  return async () => {
-    if (!before) return
-    await adb.runLoose(
-      ['shell', before.free ? 'cmd window user-rotation -d 0 free' : `cmd window user-rotation -d 0 lock ${before.rotation}`],
-      serial,
-      5000,
-    )
-  }
-}

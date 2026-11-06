@@ -12,11 +12,6 @@ files:
 extraResources:
   - from: resources/scrcpy-server-v5.0.1
     to: scrcpy-server-v5.0.1
-  # Virtual display helper for "phone as second display" (npm run build:native).
-  - from: native/virtual-display/mm-virtual-display
-    to: mm-virtual-display
-  - from: native/input/mm-input
-    to: mm-input
 asar: true
 mac:
   category: public.app-category.utilities

@@ -10,10 +10,8 @@ import { registerUnlockIpc } from './unlock-ipc'
 import { registerPhoneAppsIpc } from './phone-apps'
 import { registerClipboardHistoryIpc, startClipboardHistory } from './clipboard-history'
 import { setTrayVisible, startTrayUpdates } from './tray'
-import { registerMacScreenIpc, stopMacScreen } from './mac-screen'
 import { registerUpdateIpc } from './update-check'
 import { startCompanionLink, stopCompanionLink } from './companion-link'
-import { trackDevices } from './devices-ipc'
 import { registerAgentIpc, stopAgentServer } from './agent-ipc'
 
 export function serverPath(): string {
@@ -81,15 +79,6 @@ registerWindowLayoutIpc()
 registerPhoneAppsIpc(getAdb, serverPath, getSession)
 registerClipboardHistoryIpc()
 void app.whenReady().then(registerUpdateIpc)
-// Mac screen on the phone: the window's mirrored phone, else the first connected one.
-// Prefers the phone's USB link (transports are ranked USB first): lowest latency.
-registerMacScreenIpc(getAdb, async (wcId) => {
-  const s = getSession(wcId)
-  const adb = getAdb()
-  const list = adb ? await trackDevices(adb).catch(() => null) : null
-  const dev = s ? list?.devices.find((d) => d.transports.some((t) => t.serial === s.serial)) : list?.devices[0]
-  return dev?.transports[0]?.serial ?? s?.serial ?? null
-})
 
 /** Menu bar icon actions: mirror in an idle window (or a new one), show the app. */
 const trayDeps = {
@@ -142,7 +131,6 @@ process.on('unhandledRejection', reportMainError('unhandled rejection'))
 
 app.on('before-quit', () => {
   stopCompanionLink()
-  stopMacScreen(getAdb())
   stopAllSessions()
   stopDeviceTracking()
   closeAllRecordings()

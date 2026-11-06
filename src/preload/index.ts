@@ -40,22 +40,6 @@ const api: MobMirrorApi = {
   onClipboardHistoryChanged: (cb: () => void) => subscribe('clipboard:history-changed', cb),
   onConnectRequest: (cb: (t: { serial: string; kind: 'usb' | 'wifi' }) => void) => subscribe('ui:connect', cb),
   onAppError: (cb: (message: string) => void) => subscribe('app:error', cb),
-  macScreenStatus: () => ipcRenderer.invoke('macscreen:status'),
-  macScreenStart: (mode: 'mirror' | 'extend' = 'mirror') => ipcRenderer.invoke('macscreen:start', mode),
-  macScreenStop: () => ipcRenderer.invoke('macscreen:stop'),
-  macScreenOpenPrivacy: (which?: 'screen' | 'accessibility') => ipcRenderer.invoke('macscreen:open-privacy', which),
-  macScreenConfig: (json: string) => ipcRenderer.send('macscreen:config', json),
-  macScreenChunk: (type: 1 | 2, ts: number, data: Uint8Array) => ipcRenderer.send('macscreen:chunk', type, ts, data),
-  onMacScreen: (cb: (ev: { t: 'keyframe' } | { t: 'stop' } | { t: 'viewers'; n: number } | { t: 'stats'; s: Record<string, number> } | { t: 'input-trusted'; ok: boolean }) => void) => {
-    const offs = [
-      subscribe('macscreen:keyframe', () => cb({ t: 'keyframe' })),
-      subscribe('macscreen:stop', () => cb({ t: 'stop' })),
-      subscribe('macscreen:viewers', (n: number) => cb({ t: 'viewers', n })),
-      subscribe('macscreen:stats', (s: Record<string, number>) => cb({ t: 'stats', s })),
-      subscribe('macscreen:input-trusted', (ok: boolean) => cb({ t: 'input-trusted', ok })),
-    ]
-    return () => offs.forEach((o) => o())
-  },
   checkForUpdate: () => ipcRenderer.invoke('update:check'),
   downloadUpdate: (url: string) => ipcRenderer.invoke('update:download', url),
   onUpdateAvailable: (cb: (u: UpdateInfoT) => void) => subscribe('update:available', cb),

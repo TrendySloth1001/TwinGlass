@@ -1,4 +1,5 @@
-// Companion link: lets the phone app ask the Mac to share (or reopen / stop) on its own.
+// Companion link: pairs the phone app with this Mac and lets it check the connection.
+// (The base for companion features; Mac screen sharing was removed on 2026-11-06.)
 //   Mac   127.0.0.1:LINK_PORT, reached from every connected phone through `adb reverse`
 //   key   a per-Mac secret (userData/companion-link.json) handed to the companion app only through
 //         adb: an explicit broadcast to its LinkReceiver, which requires the DUMP permission (the adb
@@ -9,10 +10,12 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { createServer, type Server } from 'node:http'
 import { hostname } from 'node:os'
 import { join } from 'node:path'
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, ipcMain } from 'electron'
 import type { Adb, DeviceList } from './adb/adb'
 import { onDevicesChanged, trackDevices } from './devices-ipc'
-import { COMPANION_PKG, getShareInfo, reopenViewer } from './mac-screen'
+
+/** The Android companion app (companion/). */
+export const COMPANION_PKG = 'com.mobmirror.companion'
 
 export const LINK_PORT = 47123
 
@@ -43,14 +46,6 @@ const keyOk = (k: string | null): boolean => {
 }
 
 const macName = (): string => hostname().replace(/\.local$/, '')
-
-/** Asks a window to start / stop sharing (capture runs in the renderer). */
-function command(cmd: 'start-mac-screen' | 'start-extend-display' | 'stop-mac-screen'): boolean {
-  const w = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
-  if (!w) return false
-  w.webContents.send('ui:command', cmd)
-  return true
-}
 
 /** adb reverse for the link port + hand the key to the companion (if installed). */
 async function link(adb: Adb, serial: string, force = false): Promise<boolean> {
@@ -91,32 +86,7 @@ export function startCompanionLink(getAdb: () => Adb | null): void {
       res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end(JSON.stringify(body))
     }
     if (!keyOk(url.searchParams.get('k'))) return json(403, { error: 'not paired' })
-    const share = getShareInfo()
-    if (url.pathname === '/link/status') {
-      return json(200, { mac: macName(), version: app.getVersion(), sharing: share.running, mode: share.mode, viewers: share.viewers })
-    }
-    if (req.method !== 'POST') return json(405, { error: 'POST' })
-    if (url.pathname === '/link/start') {
-      const mode = url.searchParams.get('mode') === 'extend' ? 'extend' : 'mirror'
-      // Already sharing the same way: just reopen the viewer on the phone.
-      if (share.running && share.mode === mode) {
-        const adb = getAdb()
-        void (adb ? reopenViewer(adb) : Promise.resolve(false))
-        return json(200, { ok: true, reopened: true })
-      }
-      if (share.running) command('stop-mac-screen')
-      const ok = command(mode === 'extend' ? 'start-extend-display' : 'start-mac-screen')
-      return json(ok ? 202 : 503, ok ? { ok: true } : { error: 'Mob Mirror has no open window' })
-    }
-    if (url.pathname === '/link/open') {
-      const adb = getAdb()
-      void (adb ? reopenViewer(adb) : Promise.resolve(false))
-      return json(200, { ok: share.running })
-    }
-    if (url.pathname === '/link/stop') {
-      command('stop-mac-screen')
-      return json(200, { ok: true })
-    }
+    if (url.pathname === '/link/status') return json(200, { mac: macName(), version: app.getVersion() })
     return json(404, { error: 'unknown' })
   })
   server.on('error', (e) => console.error('[companion-link]', e))

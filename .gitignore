@@ -4,5 +4,3 @@ dist/
 resources/scrcpy-server-v*
 *.log
 .DS_Store
-native/virtual-display/mm-virtual-display
-native/input/mm-input
