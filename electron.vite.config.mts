@@ -10,6 +10,8 @@ export default defineConfig({
   preload: { plugins: [externalizeDepsPlugin()], resolve: { alias: shared } },
   renderer: {
     plugins: [react(), tailwindcss()],
+    // electron-vite 6 does not minify the renderer by default (1.54 MB -> ~0.47 MB with this).
+    build: { minify: true },
     resolve: { alias: { ...shared, '@': resolve('src/renderer/src') } },
   },
 })

@@ -106,6 +106,16 @@ adb shell CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobi
 ### Audio
 - Requires Android 11+. Android 12+ works out of the box; on Android 11 the device must be unlocked when the server starts.
 - Format is 48 kHz stereo s16. The Opus config packet is a bare `OpusHead`.
+- **The default `audio_source=output` mutes the phone while it captures** (REMOTE_SUBMIX). Source: doc/audio.md at v5.0.1.
+  - `audio_source=playback` with `audio_dup=true` keeps the phone playing as well (Android 13+), but apps can opt out of capture.
+  - That's why the app defaults to audio **off**, with modes Off / Mac (phone muted) / Mac + phone.
+- **Verified on the device on 2026-11-06:** `audio=true audio_codec=opus audio_source=playback audio_dup=true` on Android 17 delivers an Opus config packet. WebCodecs `AudioDecoder` configures with `{codec:'opus', sampleRate:48000, numberOfChannels:2, description: OpusHead}`. Sound quality and latency have not been judged by ear yet.
+
+## Recording and screenshots (verified 2026-11-06)
+- `canvas.toBlob('image/png')` produces a screenshot at the video's resolution (576×1280 over Wi-Fi).
+- `MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.640028,opus')` is true in Electron 45. The output is H.264 + Opus MP4, checked with ffprobe.
+- **`canvas.captureStream(fps)` only emits frames when the canvas is repainted.** scrcpy sends no frames for a static screen, so a 3.5 s recording came out 1.09 s long.
+  - The fix is `captureStream(0)` plus `track.requestFrame()` at 30 fps. A ~4 s recording then measured 3.92 s.
 
 ## WebCodecs (renderer)
 - `VideoDecoder.configure({ codec: 'avc1.PPCCLL', optimizeForLatency: true })` with **no `description`**, which tells WebCodecs to expect Annex-B input. `PPCCLL` is `profile_idc`, `constraint_flags` and `level_idc` from the SPS, each as two hex digits.
@@ -141,6 +151,12 @@ adb shell CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobi
 - **`adb disconnect <ip:port>`** prints `disconnected <ip:port>`. `adb track-devices` reflects the change within about a second (verified).
 - **The phone's Wi-Fi IP** comes from `adb shell ip -f inet addr show wlan0`, on the `inet a.b.c.d/nn` line.
 - **Redistribution:** the Android SDK license forbids redistributing Google's prebuilt platform-tools. adb built from AOSP is Apache-2.0. Policy: detect a system adb first.
+
+## Build and packaging (verified 2026-11-06)
+- **electron-vite 6 does not minify the renderer by default.** With `renderer.build.minify: true`, the JS goes from 1,538 KB to 606 KB. Dropping `motion` brings it to 471 KB.
+- **electron-builder ships everything in `dependencies` inside `app.asar`.** With the renderer libraries listed there, the asar was 56 MB, including 37 MB of lucide-react sources. Moved to devDependencies, it's 2.0 MB, with only `qrcode` and its dependency tree.
+- **An unsigned build (`identity: null`) gets only the linker's ad-hoc signature.** `spctl` rejects it. On macOS 15+, Control-click → Open no longer bypasses Gatekeeper; use System Settings → Privacy & Security → Open Anyway, or remove the quarantine attribute with `xattr -dr com.apple.quarantine`. See [RELEASE.md](RELEASE.md).
+- The packaged app finds adb even with `PATH=/usr/bin:/bin` (what Finder gives it), thanks to the `/opt/homebrew/bin/adb` fallback.
 
 ## Known gotchas
 - **Xiaomi:** you must also enable "USB debugging (Security settings)" and reboot, or input injection fails with an INJECT_EVENTS error.

@@ -58,9 +58,8 @@ export interface MobMirrorApi {
   cancelQrPairing(): Promise<void>
   onQrState(cb: (s: QrState) => void): () => void
   openDeviceWindow(serial: string, kind: 'usb' | 'wifi'): Promise<void>
-  pathForFile(file: File): string
   /** APKs are installed; other files are copied to /sdcard/Download on the mirrored device. */
-  dropFiles(paths: string[]): Promise<FileResult[]>
+  dropFiles(files: File[]): Promise<FileResult[]>
   /** Returns the saved path (~/Pictures/Mob Mirror). */
   saveScreenshot(png: Uint8Array, deviceName: string): Promise<string>
   /** Returns a recording id; chunks are appended to ~/Movies/Mob Mirror/<name>.<ext>. */

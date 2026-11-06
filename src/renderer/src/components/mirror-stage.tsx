@@ -12,12 +12,12 @@ interface MirrorStageProps {
   recording: boolean
 }
 
-async function dropFiles(files: FileList): Promise<void> {
-  const paths = [...files].map((f) => window.mobMirror.pathForFile(f)).filter(Boolean)
-  if (!paths.length) return
-  const apk = paths.some((p) => p.toLowerCase().endsWith('.apk'))
-  const id = toast.loading(apk ? 'Installing…' : `Copying ${paths.length} file(s)…`)
-  const results = await window.mobMirror.dropFiles(paths)
+async function dropFiles(fileList: FileList): Promise<void> {
+  const files = [...fileList]
+  if (!files.length) return
+  const apk = files.some((f) => f.name.toLowerCase().endsWith('.apk'))
+  const id = toast.loading(apk ? 'Installing…' : `Copying ${files.length} file(s)…`)
+  const results = await window.mobMirror.dropFiles(files)
   const failed = results.filter((r) => !r.ok)
   const lines = results.map((r) => `${r.ok ? '✓' : '✗'} ${r.name}: ${r.message}`).join('\n')
   if (failed.length) toast.error(`${failed.length} of ${results.length} failed`, { id, description: lines })

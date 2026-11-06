@@ -42,15 +42,18 @@ interface Engine {
   timer: number
 }
 
-function waitForPort(): Promise<{ port: MessagePort; deviceName: string }> {
-  return new Promise((resolve) => {
-    const onMessage = (e: MessageEvent): void => {
+/** Waits for the session MessagePort forwarded by preload; `cancel` removes the listener. */
+function waitForPort(): { promise: Promise<{ port: MessagePort; deviceName: string }>; cancel: () => void } {
+  let onMessage: (e: MessageEvent) => void = () => {}
+  const promise = new Promise<{ port: MessagePort; deviceName: string }>((resolve) => {
+    onMessage = (e: MessageEvent): void => {
       if (e.source !== window || e.data?.type !== 'mob-mirror:session-port' || !e.ports[0]) return
       window.removeEventListener('message', onMessage)
       resolve({ port: e.ports[0], deviceName: e.data.deviceName as string })
     }
     window.addEventListener('message', onMessage)
   })
+  return { promise, cancel: () => window.removeEventListener('message', onMessage) }
 }
 
 const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
@@ -71,6 +74,7 @@ export function useMirror(canvasRef: RefObject<HTMLCanvasElement | null>): Mirro
   const [state, setState] = useState<MirrorState>(IDLE)
   const engine = useRef<Engine | null>(null)
   const busy = useRef(false)
+  const attempt = useRef(0)
   const patch = useCallback((p: Partial<MirrorState>) => setState((s) => ({ ...s, ...p })), [])
 
   const teardown = useCallback(
@@ -100,11 +104,17 @@ export function useMirror(canvasRef: RefObject<HTMLCanvasElement | null>): Mirro
       if (busy.current || !canvas) return
       busy.current = true
       teardown(true)
+      // Disconnect (or unmount) while connecting bumps this; main also cancels its side.
+      const gen = ++attempt.current
       setState({ ...IDLE, phase: 'connecting', transport: t })
+      const wait = waitForPort()
       try {
-        const portPromise = waitForPort()
         await window.mobMirror.startSession({ serial: t.serial, audio: audioMode, ...QualityPreset[t.kind] })
-        const { port, deviceName } = await portPromise
+        const { port, deviceName } = await wait.promise
+        if (gen !== attempt.current) {
+          port.close()
+          return
+        }
 
         const video = new VideoView(canvas, (e) => toast.error(`Video: ${e.message}`), () => {})
         const audio = audioMode === 'off' ? null : new AudioPlayer((e) => toast.error(`Audio: ${e.message}`))
@@ -132,6 +142,8 @@ export function useMirror(canvasRef: RefObject<HTMLCanvasElement | null>): Mirro
         setState({ ...IDLE, phase: 'live', transport: t, deviceName, audio: audio ? 'waiting' : 'off' })
         canvas.focus()
       } catch (e) {
+        wait.cancel()
+        if (gen !== attempt.current) return // cancelled by the user: not an error
         setState(IDLE)
         toast.error('Could not start mirroring', { description: errMsg(e) })
       } finally {
@@ -142,7 +154,9 @@ export function useMirror(canvasRef: RefObject<HTMLCanvasElement | null>): Mirro
   )
 
   const disconnect = useCallback(() => {
+    attempt.current++
     teardown(true)
+    setState(IDLE) // also leaves the "connecting" phase, which teardown() doesn't cover
     void window.mobMirror.stopSession()
   }, [teardown])
 
@@ -204,7 +218,13 @@ export function useMirror(canvasRef: RefObject<HTMLCanvasElement | null>): Mirro
     }
   }, [canvasRef, patch, state.deviceName])
 
-  useEffect(() => () => teardown(true), [teardown])
+  useEffect(
+    () => () => {
+      attempt.current++
+      teardown(true)
+    },
+    [teardown],
+  )
 
   return { state, connect, disconnect, send, pressKey, toggleScreenOff, toggleMute, screenshot, toggleRecording }
 }

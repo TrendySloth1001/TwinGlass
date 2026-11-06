@@ -29,6 +29,15 @@
 - **Why:** it behaves the same over USB and Wi-Fi, and the client doesn't need to open a listening port, so there are no firewall prompts.
 - **Cost:** we must read the dummy byte on the first socket.
 
+## ADR-7: The renderer UI is React 19 + Tailwind 4 + shadcn/ui + lucide-react
+- **Why:** accessible, unstyled-by-default Radix primitives that we own as source (`src/renderer/src/components/ui/`), a design-token theme (light/dark follows macOS), and a consistent icon set. This replaced the hand-written DOM UI from M1–M3.
+- **Magic UI** (`ripple`, `border-beam`) is used only for small accents: the empty state and the recording indicator. Animated marketing components (Aceternity and similar) are kept off the video surface, where they would compete with 60 fps decoding.
+- **Engine vs UI:** `src/renderer/src/engine/` (VideoView, InputController, AudioPlayer, Recorder) is framework-agnostic. `hooks/use-mirror.ts` is the only React glue around it.
+- **shadcn CLI caveats** (4.23.0 with the electron-vite layout). After `shadcn add`, always run `git diff package.json` and grep the imports.
+  - It wrote `import { cn } from "cn"` and installed the unrelated npm package `cn`. Both were fixed: the import now points to `@/lib/utils`, and the package was removed.
+  - It added `next-themes` for `sonner.tsx`. That was removed in favour of `theme="system"`.
+- **Packaging:** every renderer library is a devDependency, because Vite bundles it. Only main-process runtime dependencies (`qrcode`) stay in `dependencies`, which is what electron-builder ships in `app.asar`.
+
 ## ADR-6: Video packets go from main to renderer over a MessagePort
 - **What:** each session gets its own `MessageChannelMain`. Main posts `{t:'video', ev}` messages, and the renderer posts back `{t:'control', data}` and `{t:'stop'}`.
 - **Correction:** Electron's `MessagePortMain.postMessage` can only transfer ports, not ArrayBuffers, so every packet is structured-cloned. That is negligible at 4–8 Mbps.

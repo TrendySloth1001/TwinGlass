@@ -2,7 +2,7 @@
 // Electron's MessagePortMain can't transfer ArrayBuffers, so packets are structured-cloned.
 // At a few Mbps of H.264 that copy is negligible.
 import { statSync } from 'node:fs'
-import { basename, extname } from 'node:path'
+import { basename, extname, isAbsolute } from 'node:path'
 import { clipboard, ipcMain, MessageChannelMain, type WebContents } from 'electron'
 import { scanFile } from '@shared/scrcpy/control'
 import type { Adb } from './adb/adb'
@@ -10,10 +10,40 @@ import { ScrcpySession } from './scrcpy/session'
 import type { FileResult, MainToRenderer, RendererToMain, StartSessionRequest } from '../shared/ipc'
 
 const sessions = new Map<number, ScrcpySession>()
+/**
+ * Bumped on every start/stop/destroy of a window. A start that finishes after its generation
+ * was superseded (user pressed Disconnect, picked another device, or closed the window while
+ * "Starting mirror…" was showing) closes its session instead of going live.
+ */
+const generation = new Map<number, number>()
+const watched = new Set<number>()
+
+function bump(id: number): number {
+  const g = (generation.get(id) ?? 0) + 1
+  generation.set(id, g)
+  return g
+}
 
 function stop(webContentsId: number): void {
+  bump(webContentsId)
   sessions.get(webContentsId)?.close()
   sessions.delete(webContentsId)
+}
+
+/** Registers cleanup once per window, before any await, so closing mid-start is never missed. */
+function watch(wc: WebContents): void {
+  if (watched.has(wc.id)) return
+  watched.add(wc.id)
+  const id = wc.id
+  wc.once('destroyed', () => {
+    stop(id)
+    watched.delete(id)
+    generation.delete(id)
+  })
+  // A reload (Cmd+R) drops the renderer's port; the old session must not keep running.
+  wc.on('did-start-navigation', (details) => {
+    if (details.isMainFrame && !details.isSameDocument) stop(id)
+  })
 }
 
 export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => string): void {
@@ -21,7 +51,9 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
     const adb = getAdb()
     if (!adb) throw new Error('adb not found')
     const wc: WebContents = e.sender
+    watch(wc)
     stop(wc.id)
+    const gen = bump(wc.id)
 
     const session = await ScrcpySession.start(adb, {
       serial: req.serial,
@@ -32,6 +64,10 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
       audio: req.audio ?? 'off',
       stayAwake: true,
     })
+    if (wc.isDestroyed() || generation.get(wc.id) !== gen) {
+      session.close()
+      throw new Error('cancelled')
+    }
     sessions.set(wc.id, session)
 
     const { port1, port2 } = new MessageChannelMain()
@@ -58,7 +94,6 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
     port1.start()
     session.begin()
 
-    wc.once('destroyed', () => stop(wc.id))
     wc.postMessage('session:port', { deviceName: session.deviceName }, [port2])
     return { deviceName: session.deviceName }
   })
@@ -66,12 +101,18 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
   ipcMain.handle('session:stop', (e) => stop(e.sender.id))
 
   // Drag & drop onto the mirror: APKs are installed, anything else goes to /sdcard/Download.
-  ipcMain.handle('files:drop', async (e, paths: string[]): Promise<FileResult[]> => {
+  // Paths come from preload (webUtils.getPathForFile on real dropped File objects); still validate.
+  ipcMain.handle('files:drop', async (e, paths: unknown): Promise<FileResult[]> => {
     const adb = getAdb()
     const session = sessions.get(e.sender.id)
     if (!adb || !session) return [{ name: '', ok: false, message: 'Start mirroring a device first.' }]
+    if (!Array.isArray(paths)) return []
     const results: FileResult[] = []
     for (const p of paths) {
+      if (typeof p !== 'string' || !isAbsolute(p)) {
+        results.push({ name: String(p), ok: false, message: 'not a dropped file' })
+        continue
+      }
       const name = basename(p)
       try {
         if (!statSync(p).isFile()) throw new Error('folders are not supported')
@@ -92,7 +133,7 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
     return results
   })
   ipcMain.handle('clipboard:read', () => clipboard.readText())
-  ipcMain.handle('clipboard:write', (_e, text: string) => clipboard.writeText(text))
+  ipcMain.handle('clipboard:write', (_e, text: string) => clipboard.writeText(String(text)))
 }
 
 export function stopAllSessions(): void {

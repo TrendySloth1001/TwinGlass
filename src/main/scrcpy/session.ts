@@ -124,6 +124,14 @@ export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
     server.stdout?.on('data', onLog)
     server.stderr?.on('data', onLog)
 
+    // Every socket opened during the handshake, so a late failure can't leak any of them.
+    const opened: Socket[] = []
+    const open = async (): Promise<Socket> => {
+      const s = await openSocket(port)
+      opened.push(s)
+      return s
+    }
+
     try {
       // In forward mode connect() succeeds even before the server listens; the dummy
       // byte on the first socket proves the server accepted us. Retry until it arrives.
@@ -131,7 +139,7 @@ export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
       let videoReader: SocketReader | null = null
       for (let attempt = 0; attempt < 100 && !video; attempt++) {
         if (server.exitCode !== null) throw new Error(`scrcpy-server exited (${server.exitCode}): ${logs.join('')}`)
-        const s = await openSocket(port).catch(() => null)
+        const s = await open().catch(() => null)
         if (s) {
           const reader = new SocketReader(s)
           const ok = await reader.readExact(1).then(() => true, () => false)
@@ -147,8 +155,8 @@ export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
       if (!video || !videoReader) throw new Error(`could not connect to scrcpy-server: ${logs.join('')}`)
 
       // Socket order is fixed by the server: video, audio, control (disabled ones are skipped).
-      const audio = (opts.audio ?? 'off') !== 'off' ? await openSocket(port) : null
-      const control = (opts.control ?? true) ? await openSocket(port) : null
+      const audio = (opts.audio ?? 'off') !== 'off' ? await open() : null
+      const control = (opts.control ?? true) ? await open() : null
       const session = new ScrcpySession(adb, opts, port, server, video, audio, control)
       session.deviceName = parseDeviceName(await videoReader.readExact(DEVICE_NAME_FIELD_LENGTH))
 
@@ -163,6 +171,7 @@ export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
       video.once('close', () => session.close())
       return session
     } catch (e) {
+      for (const s of opened) s.destroy()
       server.kill()
       await adb.removeForward(serial, port).catch(() => {})
       throw e

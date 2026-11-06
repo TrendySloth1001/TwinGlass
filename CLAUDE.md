@@ -13,7 +13,10 @@ An Electron desktop app (macOS first) that mirrors **and controls** Android phon
 - `src/main/adb/`: system adb wrapper and parsers
 - `src/main/scrcpy/`: session lifecycle (sockets, server process)
 - `src/preload/`: the `window.mobMirror` contextBridge API. Types live in `api.d.ts`.
-- `src/renderer/`: UI, WebCodecs decoding, input capture
+- `src/renderer/src/engine/`: framework-agnostic engine (VideoView with WebCodecs, InputController, AudioPlayer, Recorder)
+- `src/renderer/src/hooks/use-mirror.ts`: the only React glue around the engine
+- `src/renderer/src/components/`: app UI. `components/ui/` holds shadcn/ui and Magic UI sources added by the CLI (`npx shadcn@4.23.0 add …`). After adding, check `git diff package.json` and the imports (ADR-7).
+- Renderer libraries go in **devDependencies** (Vite bundles them). `dependencies` is only for what the main process needs at runtime.
 - `resources/scrcpy-server-v5.0.1`: downloaded and SHA-checked by `npm run fetch-server`. Gitignored.
 
 ## Commands
@@ -21,6 +24,7 @@ An Electron desktop app (macOS first) that mirrors **and controls** Android phon
 - `npm test`: unit tests
 - `MOB_DEVICE=<serial> npm test`: also runs the real-device integration test (`adb devices` shows the serial)
 - `npm run typecheck`: type-checking with TS 7 (the Go `tsc`), used only for checking. Vite does the transpiling.
+- `npm run dist:mac`: builds `dist/Mob Mirror-<version>-arm64.dmg` (unsigned; see docs/RELEASE.md)
 
 **Launching from a VS Code terminal:** the VS Code extension host exports `ELECTRON_RUN_AS_NODE=1`, which makes Electron run as plain Node. You'll see `Cannot read properties of undefined (reading 'handle')`. Launch with `env -u ELECTRON_RUN_AS_NODE npm run dev`.
 

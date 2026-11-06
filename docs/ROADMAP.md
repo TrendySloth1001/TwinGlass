@@ -39,8 +39,19 @@
 - [x] Mirroring verified over both the ip:port and the mDNS transport ✅
 - [ ] Needs the user: scan the QR code, pair with a code, test the USB cable and the tcpip button
 
-## M4: Polish and packaging
-- [ ] Audio (Android 11+, opus → WebCodecs AudioDecoder)
-- [ ] Screenshot and recording, file drag-and-drop (push / install APK)
-- [ ] Multiple devices in multiple windows
-- [ ] electron-builder `.dmg`, signing and notarization; adb detection or download UX
+## M4: Polish and packaging (in progress; ✅ marks items verified)
+- [x] UI rebuilt on React 19 + Tailwind 4 + shadcn/ui + lucide, with Magic UI accents (ADR-7) ✅ idle and live screens checked visually
+- [x] Audio: Off / Mac (phone muted) / Mac + phone; Opus → WebCodecs AudioDecoder → Web Audio jitter buffer; mute toggle ✅ decoder configures on the device (not yet listened to)
+- [x] Screenshot → ~/Pictures/Mob Mirror ✅
+- [x] Recording (MP4 H.264 + Opus, chunks streamed to ~/Movies/Mob Mirror) ✅ duration bug found and fixed
+- [x] Drag & drop: `.apk` → `adb install -r`, other files → /sdcard/Download + media scan (not yet tested on the device)
+- [x] "Mirror in new window" for several phones at once (not yet tested)
+- [x] macOS inset title bar, light and dark following the system
+- [x] electron-builder `.dmg` (arm64, unsigned) ✅ builds
+- [x] Packaged app verified ✅ lists devices (also with Finder's minimal PATH), mirrors, disconnects cleanly
+- [x] Signing and notarization guide: [RELEASE.md](RELEASE.md)
+- [x] `app.asar` 56 MB → 2.0 MB (renderer libraries moved to devDependencies); renderer JS 1,538 → 471 KB (minify on, `motion` replaced by CSS) ✅
+- [x] Independent code review: 10 findings fixed (sessions cancelled when a window closes mid-connect, recordings tied to their window and closed on close/reload, robust chunk writes, preload-only file paths, mute no longer silences recordings, audio decoder recovery, socket cleanup on a failed handshake, cancellable connect, unique screenshot names, Show in Finder limited to our folders) ✅ window-close-mid-connect verified on the device
+- [ ] App icon (`build/icon.icns` or a 1024 px `build/icon.png`)
+- [ ] Signed + notarized release (needs an Apple Developer ID)
+- [ ] Needs the user: listen to audio, drag & drop an APK or file, "Mirror in new window"
