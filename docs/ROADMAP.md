@@ -9,17 +9,21 @@
 - [x] adb wrapper: discovery, `devices -l` parsing, merging USB and Wi-Fi transports per phone
 - [x] Session lifecycle (push, forward, launch, dummy byte, device meta, demux) verified on a real device
 
-## M1: Video
-- [ ] Main → renderer MessagePort pipe (transferable buffers)
-- [ ] WebCodecs decoder: config + keyframe merge, reconfigure on SPS change, latency reset, `VideoFrame.close()`
-- [ ] Canvas rendering with contain scaling; resize the window to the phone's aspect ratio
-- [ ] Check hardware decoding (`isConfigSupported`, `chrome://gpu`)
+## M1: Video ✅ (verified on the Nothing A024 over Wi-Fi)
+- [x] Per-session MessagePort pipe between main and renderer (ADR-6)
+- [x] WebCodecs decoder: config + keyframe merge, reconfigure on SPS change, latency reset, `VideoFrame.close()`, error recovery
+- [x] Canvas rendering with contain scaling, plus an fps / codec / hardware status line
+- [x] Hardware decoding confirmed
+- [ ] Resize the window to the phone's aspect ratio (nice to have)
 
-## M2: Control
-- [ ] Pointer → touch (mouse id -1, pointer capture, drag clamping), always using the latest session size
-- [ ] Wheel → scroll; keyboard → keycode, printable text → INJECT_TEXT, non-ASCII → SET_CLIPBOARD with paste
-- [ ] Toolbar: Back, Home, Recents, power, volume, rotate, notification panel
-- [ ] Clipboard sync in both directions (CLIPBOARD / SET_CLIPBOARD + ACK)
+## M2: Control (code-complete; ✅ marks items verified on the device)
+- [x] Pointer → touch (mouse id -1, pointer capture, coalesced moves, drag clamping, release on blur) ✅ swipe
+- [x] Wheel → scroll ✅ direction verified
+- [x] Keyboard: printable ASCII → INJECT_TEXT, non-ASCII → SET_CLIPBOARD with paste, other keys → keycode + meta state
+- [x] Cmd+V pastes the Mac clipboard to the phone; Cmd+C/X copy from the phone; the phone clipboard autosyncs to the Mac
+- [x] Mouse shortcuts: right = Back, middle = Home, 4th = Recents, 5th = notifications
+- [x] Toolbar: Back, Home, Recents, volume, power, notifications, rotate, screen off
+- [ ] Verify keyboard, clipboard and toolbar on the device (needs a text field and the user present)
 
 ## M3: Connectivity
 - [ ] Live device list via `adb track-devices`

@@ -4,5 +4,5 @@
     "lib": ["ES2023"],
     "types": ["node"]
   },
-  "include": ["src/main/**/*", "src/preload/**/*", "src/shared/**/*", "test/**/*", "electron.vite.config.mts", "vitest.config.mts"]
+  "include": ["src/main/**/*", "src/shared/**/*", "test/**/*", "electron.vite.config.mts", "vitest.config.mts"]
 }

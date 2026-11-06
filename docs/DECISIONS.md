@@ -30,4 +30,7 @@
 - **Cost:** we must read the dummy byte on the first socket.
 
 ## ADR-6: Video packets go from main to renderer over a MessagePort
-- **Why:** transferable ArrayBuffers avoid structured-clone copies for every frame. Control messages go back over the same port.
+- **What:** each session gets its own `MessageChannelMain`. Main posts `{t:'video', ev}` messages, and the renderer posts back `{t:'control', data}` and `{t:'stop'}`.
+- **Correction:** Electron's `MessagePortMain.postMessage` can only transfer ports, not ArrayBuffers, so every packet is structured-cloned. That is negligible at 4–8 Mbps.
+- **Why a port instead of `ipcRenderer.send`:** each session gets an isolated channel with less per-message routing overhead.
+- **Preload handoff:** the port can't cross `contextBridge`, so preload forwards it with `window.postMessage(..., [port])`, the pattern Electron documents.

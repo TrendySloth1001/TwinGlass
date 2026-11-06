@@ -28,6 +28,7 @@ describe.skipIf(!serial)('scrcpy session on a real device', () => {
           resolve()
         }
       })
+      s.begin()
     })
     s.close()
 

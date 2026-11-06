@@ -111,7 +111,14 @@ adb shell CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobi
 - Prepend the config packet to the next keyframe and send it as one `key` chunk. Reconfigure the decoder when the SPS changes.
 - Call `VideoFrame.close()` on every frame. Decoding a delta frame before any keyframe throws.
 - To bound latency: if `decodeQueueSize > 0` when a keyframe arrives, call `reset()`, reconfigure, and decode from that keyframe.
-- **UNVERIFIED:** that VideoToolbox hardware decoding is actually used in Electron 45. Check with `isConfigSupported` and `chrome://gpu`.
+- **Hardware decoding: verified in the app on 2026-11-06.** `isConfigSupported({codec:'avc1.640020', hardwareAcceleration:'prefer-hardware'})` returns supported in Electron 45 on Apple Silicon.
+  - We measured 44–66 fps while scrolling over Wi-Fi at 576×1280.
+  - On a still screen it reads 0 fps: the encoder emits no frames when nothing changes.
+
+## Input: verified on the device (2026-11-06)
+- **Wheel:** `hscroll = deltaX/50` and `vscroll = -deltaY/50`, in scrcpy's SDL convention (+y = up). The scroll direction is correct on the Nothing A024.
+- **Mouse drag:** pointer id -1 with PRIMARY buttons scrolls lists like a finger swipe.
+- **Not yet tested on a device:** keyboard text and keycodes, clipboard bridging, and the toolbar buttons.
 
 ## adb
 - **Host protocol** on 127.0.0.1:5037: each request is 4 hex length characters followed by the payload. The reply is `OKAY`, or `FAIL` + hex4 length + message.

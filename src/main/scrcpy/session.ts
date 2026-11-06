@@ -68,6 +68,7 @@ export function buildServerArgs(scid: string, o: SessionOptions): string[] {
 export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
   deviceName = ''
   private closed = false
+  private videoReader: SocketReader | null = null
 
   private constructor(
     private readonly adb: Adb,
@@ -138,24 +139,42 @@ export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
       server.stderr?.on('data', emitLog)
       server.once('exit', (code) => session.close(code ? new Error(`scrcpy-server exited with ${code}`) : undefined))
 
-      const demuxer = new StreamDemuxer()
-      videoReader.pipeTo((chunk) => {
-        for (const ev of demuxer.push(chunk)) session.emit('video', ev)
-      })
+      session.videoReader = videoReader
       video.once('close', () => session.close())
-
-      if (control) {
-        const parser = new DeviceMessageParser()
-        control.on('data', (chunk: Buffer) => {
-          for (const m of parser.push(chunk)) session.emit('deviceMessage', m)
-        })
-        control.once('close', () => session.close())
-      }
       return session
     } catch (e) {
       server.kill()
       await adb.removeForward(serial, port).catch(() => {})
       throw e
+    }
+  }
+
+  /**
+   * Starts emitting 'video' and 'deviceMessage' events. Call this after attaching listeners:
+   * bytes already buffered during the handshake (codec id, session packet) flush synchronously.
+   */
+  begin(): void {
+    const reader = this.videoReader
+    if (!reader) return
+    this.videoReader = null
+    const demuxer = new StreamDemuxer()
+    reader.pipeTo((chunk) => {
+      try {
+        for (const ev of demuxer.push(chunk)) this.emit('video', ev)
+      } catch (e) {
+        this.close(e as Error)
+      }
+    })
+    if (this.control) {
+      const parser = new DeviceMessageParser()
+      this.control.on('data', (chunk: Buffer) => {
+        try {
+          for (const m of parser.push(chunk)) this.emit('deviceMessage', m)
+        } catch (e) {
+          this.close(e as Error)
+        }
+      })
+      this.control.once('close', () => this.close())
     }
   }
 

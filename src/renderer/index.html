@@ -4,25 +4,44 @@
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
     <title>Mob Mirror</title>
-    <style>
-      :root { color-scheme: light dark; font-family: -apple-system, system-ui, sans-serif; }
-      body { margin: 0; padding: 20px; }
-      header { display: flex; align-items: center; gap: 12px; }
-      h1 { font-size: 18px; margin: 0; }
-      .muted { opacity: 0.6; font-size: 12px; }
-      ul { list-style: none; padding: 0; }
-      li { padding: 10px 12px; border: 1px solid #8884; border-radius: 8px; margin: 8px 0; }
-      .tag { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #8883; margin-left: 6px; }
-      .error { color: #d33; }
-    </style>
+    <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
-    <header>
-      <h1>Mob Mirror</h1>
-      <button id="refresh">Refresh</button>
-      <span id="adb" class="muted"></span>
-    </header>
-    <ul id="devices"></ul>
+    <aside id="sidebar">
+      <header>
+        <h1>Mob Mirror</h1>
+        <button id="refresh" title="Refresh devices">↻</button>
+      </header>
+      <ul id="devices"></ul>
+      <p id="adb" class="muted"></p>
+    </aside>
+
+    <main id="mirror">
+      <nav id="toolbar" hidden>
+        <span id="device-name"></span>
+        <div class="group">
+          <button data-key="BACK" title="Back (right-click)">◁</button>
+          <button data-key="HOME" title="Home (middle-click)">○</button>
+          <button data-key="APP_SWITCH" title="Recents">▢</button>
+        </div>
+        <div class="group">
+          <button data-key="VOLUME_DOWN" title="Volume down">🔉</button>
+          <button data-key="VOLUME_UP" title="Volume up">🔊</button>
+          <button data-key="POWER" title="Power">⏻</button>
+        </div>
+        <div class="group">
+          <button data-action="notifications" title="Notification panel">⌄</button>
+          <button data-action="rotate" title="Rotate device">⟳</button>
+          <button data-action="screen-off" title="Turn the phone screen off (mirroring continues)">◐</button>
+        </div>
+        <button data-action="disconnect" class="danger" title="Disconnect">Disconnect</button>
+      </nav>
+      <div id="stage">
+        <canvas id="screen" tabindex="0"></canvas>
+        <div id="placeholder">Choose a device to start mirroring.</div>
+      </div>
+      <footer id="status" class="muted"></footer>
+    </main>
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

@@ -66,8 +66,11 @@ export class Adb {
           byId.set(id, d)
         }),
     )
-    for (const d of byId.values()) d.transports.sort((a, b) => Number(a.kind === 'wifi') - Number(b.kind === 'wifi'))
-    return { devices: [...byId.values()], other }
+    // Stable order: USB first, then IP:port before mDNS names, then alphabetical.
+    const rank = (t: AdbTransport): number => (t.kind === 'usb' ? 0 : /^[\d.[]/.test(t.serial) ? 1 : 2)
+    for (const d of byId.values()) d.transports.sort((a, b) => rank(a) - rank(b) || a.serial.localeCompare(b.serial))
+    const devices = [...byId.values()].sort((a, b) => a.model.localeCompare(b.model) || a.id.localeCompare(b.id))
+    return { devices, other }
   }
 
   push(serial: string, local: string, remote: string): Promise<string> {
