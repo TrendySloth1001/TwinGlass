@@ -71,6 +71,7 @@ The dates are when each item was asked for (2026-11-06 unless noted).
     - **Guides** accordion (USB, wireless, unlock, mouse & keyboard).
     - An auto-connect switch.
   - Plain background; the editorial serif font, illustration and doodles were removed.
+  - **Simplified cards** (user: "make the cards more simple"): one muted facts line instead of chips, plain-row quick actions, flat lists, no shadows or tinted icon boxes, plain status text.
 - (Previous:) **Home screen, editorial layout** (2026-11-06, from the user's reference image).
   - A large serif headline (Fraunces, bundled for offline use) written as a sentence with **live widgets inline**: the phone chip (name and battery; click = mirror), mouse, keyboard, ⌘L.
   - Each state gets its own sentence: phones ready, waiting for "Allow", no phone (USB cable / Wi-Fi pair chip), adb missing.

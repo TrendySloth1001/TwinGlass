@@ -1,16 +1,11 @@
 import {
   AppWindow,
-  BatteryCharging,
-  BatteryFull,
-  BatteryLow,
-  BatteryMedium,
   Cable,
   Check,
   ChevronDown,
   ClipboardList,
   Copy,
   Keyboard,
-  Lightbulb,
   Loader2,
   LockKeyhole,
   Play,
@@ -75,21 +70,7 @@ function useDetails(serial: string | undefined): Details {
   return d
 }
 
-function BatteryIcon({ level, charging }: { level: number; charging: boolean }): ReactNode {
-  if (charging) return <BatteryCharging className="text-success" />
-  if (level <= 20) return <BatteryLow className="text-destructive" />
-  if (level <= 60) return <BatteryMedium />
-  return <BatteryFull />
-}
 
-function Fact({ icon, children }: { icon: ReactNode; children: ReactNode }): ReactNode {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground [&_svg]:size-3.5">
-      {icon}
-      {children}
-    </span>
-  )
-}
 
 function SectionTitle({ children }: { children: ReactNode }): ReactNode {
   return <h2 className="mb-3 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{children}</h2>
@@ -110,26 +91,21 @@ function PhoneHero(props: {
   const usb = device.transports.find((t) => t.kind === 'usb')
   const hasWifi = device.transports.some((t) => t.kind === 'wifi')
   return (
-    <div className="flex items-center gap-6 rounded-2xl border bg-card p-6 shadow-sm">
-      <div className="shrink-0 [--mp-h:128px] [--mp-w:62px]">
+    <div className="flex items-center gap-5 rounded-xl border bg-card p-5">
+      <div className="shrink-0 [--mp-h:96px] [--mp-w:46px]">
         <MiniPhone style={props.frame === 'none' ? 'modern' : props.frame} color={props.frameColor} />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-4">
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
         <div>
-          <div className="text-xl font-semibold tracking-tight">{device.model}</div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {d?.manufacturer && <Fact icon={<Smartphone />}>{d.manufacturer}</Fact>}
-            {d?.android && <Fact icon={<Lightbulb />}>Android {d.android}</Fact>}
-            {d?.battery != null && <Fact icon={<BatteryIcon level={d.battery} charging={d.charging} />}>{d.battery}%{d.charging ? ' charging' : ''}</Fact>}
-            {device.transports.map((t) => (
-              <Fact key={t.serial} icon={t.kind === 'usb' ? <Usb /> : <Wifi />}>
-                {linkName(t)}
-              </Fact>
-            ))}
+          <div className="text-lg font-semibold">{device.model}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[13px] text-muted-foreground">
+            {[d?.manufacturer, d?.android && `Android ${d.android}`, d?.battery != null && `${d.battery}%${d.charging ? ' charging' : ''}`, device.transports.map(linkName).join(' + ')]
+              .filter(Boolean)
+              .join(' · ')}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="lg" disabled={connecting} onClick={() => onMirror(best, device.id)} className="rounded-full pr-5">
+          <Button disabled={connecting} onClick={() => onMirror(best, device.id)}>
             {connecting ? <Loader2 className="animate-spin" /> : <Play />}
             Mirror
             <span className="text-xs opacity-60">{linkName(best)}</span>
@@ -137,18 +113,16 @@ function PhoneHero(props: {
           {device.transports
             .filter((t) => t !== best)
             .map((t) => (
-              <Button key={t.serial} size="lg" variant="outline" className="rounded-full" disabled={connecting} onClick={() => onMirror(t, device.id)}>
+              <Button key={t.serial} variant="ghost" disabled={connecting} onClick={() => onMirror(t, device.id)}>
                 {t.kind === 'usb' ? <Usb /> : <Wifi />} {linkName(t)}
               </Button>
             ))}
-          <Button size="lg" variant="outline" className="rounded-full" onClick={() => void window.mobMirror.openDeviceWindow(best.serial, best.kind)}>
+          <Button variant="ghost" onClick={() => void window.mobMirror.openDeviceWindow(best.serial, best.kind)}>
             <AppWindow /> New window
           </Button>
           {usb && !hasWifi && (
             <Button
-              size="lg"
               variant="ghost"
-              className="rounded-full"
               onClick={() =>
                 void window.mobMirror.enableTcpip(usb.serial).then(
                   (r) => (r.ok ? toast.success('Connected over Wi-Fi too', { description: r.message }) : toast.error(r.message)),
@@ -165,17 +139,17 @@ function PhoneHero(props: {
   )
 }
 
-/** A square-ish action tile: icon, title, shortcut. */
+/** A quick action: icon, label, shortcut. Plain row, highlighted on hover. */
 function Tile({ icon, title, keys, onClick, disabled }: { icon: ReactNode; title: string; keys?: string; onClick: () => void; disabled?: boolean }): ReactNode {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="group flex items-center gap-3 rounded-xl border bg-card p-3 text-left shadow-sm transition-all hover:-translate-y-px hover:shadow-md disabled:pointer-events-none disabled:opacity-50"
+      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground"
     >
-      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand/10 text-brand [&_svg]:size-4.5">{icon}</span>
-      <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{title}</span>
+      {icon}
+      <span className="min-w-0 flex-1 truncate text-[13px]">{title}</span>
       {keys && <Kbd>{keys}</Kbd>}
     </button>
   )
@@ -260,7 +234,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
     <div className="relative z-10 w-full max-w-[1040px] px-10 py-4">
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <span className="grid size-11 place-items-center rounded-xl bg-gradient-to-br from-brand to-violet-600 text-white shadow-md">
+          <span className="grid size-10 place-items-center rounded-xl bg-foreground text-background">
             <Smartphone className="size-5" />
           </span>
           <div>
@@ -268,7 +242,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
             <div className="text-[13px] text-muted-foreground">Your Android phone, right on your Mac.</div>
           </div>
         </div>
-        <span className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-xs shadow-sm">
+        <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
           <span className={cn('size-2 rounded-full', status.dot)} />
           {status.text}
         </span>
@@ -296,7 +270,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
                 </div>
               ))}
               {adbMissing && (
-                <div className="rounded-2xl border bg-card p-5 shadow-sm">
+                <div className="rounded-xl border bg-card p-5">
                   <div className="mb-1 font-medium">Install Android’s adb tool once</div>
                   <div className="mb-3 text-xs text-muted-foreground">Mob Mirror talks to your phone through it. Run this in Terminal:</div>
                   <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 font-mono text-sm">
@@ -321,8 +295,8 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
                 </div>
               )}
               {!devices.length && !pending.length && !adbMissing && (
-                <div className="flex items-center gap-6 rounded-2xl border border-dashed bg-card p-6">
-                  <div className="shrink-0 opacity-60 [--mp-h:112px] [--mp-w:54px]">
+                <div className="flex items-center gap-5 rounded-xl border border-dashed p-5">
+                  <div className="shrink-0 opacity-60 [--mp-h:96px] [--mp-w:46px]">
                     <MiniPhone style={p.frame === 'none' ? 'modern' : p.frame} color={p.frameColor} />
                   </div>
                   <div className="flex-1">
@@ -331,10 +305,10 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
                       Plug it in with a USB cable (fastest), or pair it over Wi-Fi. It shows up here by itself.
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <Button size="lg" className="rounded-full" onClick={() => setOpen('start')}>
+                      <Button onClick={() => setOpen('start')}>
                         <Cable /> How to connect
                       </Button>
-                      <Button size="lg" variant="outline" className="rounded-full" onClick={() => setPairing(true)}>
+                      <Button variant="ghost" onClick={() => setPairing(true)}>
                         <QrCode /> Pair over Wi-Fi
                       </Button>
                     </div>
@@ -346,7 +320,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
 
           <section>
             <SectionTitle>Quick actions</SectionTitle>
-            <div className="grid gap-2.5 sm:grid-cols-2">
+            <div className="grid gap-x-2 sm:grid-cols-2">
               <Tile icon={<Search />} title="Open an app on the phone" keys="⌘K" onClick={p.onOpenPalette} disabled={!devices.length} />
               <Tile icon={<ClipboardList />} title="Clipboard history" keys="⇧⌘V" onClick={p.onOpenClipboard} />
               <Tile icon={<QrCode />} title="Pair a phone over Wi-Fi" onClick={() => setPairing(true)} />
@@ -360,9 +334,9 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
           <section>
             <SectionTitle>Recent phones</SectionTitle>
             {p.recentDevices.length === 0 ? (
-              <p className="rounded-xl border border-dashed p-4 text-[13px] text-muted-foreground">Phones you mirror appear here for one-click reconnects.</p>
+              <p className="text-[13px] text-muted-foreground">Phones you mirror appear here for one-click reconnects.</p>
             ) : (
-              <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-sm">
+              <ul className="divide-y overflow-hidden rounded-xl border">
                 {p.recentDevices.slice(0, 5).map((r) => {
                   const dev = live.get(r.id)
                   const t = dev?.transports[0]
@@ -388,7 +362,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
 
           <section>
             <SectionTitle>Guides</SectionTitle>
-            <ul className="overflow-hidden rounded-xl border bg-card shadow-sm">
+            <ul className="overflow-hidden rounded-xl border">
               {GUIDES.map((g) => {
                 const isOpen = open === g.id
                 return (
@@ -397,7 +371,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
                       type="button"
                       onClick={() => setOpen(isOpen ? null : g.id)}
                       aria-expanded={isOpen}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent [&>svg:first-child]:size-4 [&>svg:first-child]:text-brand"
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent [&>svg:first-child]:size-4 [&>svg:first-child]:text-muted-foreground"
                     >
                       {g.icon}
                       <span className="flex-1 text-[13px] font-medium">{g.title}</span>
@@ -408,7 +382,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
                       <ol className="flex flex-col gap-2 overflow-hidden px-4 text-[12.5px] leading-relaxed text-muted-foreground">
                         {g.steps.map((s, i) => (
                           <li key={i} className={cn('flex gap-2.5', i === g.steps.length - 1 && 'pb-4')}>
-                            <span className="mt-0.5 grid size-4.5 shrink-0 place-items-center rounded-full bg-brand/10 text-[10px] font-semibold text-brand">{i + 1}</span>
+                            <span className="w-3 shrink-0 text-right text-[11px] font-medium text-foreground">{i + 1}.</span>
                             <span>{s}</span>
                           </li>
                         ))}
@@ -427,7 +401,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
             </ul>
           </section>
 
-          <div className="flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between gap-3 px-1">
             <Label htmlFor="home-autoconnect" className="text-[13px] font-normal">
               Mirror automatically when a phone connects
             </Label>
