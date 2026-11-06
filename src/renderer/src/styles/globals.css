@@ -27,7 +27,7 @@
   --success: oklch(0.6 0.15 150);
   --warning: oklch(0.7 0.16 65);
   --brand: oklch(0.62 0.19 255);
-  --stage: oklch(0.18 0 0);
+  --stage: oklch(0.94 0 0);
   --sidebar: oklch(0.97 0 0);
   --sidebar-border: oklch(0.9 0 0);
 }

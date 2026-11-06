@@ -51,6 +51,9 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - Auto-connect: the last phone, or the only phone the first time, is mirrored when it appears (edge-triggered, so Disconnect stays disconnected).
   - The toolbar hides phone controls and Disconnect when idle.
 - ✅ **Compact view: floating control rail** (2026-11-06). The phone (title strip and mirror) is one rounded dark block. The rail is a separate pill, with a **see-through strip** between them. The window is transparent, and the strip doubles as a drag handle. The full view paints its own opaque, rounded background.
+- ✅ **Light theme is consistent** (2026-11-06). The stage follows the theme (light grey or near-black), and the empty status strip is hidden when idle. Only the compact phone block is always dark.
+- ✅ **The rail shows more controls when there's room** (window height ≥ 680 px): notifications panel, quick settings, screen off, shortcuts. They also stay in the ⋯ menu.
+- ✅ **Development without restarts:** `npm run dev` watches everything. React Fast Refresh updates the renderer in place, and edits to main or preload relaunch Electron automatically. Use `npm run dev:debug` for CDP on port 9333.
 - **No feature may require restarting the app.**
   - Settings apply live and are queued.
   - adb is re-detected if it was missing.

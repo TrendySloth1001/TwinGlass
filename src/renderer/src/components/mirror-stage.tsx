@@ -79,8 +79,8 @@ export function MirrorStage({
 
   return (
     <div
-      // The stage is always dark, so scope the dark theme tokens to it (Ripple uses `foreground`).
-      className="dark relative min-h-0 flex-1 overflow-hidden bg-stage"
+      // Follows the app theme (light grey / near-black); the compact phone block forces dark.
+      className="relative min-h-0 flex-1 overflow-hidden bg-stage"
       onDragOver={onDragOver}
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
@@ -103,7 +103,7 @@ export function MirrorStage({
 
       {phase === 'connecting' && (
         <div className="absolute inset-0 grid place-items-center">
-          <div className="flex items-center gap-2 text-sm text-neutral-300">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" /> Starting mirror…
           </div>
         </div>
@@ -112,13 +112,13 @@ export function MirrorStage({
       {phase === 'reconnecting' && (
         <div className="absolute inset-0 grid place-items-center">
           <div className="flex max-w-80 flex-col items-center gap-2 text-center">
-            <div className="flex items-center gap-2 text-sm font-medium text-white">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
               <Loader2 className="size-4 animate-spin" /> Reconnecting…
               {reconnect && reconnect.attempt > 0 && (
-                <span className="font-normal text-neutral-400">attempt {reconnect.attempt}</span>
+                <span className="font-normal text-muted-foreground">attempt {reconnect.attempt}</span>
               )}
             </div>
-            <div className="text-xs text-neutral-400">
+            <div className="text-xs text-muted-foreground">
               {reconnect?.reason}. Waiting for the phone to come back on USB or Wi-Fi. Use Disconnect to stop.
             </div>
           </div>
@@ -127,10 +127,10 @@ export function MirrorStage({
 
       {dragging && (
         <div className="pointer-events-none absolute inset-3 grid place-items-center rounded-xl border-2 border-dashed border-brand bg-brand/10 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-2 text-white">
+          <div className="flex flex-col items-center gap-2 text-foreground">
             <FileUp className="size-8" />
             <div className="font-medium">Drop to send to the phone</div>
-            <div className="text-xs text-neutral-300">APKs are installed. Other files go to Downloads.</div>
+            <div className="text-xs text-muted-foreground">APKs are installed. Other files go to Downloads.</div>
           </div>
         </div>
       )}

@@ -21,7 +21,7 @@ const INSTALL = 'brew install android-platform-tools'
 /** Pulsing dot: the app is watching for the phone by itself (no Refresh needed). */
 function Waiting({ children }: { children: ReactNode }): ReactNode {
   return (
-    <div className="flex items-center gap-2 text-[11px] text-neutral-500">
+    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
       <span className="relative flex size-1.5">
         <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand opacity-70" />
         <span className="relative inline-flex size-1.5 rounded-full bg-brand" />
@@ -35,7 +35,7 @@ function UsbHelp(): ReactNode {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs text-neutral-300">
+        <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs text-muted-foreground">
           <CircleHelp /> Turn on USB debugging
         </Button>
       </PopoverTrigger>
@@ -92,16 +92,16 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
         : 'Plug in your phone with a USB cable, or pair it over Wi-Fi.'
 
   return (
-    <div className="relative z-10 flex flex-col items-center gap-3 px-4 text-center text-neutral-300">
-      <div className="grid size-14 place-items-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur">
+    <div className="relative z-10 flex flex-col items-center gap-3 px-4 text-center text-muted-foreground">
+      <div className="grid size-14 place-items-center rounded-2xl border border-border bg-background/60 backdrop-blur">
         {p.connecting ? <Loader2 className="size-7 animate-spin" /> : <Smartphone className="size-7" />}
       </div>
-      <div className="text-base font-medium text-white">{title}</div>
-      <div className="max-w-80 text-xs text-balance text-neutral-400">{hint}</div>
+      <div className="text-base font-medium text-foreground">{title}</div>
+      <div className="max-w-80 text-xs text-balance text-muted-foreground">{hint}</div>
 
       {adbMissing && (
         <div className="flex flex-col items-center gap-2">
-          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 py-0.5 pr-0.5 pl-3 font-mono text-[11px] text-neutral-200">
+          <div className="flex items-center gap-1 rounded-full border border-border bg-background/60 py-0.5 pr-0.5 pl-3 font-mono text-[11px] text-foreground">
             {INSTALL}
             <Button
               size="icon-xs"
@@ -118,7 +118,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
               {copied ? <Check /> : <Copy />}
             </Button>
           </div>
-          <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs text-neutral-300" onClick={p.refresh}>
+          <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs text-muted-foreground" onClick={p.refresh}>
             <RefreshCw /> Check again
           </Button>
         </div>
@@ -155,7 +155,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
         <>
           <div className="mt-1 flex flex-wrap items-center justify-center gap-1">
             <UsbHelp />
-            <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs text-neutral-300" onClick={() => setPairing(true)}>
+            <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs text-muted-foreground" onClick={() => setPairing(true)}>
               <QrCode /> Pair over Wi-Fi
             </Button>
           </div>

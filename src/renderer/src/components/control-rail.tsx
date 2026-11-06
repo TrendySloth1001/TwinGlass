@@ -21,7 +21,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { shortcutFor, type DeviceAction } from '@shared/shortcuts'
 import { NotificationCenter } from '@/components/notification-center'
 import { Button } from '@/components/ui/button'
@@ -94,8 +94,20 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView }: Contro
   const run = (a: DeviceAction) => () => onAction(a)
   const sc = (a: DeviceAction): string => shortcutFor(a)
 
+  // Tall windows have room: show the secondary controls inline too (they stay in the ⋯ menu).
+  const navRef = useRef<HTMLElement>(null)
+  const [roomy, setRoomy] = useState(false)
+  useEffect(() => {
+    const el = navRef.current
+    if (!el) return
+    const ro = new ResizeObserver(([e]) => setRoomy((e?.contentRect.height ?? 0) >= 680))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   return (
     <nav
+      ref={navRef}
       aria-label="Phone controls"
       className="flex w-12 shrink-0 flex-col items-center rounded-2xl border border-sidebar-border bg-sidebar/90 py-1.5 [-webkit-app-region:no-drag]"
     >
@@ -146,6 +158,27 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView }: Contro
           <RailButton label={state.muted ? 'Unmute' : 'Mute'} onClick={mirror.toggleMute}>
             {state.muted ? <VolumeX /> : <Volume2 />}
           </RailButton>
+        )}
+        {roomy && (
+          <>
+            <Sep />
+            <RailButton label="Notifications panel" shortcut={sc('notifications')} onClick={run('notifications')}>
+              <BellDot />
+            </RailButton>
+            <RailButton label="Quick settings" shortcut={sc('quickSettings')} onClick={run('quickSettings')}>
+              <Settings2 />
+            </RailButton>
+            <RailButton
+              label={state.screenOff ? 'Turn phone screen on' : 'Turn phone screen off (keep mirroring)'}
+              shortcut={sc('screenOff')}
+              onClick={run('screenOff')}
+            >
+              {state.screenOff ? <Monitor /> : <MonitorOff />}
+            </RailButton>
+            <RailButton label="Controls & shortcuts" onClick={onShowHelp}>
+              <Keyboard />
+            </RailButton>
+          </>
         )}
       </div>
 

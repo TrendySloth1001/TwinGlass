@@ -25,7 +25,7 @@ const AUDIO_LABEL: Record<MirrorState['audio'], string> = {
 
 export function StatusBar({ state }: { state: MirrorState }): ReactNode {
   if (state.phase !== 'live') {
-    return <footer className="h-7 shrink-0 border-t" />
+    return null // nothing to report: no empty strip under the home screen
   }
   const s = state.stats
   return (

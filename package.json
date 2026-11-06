@@ -5,7 +5,8 @@
   "description": "Mirror and control Android phones from the desktop over USB or Wi-Fi",
   "main": "./out/main/index.js",
   "scripts": {
-    "dev": "env -u ELECTRON_RUN_AS_NODE electron-vite dev",
+    "dev": "env -u ELECTRON_RUN_AS_NODE electron-vite dev --watch",
+    "dev:debug": "env -u ELECTRON_RUN_AS_NODE electron-vite dev --watch --remoteDebuggingPort 9333",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.preload.json && tsc --noEmit -p tsconfig.web.json",
