@@ -478,6 +478,7 @@ export function useMirror(
         case 'disconnect':
           return a.disconnect()
         case 'unlock':
+        case 'unlockManual':
           return // needs UI (secret entry): handled by the app's unlock dialog
       }
     },

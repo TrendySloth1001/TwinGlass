@@ -6,6 +6,7 @@ import {
   Ellipsis,
   House,
   Keyboard,
+  KeyRound,
   LockKeyhole,
   LockKeyholeOpen,
   Monitor,
@@ -216,6 +217,10 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSe
                 <DropdownMenuSeparator />
               </>
             )}
+            <DropdownMenuItem disabled={!live} onSelect={run('unlockManual')}>
+              <KeyRound /> Type PIN to unlock…
+              <DropdownMenuShortcut>{sc('unlockManual')}</DropdownMenuShortcut>
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={onOpenSettings}>
               <Settings /> Settings…
               <DropdownMenuShortcut>⌘,</DropdownMenuShortcut>

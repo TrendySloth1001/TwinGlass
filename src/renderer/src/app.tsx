@@ -87,7 +87,13 @@ export function App(): ReactNode {
   /** One dispatcher for the Device menu, toolbar and banner: some actions need app-level UI. */
   const dispatch = useCallback(
     (action: DeviceAction) => {
-      if (action === 'unlock') {
+      if (action === 'unlockManual') {
+        // Always possible: type a PIN by hand (e.g. an app lock with its own PIN), saved one or not.
+        if (live) {
+          setUnlockError(null)
+          setUnlockOpen(true)
+        }
+      } else if (action === 'unlock') {
         if (live) void quickUnlock()
       } else runAction(action)
     },
@@ -258,6 +264,7 @@ export function App(): ReactNode {
           locked={mirror.state.locked === true}
           appPrompt={mirror.state.appPrompt}
           onUnlock={() => dispatch('unlock')}
+          onTypePin={() => dispatch('unlockManual')}
           reconnect={mirror.state.reconnect}
           idleContent={
             <ConnectPanel
@@ -298,7 +305,7 @@ export function App(): ReactNode {
         narrow={narrow}
         onReset={() => onSettingsChange({ ...DEFAULT_SETTINGS, lastDevice: settings.lastDevice })}
       />
-      <UnlockDialog open={unlockOpen} onOpenChange={setUnlockOpen} initialError={unlockError} />
+      <UnlockDialog open={unlockOpen} onOpenChange={setUnlockOpen} initialError={unlockError} requireTouchId={settings.requireTouchId} />
     </div>
   )
 }

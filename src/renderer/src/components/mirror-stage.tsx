@@ -19,6 +19,8 @@ interface MirrorStageProps {
   /** Package of an app-lock PIN prompt in front of the unlocked phone, if recognised. */
   appPrompt: string | null
   onUnlock: () => void
+  /** Open the unlock dialog to type a PIN by hand. */
+  onTypePin: () => void
   reconnect: { attempt: number; reason: string } | null
   /** Shown over the stage while nothing is mirrored (the connect screen). */
   idleContent: ReactNode
@@ -44,6 +46,7 @@ export function MirrorStage({
   locked,
   appPrompt,
   onUnlock,
+  onTypePin,
   reconnect,
   idleContent,
 }: MirrorStageProps): ReactNode {
@@ -149,6 +152,9 @@ export function MirrorStage({
           <span className="min-w-0 truncate">{locked ? 'Phone locked' : `${appPrompt} wants your PIN`}</span>
           <Button size="xs" variant="secondary" className="shrink-0 rounded-full" onClick={onUnlock}>
             Unlock <Kbd className="ml-0.5 hidden sm:inline-flex">⌘L</Kbd>
+          </Button>
+          <Button size="xs" variant="ghost" className="shrink-0 rounded-full text-white hover:bg-white/10 hover:text-white" onClick={onTypePin}>
+            Type PIN…
           </Button>
         </div>
       )}

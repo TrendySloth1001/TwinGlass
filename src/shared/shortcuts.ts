@@ -17,6 +17,7 @@ export type DeviceAction =
   | 'record'
   | 'disconnect'
   | 'unlock'
+  | 'unlockManual'
 
 export interface ShortcutDef {
   action: DeviceAction
@@ -39,6 +40,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   { action: 'rotate', label: 'Rotate', accelerator: 'CommandOrControl+R', group: 'hardware' },
   { action: 'screenOff', label: 'Phone Screen Off/On', accelerator: 'CommandOrControl+O', group: 'hardware' },
   { action: 'unlock', label: 'Unlock Phone…', accelerator: 'CommandOrControl+L', group: 'hardware' },
+  { action: 'unlockManual', label: 'Type PIN to Unlock…', accelerator: 'CommandOrControl+Alt+L', group: 'hardware' },
   { action: 'screenshot', label: 'Screenshot', accelerator: 'CommandOrControl+Shift+S', group: 'capture' },
   { action: 'record', label: 'Start/Stop Recording', accelerator: 'CommandOrControl+Shift+R', group: 'capture' },
   { action: 'disconnect', label: 'Disconnect', accelerator: 'CommandOrControl+D', group: 'session' },

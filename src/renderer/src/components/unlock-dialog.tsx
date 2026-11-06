@@ -22,11 +22,14 @@ export function UnlockDialog({
   open,
   onOpenChange,
   initialError,
+  requireTouchId,
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
-  /** Why a direct Touch ID unlock failed (shown when the dialog opens as the fallback). */
+  /** Why a direct unlock failed (shown when the dialog opens as the fallback). */
   initialError?: string | null
+  /** Settings → Unlock → Ask for Touch ID first. */
+  requireTouchId: boolean
 }): ReactNode {
   const [status, setStatus] = useState<UnlockStatusInfo | null>(null)
   const [secret, setSecret] = useState('')
@@ -71,8 +74,9 @@ export function UnlockDialog({
   const kind = status ? LABEL[status.credential] : 'PIN or password'
   const isPin = status?.credential === 'PIN'
   const busy = result.kind === 'busy'
-  /** Saved secret usable now (main releases it only after Touch ID succeeds). */
-  const useSaved = !!status?.saved && status.touchId
+  /** Saved secret usable now (with Touch ID only when the user asked for it). */
+  const canUseSaved = !!status?.saved && (!requireTouchId || status.touchId)
+  const touch = requireTouchId && canUseSaved
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -118,54 +122,64 @@ export function UnlockDialog({
                   </AlertDescription>
                 </Alert>
               )}
-              {status.saved && (
+              {canUseSaved && (
                 <div className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
-                  <span className="flex items-center gap-2">
-                    {status.touchId ? (
-                      <Fingerprint className="size-4 text-brand" />
-                    ) : (
-                      <KeyRound className="size-4 text-muted-foreground" />
-                    )}
-                    Saved {kind} · {status.touchId ? 'Touch ID protected' : 'Touch ID unavailable now'}
+                  <span className="flex min-w-0 items-center gap-2">
+                    {touch ? <Fingerprint className="size-4 shrink-0 text-brand" /> : <KeyRound className="size-4 shrink-0 text-muted-foreground" />}
+                    <span className="truncate">Saved {kind}{touch ? ' · Touch ID' : ''}</span>
                   </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => void window.mobMirror.forgetUnlockSecret().then(() => window.mobMirror.unlockStatus().then(setStatus))}
-                  >
-                    Forget
-                  </Button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => void window.mobMirror.forgetUnlockSecret().then(() => window.mobMirror.unlockStatus().then(setStatus))}
+                    >
+                      Forget
+                    </Button>
+                    <Button type="button" size="sm" disabled={busy} onClick={() => void run({ target })}>
+                      {busy && !secret ? <Loader2 className="animate-spin" /> : touch && <Fingerprint />}
+                      {screenMode ? 'Type it' : 'Unlock'}
+                    </Button>
+                  </div>
                 </div>
               )}
-              {!useSaved &&
-                status.credential !== 'NONE' && (
-                  <>
-                    <div className="grid gap-1.5">
-                      <Label htmlFor="unlock-secret">{isPin ? 'PIN' : 'PIN or password'}</Label>
-                      <Input
-                        id="unlock-secret"
-                        type="password"
-                        autoFocus
-                        autoComplete="off"
-                        inputMode={isPin ? 'numeric' : 'text'}
-                        value={secret}
-                        onChange={(e) => setSecret(e.target.value)}
-                        disabled={busy}
-                      />
-                    </div>
-                    {status.canSave && !status.saved && (
-                      <div className="flex items-start gap-2">
-                        <Checkbox id="unlock-remember" checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
-                        <Label htmlFor="unlock-remember" className="text-xs leading-snug font-normal text-muted-foreground">
-                          Remember on this Mac (encrypted with the macOS Keychain). Next time, unlock with your
-                          fingerprint: the saved {kind} is only released after Touch ID.
-                        </Label>
-                      </div>
+              {status.credential !== 'NONE' && (
+                <>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="unlock-secret">
+                      {canUseSaved ? `Or type a ${isPin ? 'PIN' : 'PIN or password'}` : isPin ? 'PIN' : 'PIN or password'}
+                    </Label>
+                    <Input
+                      id="unlock-secret"
+                      type="password"
+                      autoFocus
+                      autoComplete="off"
+                      inputMode={isPin ? 'numeric' : 'text'}
+                      placeholder={screenMode ? 'The PIN this app asks for' : undefined}
+                      value={secret}
+                      onChange={(e) => setSecret(e.target.value)}
+                      disabled={busy}
+                    />
+                    {screenMode && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Some app locks use their own PIN instead of the phone’s: type that one here.
+                      </p>
                     )}
-                  </>
-                )}
+                  </div>
+                  {/* Only the phone's own lock PIN can be saved: an app-lock PIN saved as the phone PIN
+                      would later waste the phone's limited attempts. */}
+                  {status.canSave && !status.saved && !screenMode && (
+                    <div className="flex items-start gap-2">
+                      <Checkbox id="unlock-remember" checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
+                      <Label htmlFor="unlock-remember" className="text-xs leading-snug font-normal text-muted-foreground">
+                        Remember on this Mac (encrypted in the macOS Keychain). Next time ⌘L types it for you.
+                      </Label>
+                    </div>
+                  )}
+                </>
+              )}
 
               {result.kind === 'ok' && (
                 <Alert>
@@ -182,20 +196,13 @@ export function UnlockDialog({
 
               <DialogFooter className="items-center gap-2 sm:justify-between">
                 <p className="text-[11px] text-muted-foreground">Wrong attempts count on the phone. No auto-retry.</p>
-                {useSaved || status.credential === 'NONE' ? (
-                  <Button type="button" disabled={busy} autoFocus={!screenMode} onClick={() => void run({ target })}>
-                    {busy ? <Loader2 className="animate-spin" /> : useSaved && <Fingerprint />}
-                    {busy && useSaved
-                      ? 'Waiting for Touch ID…'
-                      : screenMode
-                        ? `Type ${kind}${useSaved ? ' with Touch ID' : ''}`
-                        : useSaved
-                          ? 'Unlock with Touch ID'
-                          : 'Unlock'}
+                {status.credential === 'NONE' ? (
+                  <Button type="button" disabled={busy} onClick={() => void run({ target })}>
+                    {busy && <Loader2 className="animate-spin" />} Unlock
                   </Button>
                 ) : (
-                  <Button type="submit" disabled={busy || !secret}>
-                    {busy && <Loader2 className="animate-spin" />} {screenMode ? `Type ${kind}` : 'Unlock'}
+                  <Button type="submit" variant={canUseSaved ? 'outline' : 'default'} disabled={busy || !secret}>
+                    {busy && secret && <Loader2 className="animate-spin" />} {screenMode ? `Type this ${kind}` : 'Unlock with this PIN'}
                   </Button>
                 )}
               </DialogFooter>
