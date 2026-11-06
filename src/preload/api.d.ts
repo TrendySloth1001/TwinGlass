@@ -34,6 +34,14 @@ export interface AdbStatusInfo {
   mdnsBackend?: string
 }
 
+export interface AgentStatusInfo {
+  enabled: boolean
+  running: boolean
+  port: number
+  url: string
+  error?: string
+}
+
 export interface UnlockStatusInfo {
   credential: 'NONE' | 'PIN' | 'PASSWORD' | 'PATTERN' | 'UNKNOWN'
   locked: boolean | null
@@ -75,6 +83,17 @@ export interface MobMirrorApi {
   /** Wakes the phone, shows the bouncer and types the secret (omit `secret` to use the saved one). */
   unlock(req: { secret?: string; remember?: boolean }): Promise<OpResult>
   forgetUnlockSecret(): Promise<void>
+  /** Local MCP server for coding agents (off by default). */
+  agentStatus(): Promise<AgentStatusInfo>
+  setAgentEnabled(enabled: boolean): Promise<AgentStatusInfo>
+  /** Copies the `claude mcp add …` command (with the token) to the clipboard; the token never reaches the page. */
+  copyAgentSetup(): Promise<void>
+  /** New token (old agent configs stop working); copies the new setup command. */
+  regenerateAgentToken(): Promise<AgentStatusInfo>
+  onAgentActivity(cb: (a: { summary: string; at: number }) => void): () => void
+  onAgentStatus(cb: (s: AgentStatusInfo) => void): () => void
+  /** Provides the current mirror frame (PNG) for fast agent screenshots; null when not mirroring. */
+  setFrameCapture(fn: (() => Promise<Uint8Array | null>) | null): void
   /** APKs are installed; other files are copied to /sdcard/Download on the mirrored device. */
   dropFiles(files: File[]): Promise<FileResult[]>
   /** Returns the saved path (~/Pictures/Mob Mirror). */

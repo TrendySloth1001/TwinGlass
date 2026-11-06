@@ -99,6 +99,7 @@ export function useMirror(
       const e = engine.current
       if (!e) return
       engine.current = null
+      window.mobMirror.setFrameCapture(null)
       clearInterval(e.timer)
       if (e.recorder.active) void e.recorder.stop()
       e.input.dispose()
@@ -167,6 +168,13 @@ export function useMirror(
         }, 1000)
 
         engine.current = { port, video, input, audio, recorder, overlay, timer }
+        // Fast agent screenshots: hand main the current decoded frame instead of `adb screencap`.
+        window.mobMirror.setFrameCapture(
+          () =>
+            new Promise((resolve) =>
+              canvas.toBlob((b) => (b ? void b.arrayBuffer().then((a) => resolve(new Uint8Array(a))) : resolve(null)), 'image/png'),
+            ),
+        )
         setState({ ...IDLE, phase: 'live', transport: t, deviceName, audio: audio ? 'waiting' : 'off' })
         canvas.focus()
       } catch (e) {

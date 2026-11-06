@@ -7,6 +7,15 @@ ipcRenderer.on('session:port', (e, info: { deviceName: string }) => {
   window.postMessage({ type: 'mob-mirror:session-port', deviceName: info.deviceName }, '*', e.ports)
 })
 
+// Agent screenshots: main asks for the current mirror frame; the page provides it as PNG bytes.
+let captureFn: (() => Promise<Uint8Array | null>) | null = null
+ipcRenderer.on('agent:capture', (_e, id: number) => {
+  const fn = captureFn
+  void (fn ? fn() : Promise.resolve(null))
+    .catch(() => null)
+    .then((png) => ipcRenderer.send('agent:capture-result', id, png))
+})
+
 /** Subscribes to a main -> renderer channel; returns an unsubscribe function. */
 function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
   const listener = (_e: IpcRendererEvent, payload: T): void => cb(payload)
@@ -34,6 +43,15 @@ const api: MobMirrorApi = {
   unlockStatus: () => ipcRenderer.invoke('unlock:status'),
   unlock: (req) => ipcRenderer.invoke('unlock:run', req),
   forgetUnlockSecret: () => ipcRenderer.invoke('unlock:forget'),
+  agentStatus: () => ipcRenderer.invoke('agent:status'),
+  setAgentEnabled: (enabled) => ipcRenderer.invoke('agent:set-enabled', enabled),
+  copyAgentSetup: () => ipcRenderer.invoke('agent:copy-setup'),
+  regenerateAgentToken: () => ipcRenderer.invoke('agent:regenerate-token'),
+  onAgentActivity: (cb) => subscribe('agent:activity', cb),
+  onAgentStatus: (cb) => subscribe('agent:status', cb),
+  setFrameCapture: (fn) => {
+    captureFn = fn
+  },
   // Only real dropped File objects are accepted: the page can't hand main an arbitrary path string.
   // (Sandboxed renderers have no File.path; webUtils.getPathForFile is the supported replacement.)
   dropFiles: (files) =>

@@ -185,6 +185,27 @@ adb shell CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobi
   - **Limit:** code running as the same macOS user could still decrypt the safeStorage file. A hardware-bound Keychain item (`kSecAccessControlUserPresence`) would need a native module.
   - Touch ID is checked *after* "already unlocked", so an unlocked phone never prompts. If Touch ID is unavailable (lid closed), there's no silent fallback: the user types the PIN.
 
+## Agent control over MCP (verified 2026-11-06)
+- **SDK:** `@modelcontextprotocol/server` 2.4.0 + `@modelcontextprotocol/node` 2.1.2 (the v2 split SDK, implementing the 2026-07-28 spec) and zod 4.6.7.
+  - API: `createMcpHandler(factory)` + `toNodeHandler`, `registerTool(name, {description, inputSchema: z.object(...)}, cb)`.
+  - Clients on the 2025-06-18 protocol are also served (verified with curl).
+- **Bundling:** the SDK is bundled into main (devDependencies). ajv is vendored inside the SDK build. The `require("ajv/…")` strings in the bundle are codegen templates and are never executed.
+- **Security, verified with curl:**
+  - No token → 401.
+  - A foreign `Host` → 403 (localhostHostValidation).
+  - 127.0.0.1 only.
+  - `agent.json` has mode 600.
+- **Tools:** 14 in total (see docs/AGENTS.md).
+- **Measured on the Nothing A024:**
+  - `device_info` 315 ms
+  - `screenshot` via adb screencap **1,961 ms**, via the live mirror frame **238 ms**
+  - JPEG at 576×1280 is ~80–90 KB
+  - Out-of-range coordinates and invalid package names are rejected
+- **`uiautomator dump`** fails with "could not get idle state" after ~11 s while the screen animates (seen on the home screen). The tool reports this and suggests a screenshot instead.
+- **Foreground app:** `dumpsys activity activities | grep topResumedActivity` works. `dumpsys window` `mCurrentFocus` returned null.
+- **`wm size`** reports the physical portrait size (1260×2800) regardless of rotation. Orientation comes from the screenshot or the live video size.
+- **Claude Code** warns above 10k tokens of tool output and caps it at 25k (`MAX_MCP_OUTPUT_TOKENS`), which is why screenshots are capped at a 1280 px long edge.
+
 ## Build and packaging (verified 2026-11-06)
 - **electron-vite 6 does not minify the renderer by default.** With `renderer.build.minify: true`, the JS goes from 1,538 KB to 606 KB. Dropping `motion` brings it to 471 KB.
 - **electron-builder ships everything in `dependencies` inside `app.asar`.** With the renderer libraries listed there, the asar was 56 MB, including 37 MB of lucide-react sources. Moved to devDependencies, it's 2.0 MB, with only `qrcode` and its dependency tree.

@@ -102,6 +102,9 @@ export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
     return this.opts.serial
   }
 
+  /** Latest video size from session packets: touch coordinates must be in this space. */
+  videoSize: { width: number; height: number } | null = null
+
   static async start(adb: Adb, opts: SessionOptions): Promise<ScrcpySession> {
     const { serial } = opts
     const scid = randomInt(0, 0x7fffffff).toString(16).padStart(8, '0')
@@ -192,7 +195,10 @@ export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
     const demuxer = new StreamDemuxer()
     reader.pipeTo((chunk) => {
       try {
-        for (const ev of demuxer.push(chunk)) this.emit('video', ev)
+        for (const ev of demuxer.push(chunk)) {
+          if (ev.type === 'session') this.videoSize = { width: ev.width, height: ev.height }
+          this.emit('video', ev)
+        }
       } catch (e) {
         this.close(e as Error)
       }

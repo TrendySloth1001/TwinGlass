@@ -6,6 +6,7 @@ import { closeAllRecordings, registerMediaIpc } from './media-ipc'
 import { installMenu } from './menu'
 import { getSession, registerSessionIpc, stopAllSessions } from './session-ipc'
 import { registerUnlockIpc } from './unlock-ipc'
+import { registerAgentIpc, stopAgentServer } from './agent-ipc'
 
 export function serverPath(): string {
   return app.isPackaged
@@ -50,6 +51,7 @@ ipcMain.handle('window:open-device', (_e, serial: string, kind: string) => {
 registerDevicesIpc(() => adb)
 registerSessionIpc(() => adb, serverPath)
 registerUnlockIpc(() => adb, getSession)
+void app.whenReady().then(() => registerAgentIpc(() => adb)) // needs app paths (userData)
 registerMediaIpc()
 
 void app.whenReady().then(() => {
@@ -66,6 +68,7 @@ app.on('before-quit', () => {
   stopAllSessions()
   stopDeviceTracking()
   closeAllRecordings()
+  void stopAgentServer()
 })
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react'
 import type { AudioMode } from '@shared/ipc'
 import type { AdbStatusInfo, DeviceListInfo, TransportInfo } from '../../../preload/api'
 import { AddDeviceDialog } from '@/components/add-device-dialog'
+import { AgentAccess } from '@/components/agent-access'
 import { DeviceCard } from '@/components/device-card'
 import { IconButton } from '@/components/icon-button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -111,6 +112,8 @@ export function Sidebar(p: SidebarProps): ReactNode {
             </SelectContent>
           </Select>
         </div>
+        <Separator />
+        <AgentAccess />
         {versionMismatch && (
           <Alert className="border-warning/40 text-xs">
             <AlertTriangle className="text-warning" />

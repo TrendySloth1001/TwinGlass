@@ -260,6 +260,19 @@ async function unlockOnce(adb: Adb, session: ScrcpySession, req: UnlockRequest, 
   }
 }
 
+/**
+ * Agent-initiated unlock: only with a PIN the user saved in the app, and only after the user
+ * approves with Touch ID on the Mac (the agent never sees or supplies the PIN).
+ */
+export async function unlockForAgent(adb: Adb, session: ScrcpySession): Promise<{ ok: boolean; message: string }> {
+  const id = await deviceId(adb, session.serial)
+  if ((await isLocked(adb, session.serial)) === false) return { ok: true, message: 'The phone is already unlocked.' }
+  if (!(id in readStore())) {
+    return { ok: false, message: 'No PIN is saved for this phone. Ask the user to unlock it once in Mob Mirror (⌘L) with "Remember".' }
+  }
+  return unlock(adb, session, {})
+}
+
 export function registerUnlockIpc(getAdb: () => Adb | null, getSession: (webContentsId: number) => ScrcpySession | undefined): void {
   const ctx = (id: number): { adb: Adb; session: ScrcpySession } => {
     const adb = getAdb()

@@ -1,7 +1,7 @@
-import { FileUp, Loader2, LockKeyhole, Smartphone } from 'lucide-react'
+import { Bot, FileUp, Loader2, LockKeyhole, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
-import { useState, type DragEvent, type ReactNode, type RefObject } from 'react'
+import { useEffect, useState, type DragEvent, type ReactNode, type RefObject } from 'react'
 import { toast } from 'sonner'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { Ripple } from '@/components/ui/ripple'
@@ -34,6 +34,21 @@ async function dropFiles(fileList: FileList): Promise<void> {
 export function MirrorStage({ canvasRef, overlayRef, phase, recording, locked, onUnlock }: MirrorStageProps): ReactNode {
   const [dragging, setDragging] = useState(false)
   const live = phase === 'live'
+
+  // What an agent (via MCP) just did: shown for a few seconds so the user always knows.
+  const [agent, setAgent] = useState<{ summary: string; at: number } | null>(null)
+  useEffect(() => {
+    let timer = 0
+    const off = window.mobMirror.onAgentActivity((a) => {
+      setAgent(a)
+      clearTimeout(timer)
+      timer = window.setTimeout(() => setAgent(null), 3500)
+    })
+    return () => {
+      off()
+      clearTimeout(timer)
+    }
+  }, [])
 
   const onDragOver = (e: DragEvent): void => {
     if (!live || !e.dataTransfer.types.includes('Files')) return
@@ -103,6 +118,15 @@ export function MirrorStage({ canvasRef, overlayRef, phase, recording, locked, o
           <Button size="sm" variant="secondary" className="rounded-full" onClick={onUnlock}>
             Unlock <Kbd className="ml-1">⌘L</Kbd>
           </Button>
+        </div>
+      )}
+
+      {agent && (
+        <div
+          key={agent.at}
+          className="pointer-events-none absolute top-3 right-3 z-10 flex animate-in items-center gap-2 rounded-full border border-white/10 bg-neutral-900/85 px-3 py-1.5 text-xs text-white shadow-lg backdrop-blur fade-in slide-in-from-top-1"
+        >
+          <Bot className="size-3.5 text-brand" /> Agent: {agent.summary}
         </div>
       )}
 

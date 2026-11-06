@@ -6,6 +6,7 @@ An Electron desktop app (macOS first) that mirrors **and controls** Android phon
 - [docs/FACTS.md](docs/FACTS.md): verified protocol, version and platform facts. This is the source of truth for every byte layout. Don't work from memory.
 - [docs/DECISIONS.md](docs/DECISIONS.md): ADRs (own protocol layer, system adb, forward tunnel, and others)
 - [docs/ROADMAP.md](docs/ROADMAP.md): milestones and what's next
+- [docs/AGENTS.md](docs/AGENTS.md): the MCP server that lets coding agents control the phone (`src/main/agent/`). The `phone-control` skill covers how to use it.
 
 ## Layout
 - `src/shared/scrcpy/`: pure protocol code. Encoders, demuxer and parsers, with no Node or DOM APIs. Runs in both processes.

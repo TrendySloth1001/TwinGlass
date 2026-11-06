@@ -3,7 +3,7 @@
 // At a few Mbps of H.264 that copy is negligible.
 import { statSync } from 'node:fs'
 import { basename, extname, isAbsolute } from 'node:path'
-import { clipboard, ipcMain, MessageChannelMain, type WebContents } from 'electron'
+import { clipboard, ipcMain, MessageChannelMain, webContents, type WebContents } from 'electron'
 import { scanFile } from '@shared/scrcpy/control'
 import type { Adb } from './adb/adb'
 import { ScrcpySession } from './scrcpy/session'
@@ -159,6 +159,41 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
 
 export function getSession(webContentsId: number): ScrcpySession | undefined {
   return sessions.get(webContentsId)
+}
+
+let captureSeq = 0
+const captureWaiters = new Map<number, (png: Uint8Array | null) => void>()
+ipcMain.on('agent:capture-result', (_e, id: number, png: Uint8Array | null) => {
+  captureWaiters.get(id)?.(png instanceof Uint8Array ? png : null)
+  captureWaiters.delete(id)
+})
+
+/** Asks a mirror window for its current decoded frame as PNG (fast path for agent screenshots). */
+function captureFrom(wcId: number): Promise<Uint8Array | null> {
+  const wc = webContents.fromId(wcId)
+  if (!wc || wc.isDestroyed()) return Promise.resolve(null)
+  const id = ++captureSeq
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      captureWaiters.delete(id)
+      resolve(null) // fall back to adb screencap
+    }, 1500)
+    captureWaiters.set(id, (png) => {
+      clearTimeout(timer)
+      resolve(png)
+    })
+    wc.send('agent:capture', id)
+  })
+}
+
+/** Live mirror session for any of a phone's transports (USB / Wi-Fi), for agent control. */
+export function findSessionBySerials(
+  serials: string[],
+): { session: ScrcpySession; capture: () => Promise<Uint8Array | null> } | null {
+  for (const [wcId, session] of sessions) {
+    if (serials.includes(session.serial)) return { session, capture: () => captureFrom(wcId) }
+  }
+  return null
 }
 
 export function stopAllSessions(): void {

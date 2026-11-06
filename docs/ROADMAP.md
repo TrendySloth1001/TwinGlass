@@ -75,3 +75,12 @@
 - [ ] App icon (`build/icon.icns` or a 1024 px `build/icon.png`)
 - [ ] Signed + notarized release (needs an Apple Developer ID)
 - [ ] Needs the user: listen to audio, drag & drop an APK or file, "Mirror in new window"
+
+## M6: Agent control (MCP)
+- [x] Local MCP server (127.0.0.1, bearer token, Host/Origin validation), off by default; sidebar toggle, "Copy Claude Code setup", token rotation
+- [x] 14 tools: list_devices, device_info, screenshot, get_ui_tree, tap, long_press, swipe, scroll, type_text, press_key, list_apps, launch_app, unlock_phone (Touch ID), wait
+- [x] Screenshots from the live mirror frame (238 ms) or adb screencap (2 s); a single agent coordinate space mapped to video or device pixels
+- [x] "Agent: …" activity pill on the mirror
+- [x] docs/AGENTS.md and the `phone-control` skill
+- [ ] Needs the user: `claude mcp add …`, then ask Claude Code to do something on the phone (first input tools on the device)
+- [ ] Ideas: per-tool permissions (e.g. allow read-only tools only), an action log/replay, a "Stop agent" button, app-install tool, notifications/logcat reader for app debugging
