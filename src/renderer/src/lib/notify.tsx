@@ -44,10 +44,18 @@ export function setNotificationCenterOpen(open: boolean): void {
   set({ center: { open, focus: open ? state.center.focus : null } })
 }
 
+export type PopupPref = 'all' | 'errors' | 'off'
+let popups: PopupPref = 'all'
+/** Settings → General → Pop-up notifications. Notices always land in the notification center. */
+export function setPopups(p: PopupPref): void {
+  popups = p
+}
+
 /** Shows a compact toast and records the notice in the notification center (newest first, max 50). */
 export function notify(level: NoticeLevel, title: string, opts: { description?: string; action?: NoticeAction } = {}): number {
   const n: Notice = { id: nextId++, level, title, ...opts, at: Date.now(), read: false }
   set({ notices: [n, ...state.notices].slice(0, 50) })
+  if (popups === 'off' || (popups === 'errors' && level !== 'error')) return n.id
   const toastId = `notice-${n.id}`
   const show = level === 'info' ? toast : toast[level]
   show(title, {

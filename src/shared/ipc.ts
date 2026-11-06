@@ -11,6 +11,10 @@ export interface StartSessionRequest {
   maxFps?: number
   audio?: AudioMode
   videoCodec?: 'h264' | 'h265'
+  /** Keep the phone awake while mirroring (plugged in). Default true. */
+  stayAwake?: boolean
+  /** Sync the phone clipboard to the Mac automatically (scrcpy clipboard_autosync). Default true. */
+  clipboardAutosync?: boolean
 }
 
 export interface FileResult {

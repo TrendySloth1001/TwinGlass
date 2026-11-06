@@ -61,6 +61,11 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - Agents; About: adb versions and Restart adb.
   - Adapts to narrow windows (icon nav; controls wrap).
 - ✅ **No duplicates on the compact strip:** the ⋯ menu lists only what the strip doesn't show. The strip is dark, matching the phone block.
+- ✅ **Advanced settings for controlling Mob Mirror itself** (not the phone's settings) (2026-11-06).
+  - Pages: General, Window, Mirroring, Mouse & keyboard, Unlock, Agents, Advanced.
+  - Options: reconnect after a drop, pop-ups (all/errors/none), navigation bar under the phone (the user's drawing), keep window on top, status bar, frame-rate limit, keep phone awake, screen off on start, mouse-button shortcuts, scroll speed and direction, clipboard sync, open screenshot/recording folders, adb restart, reset all settings.
+  - Only stream settings (quality, codec, audio, fps, stay awake, clipboard) restart a live mirror. Everything else is instant.
+- ✅ **Docked vs floating explained:** below 900 px the sidebar always floats, and the compact view has none. Settings says so, and opens the sidebar when you change it.
 - **No feature may require restarting the app.**
   - Settings apply live and are queued.
   - adb is re-detected if it was missing.

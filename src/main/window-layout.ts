@@ -16,7 +16,8 @@ const compactHeight = new Map<string, number>()
 const lastAspect = new Map<number, number>()
 const orient = (aspect: number): string => (aspect < 1 ? 'portrait' : 'landscape')
 
-function applyCompact(win: BrowserWindow, aspect: number): void {
+function applyCompact(win: BrowserWindow, aspect: number, extraH = 0): void {
+  const TITLE = COMPACT_TITLE + extraH // title strip + optional navigation bar under the mirror
   const wasCompact = mode.get(win.id) === 'compact'
   if (!wasCompact) fullBounds.set(win.id, win.getBounds())
   mode.set(win.id, 'compact')
@@ -27,7 +28,7 @@ function applyCompact(win: BrowserWindow, aspect: number): void {
   const work = screen.getDisplayMatching(win.getBounds()).workArea
   const curH = compactHeight.get(`${win.id}:${orient(aspect)}`) ?? win.getContentSize()[1] ?? 800
   // Keep the current height (within the screen); width follows the phone's aspect.
-  let videoH = Math.min(Math.max(curH - COMPACT_TITLE, aspect < 1 ? 480 : 240), work.height - COMPACT_TITLE - 24)
+  let videoH = Math.min(Math.max(curH - TITLE, aspect < 1 ? 480 : 240), work.height - TITLE - 24)
   let videoW = Math.round(videoH * aspect)
   const maxW = work.width - COMPACT_RAIL - 24
   if (videoW > maxW) {
@@ -36,8 +37,8 @@ function applyCompact(win: BrowserWindow, aspect: number): void {
   }
   win.setAspectRatio(0)
   win.setMinimumSize(Math.round(220 * Math.min(aspect, 1)) + COMPACT_RAIL, 320)
-  win.setContentSize(videoW + COMPACT_RAIL, videoH + COMPACT_TITLE, true)
-  win.setAspectRatio(aspect, { width: COMPACT_RAIL, height: COMPACT_TITLE })
+  win.setContentSize(videoW + COMPACT_RAIL, videoH + TITLE, true)
+  win.setAspectRatio(aspect, { width: COMPACT_RAIL, height: TITLE })
   win.setWindowButtonPosition({ x: 10, y: 7 })
   refreshShadow(win)
 }
@@ -61,10 +62,14 @@ function applyFull(win: BrowserWindow): void {
 }
 
 export function registerWindowLayoutIpc(): void {
-  ipcMain.handle('window:layout', (e, layout: unknown, aspect: unknown) => {
+  ipcMain.handle('window:layout', (e, layout: unknown, aspect: unknown, extra: unknown) => {
     const win = BrowserWindow.fromWebContents(e.sender)
     if (!win || win.isFullScreen()) return
-    if (layout === 'compact' && typeof aspect === 'number' && aspect > 0.2 && aspect < 5) applyCompact(win, aspect)
+    const extraH = typeof extra === 'number' && extra >= 0 && extra <= 120 ? Math.round(extra) : 0
+    if (layout === 'compact' && typeof aspect === 'number' && aspect > 0.2 && aspect < 5) applyCompact(win, aspect, extraH)
     else applyFull(win)
+  })
+  ipcMain.handle('window:always-on-top', (e, on: unknown) => {
+    BrowserWindow.fromWebContents(e.sender)?.setAlwaysOnTop(on === true, 'floating')
   })
 }

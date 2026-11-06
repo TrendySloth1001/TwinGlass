@@ -18,6 +18,8 @@ export interface SessionOptions {
   maxFps?: number
   control?: boolean
   stayAwake?: boolean
+  /** false: don't push phone clipboard changes to the Mac (scrcpy default is true). */
+  clipboardAutosync?: boolean
   /**
    * off: no audio. mac: audio_source=output (mutes the phone while mirroring, scrcpy default).
    * both: audio_source=playback + audio_dup (Android 13+, keeps the phone playing; apps may opt out).
@@ -80,6 +82,7 @@ export function buildServerArgs(scid: string, o: SessionOptions): string[] {
   if (o.maxSize) args.push(`max_size=${o.maxSize}`)
   if (o.videoBitRate) args.push(`video_bit_rate=${o.videoBitRate}`)
   if (o.maxFps) args.push(`max_fps=${o.maxFps}`)
+  if (o.clipboardAutosync === false) args.push('clipboard_autosync=false')
   return args
 }
 

@@ -68,7 +68,18 @@ function trace(msg: string): void {
   if (traceLog.length > 200) traceLog.shift()
 }
 
+/** User preferences that apply live (Settings → Input). */
+export interface InputOptions {
+  /** Right-click = Back, middle = Home, 4th = Recents, 5th = notifications. */
+  mouseShortcuts: boolean
+  /** Reverse the scroll direction sent to the phone. */
+  invertScroll: boolean
+  /** Scroll speed multiplier (0.5 … 3). */
+  scrollSpeed: number
+}
+
 export class InputController {
+  options: InputOptions = { mouseShortcuts: true, invertScroll: false, scrollSpeed: 1 }
   private drag: Drag | null = null
   private wheelPinch: WheelPinch | null = null
   private pressedKeys = new Set<string>()
@@ -134,10 +145,12 @@ export class InputController {
     this.canvas.focus()
     e.preventDefault()
     // Mouse buttons like scrcpy: right = Back, middle = Home, 4th = Recents, 5th = notifications.
-    if (e.button === 2) return this.send(backOrScreenOn(KeyAction.DOWN))
-    if (e.button === 1) return this.pressKey(AndroidKey.HOME)
-    if (e.button === 3) return this.pressKey(AndroidKey.APP_SWITCH)
-    if (e.button === 4) return this.send(expandNotificationPanel())
+    if (this.options.mouseShortcuts) {
+      if (e.button === 2) return this.send(backOrScreenOn(KeyAction.DOWN))
+      if (e.button === 1) return this.pressKey(AndroidKey.HOME)
+      if (e.button === 3) return this.pressKey(AndroidKey.APP_SWITCH)
+      if (e.button === 4) return this.send(expandNotificationPanel())
+    }
     if (e.button !== 0 || this.drag) return
     const size = this.getSize()
     if (!size) return
@@ -175,7 +188,7 @@ export class InputController {
 
   private onPointerUp(e: PointerEvent): void {
     trace(`${e.type} id=${e.pointerId} btn=${e.button} at=${e.clientX},${e.clientY} drag=${this.drag ? this.drag.pointerId : '-'}`)
-    if (e.button === 2) return this.send(backOrScreenOn(KeyAction.UP))
+    if (e.button === 2 && this.options.mouseShortcuts) return this.send(backOrScreenOn(KeyAction.UP))
     const drag = this.drag
     if (!drag || e.pointerId !== drag.pointerId) return
     const size = this.getSize()
@@ -211,8 +224,9 @@ export class InputController {
       e.deltaMode === WheelEvent.DOM_DELTA_LINE ? 3 : e.deltaMode === WheelEvent.DOM_DELTA_PAGE ? 0.1 : WHEEL_PIXELS_PER_CLICK
     const clamp = (v: number): number => Math.max(-16, Math.min(16, v))
     // scrcpy uses SDL's convention (+x right, +y up); DOM deltaY is positive when scrolling down.
-    const h = clamp(e.deltaX / unit)
-    const v = clamp(-e.deltaY / unit)
+    const k = this.options.scrollSpeed * (this.options.invertScroll ? -1 : 1)
+    const h = clamp((e.deltaX / unit) * k)
+    const v = clamp((-e.deltaY / unit) * k)
     if (h || v) this.send(injectScroll({ x: p.x, y: p.y, screen: size }, h, v))
   }
 

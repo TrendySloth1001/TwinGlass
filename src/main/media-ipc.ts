@@ -108,6 +108,12 @@ export function registerMediaIpc(): void {
   })
 
   // Only reveal files we saved ourselves.
+  // Settings → Advanced: open where screenshots / recordings are saved.
+  ipcMain.handle('media:open-folder', (_e, kind: unknown) => {
+    const d = join(app.getPath(kind === 'videos' ? 'videos' : 'pictures'), 'Mob Mirror')
+    mkdirSync(d, { recursive: true })
+    return shell.openPath(d)
+  })
   ipcMain.handle('media:reveal', (_e, path: unknown) => {
     if (typeof path !== 'string') return
     const target = resolve(path)

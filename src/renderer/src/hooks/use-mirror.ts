@@ -8,7 +8,7 @@ import { expandNotificationPanel, expandSettingsPanel, setDisplayPower } from '@
 import type { DeviceAction } from '@shared/shortcuts'
 import type { TransportInfo } from '../../../preload/api'
 import { AudioPlayer } from '@/engine/audio-player'
-import { InputController } from '@/engine/input'
+import { InputController, type InputOptions } from '@/engine/input'
 import { Recorder } from '@/engine/recorder'
 import { TouchOverlay } from '@/engine/touch-overlay'
 import { notify } from '@/lib/notify'
@@ -85,6 +85,10 @@ export interface ConnectOptions {
   deviceId?: string
   quality: Quality
   codec: CodecPreference
+  /** 0 = no cap (the quality preset decides). */
+  maxFps?: number
+  stayAwake?: boolean
+  clipboardSync?: boolean
 }
 
 /** Can this Mac hardware-decode HEVC? (verified true on Apple Silicon / Electron 45). Cached. */
@@ -113,6 +117,10 @@ export interface Mirror {
   toggleRecording: () => Promise<void>
   /** Turns the touch dots on the mirror on/off immediately (no restart). */
   setShowTouches: (on: boolean) => void
+  /** Mouse buttons / scroll direction and speed, applied instantly. */
+  setInputOptions: (patch: Partial<InputOptions>) => void
+  /** Whether an unexpected drop starts the reconnect loop (instant). */
+  setAutoReconnect: (on: boolean) => void
 }
 
 export function useMirror(
@@ -126,6 +134,10 @@ export function useMirror(
   const queued = useRef<{ t: TransportInfo; opts: ConnectOptions } | null>(null)
   /** "Show touches" draws the app's own dots on the mirror; changes apply instantly. */
   const showTouches = useRef(false)
+  /** Mouse buttons / scroll preferences, applied to the live input controller without a restart. */
+  /** Settings → Connection → Reconnect automatically (read when a link drops). */
+  const autoReconnect = useRef(true)
+  const inputOptions = useRef<InputOptions>({ mouseShortcuts: true, invertScroll: false, scrollSpeed: 1 })
   const attempt = useRef(0)
   const patch = useCallback((p: Partial<MirrorState>) => setState((s) => ({ ...s, ...p })), [])
   // Latest state for callbacks (side effects stay out of setState updaters: StrictMode runs them twice).
@@ -184,6 +196,9 @@ export function useMirror(
           serial: t.serial,
           audio: audioMode,
           ...videoParams(opts.quality, t.kind),
+          ...(opts.maxFps ? { maxFps: opts.maxFps } : {}),
+          stayAwake: opts.stayAwake ?? true,
+          clipboardAutosync: opts.clipboardSync ?? true,
         }
         try {
           await window.mobMirror.startSession({ ...request, videoCodec: wantHevc ? 'h265' : 'h264' })
@@ -205,6 +220,7 @@ export function useMirror(
         const input = new InputController(canvas, () => video.size, post, (points, size) =>
           points.length && showTouches.current ? overlay?.show(points, size) : overlay?.clear(),
         )
+        input.options = inputOptions.current
         const recorder = new Recorder()
 
         port.onmessage = ({ data }: MessageEvent<MainToRenderer>) => {
@@ -214,7 +230,7 @@ export function useMirror(
           else if (data.t === 'lock') patch({ locked: data.locked, appPrompt: data.appPrompt })
           else if (data.t === 'closed') {
             teardown(false)
-            if (data.unexpected) reconnectRef.current(t, opts, data.error ?? 'The connection closed')
+            if (data.unexpected && autoReconnect.current) reconnectRef.current(t, opts, data.error ?? 'The connection closed')
             else if (data.error) notify('error', 'Disconnected', { description: data.error })
             else toast('Disconnected')
           }
@@ -276,6 +292,16 @@ export function useMirror(
     showTouches.current = on
     if (last.current) last.current = { ...last.current, opts: { ...last.current.opts, showTouches: on } }
     if (!on) engine.current?.overlay?.clear()
+  }, [])
+
+  /** Mouse-button and scroll preferences: instant (the live controller reads the same object). */
+  const setInputOptions = useCallback((patch: Partial<InputOptions>) => {
+    inputOptions.current = { ...inputOptions.current, ...patch }
+    if (engine.current) engine.current.input.options = inputOptions.current
+  }, [])
+
+  const setAutoReconnect = useCallback((on: boolean) => {
+    autoReconnect.current = on
   }, [])
 
   /** Applies new session settings now: restarts the live mirror on the same transport (~1 s). */
@@ -452,5 +478,7 @@ export function useMirror(
     screenshot,
     toggleRecording,
     setShowTouches,
+    setInputOptions,
+    setAutoReconnect,
   }
 }

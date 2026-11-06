@@ -92,7 +92,11 @@ export interface MobMirrorApi {
   /** View menu commands (toggle sidebar ⌘\, float/dock ⌥⌘\). */
   onUiCommand(cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view' | 'open-settings') => void): () => void
   /** compact: phone-shaped window locked to `aspect` (video width / height); full: restore. */
-  setWindowLayout(layout: 'compact' | 'full', aspect?: number): Promise<void>
+  /** extra: chrome height besides the title strip (the optional navigation bar). */
+  setWindowLayout(layout: 'compact' | 'full', aspect?: number, extra?: number): Promise<void>
+  setAlwaysOnTop(on: boolean): Promise<void>
+  /** Opens ~/Pictures/Mob Mirror (screenshots) or ~/Movies/Mob Mirror (recordings) in Finder. */
+  openMediaFolder(kind: 'pictures' | 'videos'): Promise<string>
   /** Lock type/state of the mirrored phone and whether a secret is saved for it. */
   unlockStatus(): Promise<UnlockStatusInfo>
   /** Wakes the phone, shows the bouncer and types the secret (omit `secret` to use the saved one). */

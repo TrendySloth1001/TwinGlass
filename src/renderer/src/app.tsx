@@ -7,8 +7,10 @@ import { CompactTitleBar } from '@/components/compact-title-bar'
 import { ConnectPanel } from '@/components/connect-panel'
 import { ControlRail } from '@/components/control-rail'
 import { MirrorStage } from '@/components/mirror-stage'
+import { NAV_BAR_HEIGHT, NavBar } from '@/components/nav-bar'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { applyTheme } from '@/hooks/use-theme'
+import { setPopups } from '@/lib/notify'
 import { MirrorToolbar } from '@/components/mirror-toolbar'
 import { Sidebar } from '@/components/sidebar'
 import { StatusBar } from '@/components/status-bar'
@@ -17,7 +19,7 @@ import type { DeviceAction } from '@shared/shortcuts'
 import { useDevices } from '@/hooks/use-devices'
 import { useMirror } from '@/hooks/use-mirror'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import { useSettings } from '@/hooks/use-settings'
+import { DEFAULT_SETTINGS, STREAM_KEYS, useSettings } from '@/hooks/use-settings'
 
 /** Windows opened via "Mirror in new window" carry #connect=<serial>&kind=<usb|wifi>. */
 function autoConnectTarget(): TransportInfo | null {
@@ -100,10 +102,13 @@ export function App(): ReactNode {
         showTouches: settings.showTouches,
         quality: settings.quality,
         codec: settings.codec,
+        maxFps: settings.maxFps,
+        stayAwake: settings.stayAwake,
+        clipboardSync: settings.clipboardSync,
         deviceId,
       })
     },
-    [connect, settings.audio, settings.showTouches, settings.quality, settings.codec, updateSettings],
+    [connect, settings, updateSettings],
   )
 
   /** Session settings apply immediately: restart a live mirror with the new values. */
@@ -112,9 +117,10 @@ export function App(): ReactNode {
   const onSettingsChange = useCallback(
     (patch: Partial<typeof settings>) => {
       updateSettings(patch)
-      // Touch dots are drawn by the app: instant. Quality/codec/audio need a new stream: restart.
+      // Most settings are instant. Only stream settings (quality, codec, audio, fps, …) need a
+      // new stream, so only those restart a live mirror.
       if (patch.showTouches !== undefined) setShowTouches(patch.showTouches)
-      const { showTouches: _ignored, ...streamPatch } = patch
+      const streamPatch = Object.fromEntries(Object.entries(patch).filter(([k]) => (STREAM_KEYS as readonly string[]).includes(k)))
       if (Object.keys(streamPatch).length) void restart(streamPatch)
     },
     [restart, setShowTouches, updateSettings],
@@ -173,6 +179,20 @@ export function App(): ReactNode {
     [updateSettings],
   )
   useEffect(() => applyTheme(settings.theme), [settings.theme])
+  const { setInputOptions, setAutoReconnect } = mirror
+  useEffect(() => setAutoReconnect(settings.autoReconnect), [setAutoReconnect, settings.autoReconnect])
+  useEffect(() => setPopups(settings.popups), [settings.popups])
+  useEffect(
+    () => setInputOptions({ mouseShortcuts: settings.mouseShortcuts, invertScroll: settings.invertScroll, scrollSpeed: settings.scrollSpeed }),
+    [setInputOptions, settings.mouseShortcuts, settings.invertScroll, settings.scrollSpeed],
+  )
+  useEffect(() => void window.mobMirror.setAlwaysOnTop(settings.alwaysOnTop).catch(() => {}), [settings.alwaysOnTop])
+  // "Turn phone screen off when mirroring starts": once per session going live.
+  const wasLive = useRef(false)
+  useEffect(() => {
+    if (live && !wasLive.current && settings.screenOffOnStart && !mirror.state.screenOff) runAction('screenOff')
+    wasLive.current = live
+  }, [live, settings.screenOffOnStart, mirror.state.screenOff, runAction])
 
   // Compact mirror (default while a phone is mirrored): phone-shaped window + control rail. The full
   // view (devices, settings, toolbar) is one click away and is used when nothing is mirrored.
@@ -181,9 +201,9 @@ export function App(): ReactNode {
   const vh = mirror.state.stats?.height ?? 0
   const aspect = vw && vh ? Math.round((vw / vh) * 1000) / 1000 : 0 // rounded: only re-fit on real changes (rotation)
   useEffect(() => {
-    if (compact && aspect) void window.mobMirror.setWindowLayout('compact', aspect)
+    if (compact && aspect) void window.mobMirror.setWindowLayout('compact', aspect, settings.navBar ? NAV_BAR_HEIGHT : 0)
     else if (!compact) void window.mobMirror.setWindowLayout('full')
-  }, [compact, aspect])
+  }, [compact, aspect, settings.navBar])
 
   /** The toolbar owns the window's top-left corner (traffic lights) unless a docked sidebar is shown. */
   // Narrow windows: a docked sidebar would squash the mirror, so it floats over it instead.
@@ -249,7 +269,8 @@ export function App(): ReactNode {
           }
         />
         </div>
-        {!compact && <StatusBar state={mirror.state} />}
+        {compact && settings.navBar && <NavBar onAction={dispatch} disabled={!live} />}
+        {!compact && settings.showStatusBar && <StatusBar state={mirror.state} />}
       </main>
       {/* The see-through strip between phone and rail: also a handle to move the window. */}
       {compact && <div aria-hidden className="w-2 shrink-0 [-webkit-app-region:drag]" />}
@@ -271,6 +292,8 @@ export function App(): ReactNode {
         adb={devices.adb}
         refreshDevices={devices.refresh}
         live={live}
+        narrow={narrow}
+        onReset={() => onSettingsChange({ ...DEFAULT_SETTINGS, lastDevice: settings.lastDevice })}
       />
       <UnlockDialog open={unlockOpen} onOpenChange={setUnlockOpen} initialError={unlockError} />
     </div>

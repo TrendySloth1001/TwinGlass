@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import type { AudioMode } from '@shared/ipc'
 import type { ThemePref } from '@/hooks/use-theme'
+import type { PopupPref } from '@/lib/notify'
 import type { CodecPreference, Quality } from '@shared/quality'
 
 const KEY = 'mob-mirror:settings'
@@ -24,6 +25,28 @@ export interface Settings {
   autoConnect: boolean
   /** Appearance: follow macOS, or force light / dark. */
   theme: ThemePref
+  /** Back / Home / Recents bar under the phone in the compact view. */
+  navBar: boolean
+  /** Keep the mirror window above other windows. */
+  alwaysOnTop: boolean
+  /** Frame-rate cap; 0 = no cap. */
+  maxFps: number
+  /** Keep the phone awake while mirroring (while plugged in). */
+  stayAwake: boolean
+  /** Turn the phone's own screen off when mirroring starts (the mirror keeps working). */
+  screenOffOnStart: boolean
+  /** Right-click = Back, middle-click = Home, … */
+  mouseShortcuts: boolean
+  invertScroll: boolean
+  scrollSpeed: number
+  /** Copy the phone clipboard to the Mac automatically. */
+  clipboardSync: boolean
+  /** Reconnect by itself after the link drops (Wi-Fi, cable). */
+  autoReconnect: boolean
+  /** Which notices also pop up as toasts (all are kept in the notification center). */
+  popups: PopupPref
+  /** Stats strip under the mirror in the full view. */
+  showStatusBar: boolean
 }
 
 const DEFAULTS: Settings = {
@@ -38,7 +61,23 @@ const DEFAULTS: Settings = {
   lastDevice: null,
   autoConnect: true,
   theme: 'system',
+  navBar: false,
+  alwaysOnTop: false,
+  maxFps: 0,
+  stayAwake: true,
+  screenOffOnStart: false,
+  mouseShortcuts: true,
+  invertScroll: false,
+  scrollSpeed: 1,
+  clipboardSync: true,
+  autoReconnect: true,
+  popups: 'all',
+  showStatusBar: true,
 }
+
+export const DEFAULT_SETTINGS = DEFAULTS
+/** Settings that need a new video/audio stream: changing them restarts a live mirror (~1 s). */
+export const STREAM_KEYS = ['audio', 'quality', 'codec', 'maxFps', 'stayAwake', 'clipboardSync'] as const
 
 function load(): Settings {
   try {
