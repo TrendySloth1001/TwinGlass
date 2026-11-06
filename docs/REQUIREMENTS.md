@@ -44,6 +44,13 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - Compact shadcn-styled toasts on one line with an ellipsis.
   - Clicking a toast opens the notification center with that notice expanded.
   - Warnings (such as the adb version mismatch) appear as in-app notifications with an action.
+- ✅ **Home screen (nothing mirrored): keep the existing design, only enhance it** (the user said "the current home screen is best", 2026-11-06).
+  - One-click "Mirror <phone> · USB/Wi-Fi" buttons, with the last-used phone listed first.
+  - A "Tap Allow" state for unauthorized phones and a missing-adb install hint.
+  - With no phone: USB-debugging help and Pair over Wi-Fi; the list updates live.
+  - Auto-connect: the last phone, or the only phone the first time, is mirrored when it appears (edge-triggered, so Disconnect stays disconnected).
+  - The toolbar hides phone controls and Disconnect when idle.
+- ✅ Compact frame: the title strip and the rail are one flush surface (no floating card or gaps).
 - **No feature may require restarting the app.**
   - Settings apply live and are queued.
   - adb is re-detected if it was missing.

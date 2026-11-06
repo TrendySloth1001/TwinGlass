@@ -93,6 +93,7 @@ interface ToolbarProps {
 export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sidebarOpen, onToggleSidebar, onCompact }: ToolbarProps): ReactNode {
   const { state } = mirror
   const live = state.phase === 'live'
+  const idle = state.phase === 'idle'
   const recording = state.recordingSince !== null
 
   // Overflow menu entries: shown inline on wide toolbars, folded into "More" on narrow ones.
@@ -130,7 +131,7 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sideba
           </IconButton>
         )}
         <span className="truncate font-semibold">
-          {state.deviceName || (state.phase === 'connecting' ? 'Connecting…' : 'No device')}
+          {state.deviceName || (state.phase === 'connecting' ? 'Connecting…' : 'Mob Mirror')}
         </span>
         {state.transport && (
           <Badge variant="outline" className="hidden gap-1 @xl:inline-flex">
@@ -143,7 +144,13 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sideba
       {/* Priority tiers by toolbar width: navigation, unlock and screenshot always; the rest
           appears inline from @4xl / @5xl and otherwise lives in the More menu. */}
       <div className="ml-auto flex shrink-0 items-center gap-1.5 @3xl:gap-2">
-        <div className={cn('flex items-center gap-1.5 @3xl:gap-2', !live && 'pointer-events-none opacity-40')}>
+        {/* Nothing mirrored: no phone controls at all (the stage shows the connect screen). */}
+        <div
+          className={cn(
+            'flex items-center gap-1.5 @3xl:gap-2',
+            idle ? 'hidden' : !live && 'pointer-events-none opacity-40',
+          )}
+        >
           <Group>
             <Action run={onAction} action="back" label="Back" hint="right-click">
               <ArrowLeft />
@@ -230,6 +237,7 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sideba
           </IconButton>
         )}
         {/* Narrow toolbars: everything folded away is one click away here. */}
+        {!idle && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -256,16 +264,17 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sideba
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <div className="hidden items-center gap-2 @5xl:flex">
+        )}
+        <div className={cn('hidden items-center gap-2', !idle && '@5xl:flex')}>
           <Divider />
           <IconButton label="Mouse, trackpad & keyboard controls" onClick={onShowHelp}>
             <Keyboard />
           </IconButton>
         </div>
+        {!idle && (
         <Button
           variant="outline"
           size="sm"
-          disabled={state.phase === 'idle'}
           aria-label="Disconnect"
           className="text-destructive [-webkit-app-region:no-drag]"
           onClick={() => onAction('disconnect')}
@@ -273,6 +282,7 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sideba
           <Unplug />
           <span className="hidden @3xl:inline">Disconnect</span>
         </Button>
+        )}
       </div>
     </div>
   )

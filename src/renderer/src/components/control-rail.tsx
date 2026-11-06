@@ -97,7 +97,7 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView }: Contro
   return (
     <nav
       aria-label="Phone controls"
-      className="my-1.5 mr-1.5 flex w-[50px] shrink-0 flex-col items-center rounded-2xl border border-sidebar-border bg-sidebar/70 py-1.5"
+      className="flex w-14 shrink-0 flex-col items-center border-l border-sidebar-border bg-sidebar py-1.5"
     >
       <div className={cn('flex min-h-0 flex-1 flex-col items-center gap-0.5 overflow-y-auto', !live && 'pointer-events-none opacity-40')}>
         <RailButton label="Back" shortcut={`${sc('back')} · right-click`} onClick={run('back')}>

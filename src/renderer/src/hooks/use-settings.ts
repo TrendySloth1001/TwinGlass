@@ -17,6 +17,10 @@ export interface Settings {
   closedSections: string[]
   /** compact: phone-shaped mirror window with a control rail (default); full: manager layout. */
   viewMode: 'compact' | 'full'
+  /** Hardware id (ro.serialno) of the phone mirrored last: preselected and auto-connected. */
+  lastDevice: string | null
+  /** Start mirroring by itself when the last phone (or the only phone) shows up. */
+  autoConnect: boolean
 }
 
 const DEFAULTS: Settings = {
@@ -28,6 +32,8 @@ const DEFAULTS: Settings = {
   sidebarOpen: true,
   closedSections: ['agents'],
   viewMode: 'compact',
+  lastDevice: null,
+  autoConnect: true,
 }
 
 function load(): Settings {

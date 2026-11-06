@@ -1,4 +1,4 @@
-import { Bot, FileUp, Loader2, LockKeyhole, Smartphone } from 'lucide-react'
+import { Bot, FileUp, Loader2, LockKeyhole } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
 import { useEffect, useState, type DragEvent, type ReactNode, type RefObject } from 'react'
@@ -20,6 +20,8 @@ interface MirrorStageProps {
   appPrompt: string | null
   onUnlock: () => void
   reconnect: { attempt: number; reason: string } | null
+  /** Shown over the stage while nothing is mirrored (the connect screen). */
+  idleContent: ReactNode
 }
 
 async function dropFiles(fileList: FileList): Promise<void> {
@@ -43,6 +45,7 @@ export function MirrorStage({
   appPrompt,
   onUnlock,
   reconnect,
+  idleContent,
 }: MirrorStageProps): ReactNode {
   const [dragging, setDragging] = useState(false)
   const live = phase === 'live'
@@ -91,17 +94,10 @@ export function MirrorStage({
       <div ref={overlayRef} className="pointer-events-none absolute inset-0 overflow-hidden" />
 
       {phase === 'idle' && (
-        <div className="absolute inset-0 grid place-items-center overflow-hidden">
+        <div className="absolute inset-0 overflow-y-auto">
           <Ripple mainCircleSize={180} numCircles={6} className="opacity-60" />
-          <div className="relative z-10 flex flex-col items-center gap-3 text-center text-neutral-300">
-            <div className="grid size-14 place-items-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur">
-              <Smartphone className="size-7" />
-            </div>
-            <div className="text-base font-medium text-white">No device mirrored</div>
-            <div className="max-w-64 text-xs text-neutral-400">
-              Pick a phone in the sidebar. Click and drag to touch, scroll to scroll, type to type.
-            </div>
-          </div>
+          {/* min-h-full + place-items-center: centred when it fits, scrolls when the window is short. */}
+          <div className="grid min-h-full place-items-center py-8">{idleContent}</div>
         </div>
       )}
 

@@ -1,8 +1,10 @@
+import { cn } from '@/lib/utils'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import type { TransportInfo } from '../../preload/api'
 import { ControlsHelp } from '@/components/controls-help'
 import { CompactTitleBar } from '@/components/compact-title-bar'
+import { ConnectPanel } from '@/components/connect-panel'
 import { ControlRail } from '@/components/control-rail'
 import { MirrorStage } from '@/components/mirror-stage'
 import { MirrorToolbar } from '@/components/mirror-toolbar'
@@ -89,6 +91,7 @@ export function App(): ReactNode {
     (t: TransportInfo, deviceId?: string) => {
       // A floating sidebar would cover the mirror that is about to start: tuck it away.
       if (sidebarLayoutRef.current === 'floating') updateSettings({ sidebarOpen: false })
+      if (deviceId) updateSettings({ lastDevice: deviceId })
       void connect(t, {
         audio: settings.audio,
         showTouches: settings.showTouches,
@@ -130,6 +133,28 @@ export function App(): ReactNode {
     }
   }, [onMirror])
 
+  // Auto-connect: when the phone used last time (or, the first time, the only ready phone) appears,
+  // mirror it without a click. Edge-triggered (absent -> present), so Disconnect stays disconnected
+  // until the phone is unplugged / drops off Wi-Fi and comes back.
+  const present = useRef<Set<string> | null>(null)
+  const idle = mirror.state.phase === 'idle'
+  useEffect(() => {
+    const list = devices.list
+    if (!list) return
+    const now = new Set(list.devices.map((d) => d.id))
+    const before = present.current
+    present.current = now
+    if (!idle || !settings.autoConnect || autoConnectTarget()) return
+    const appeared = (id: string): boolean => now.has(id) && !before?.has(id)
+    const pick =
+      (settings.lastDevice && appeared(settings.lastDevice) && list.devices.find((d) => d.id === settings.lastDevice)) ||
+      (!settings.lastDevice && list.devices.length === 1 && list.devices[0] && appeared(list.devices[0].id) && list.devices[0]) ||
+      null
+    const t = pick ? pick.transports[0] : undefined
+    if (pick && t) onMirror(t, pick.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only device-list changes should trigger this
+  }, [devices.list])
+
   // View menu: ⌘\ toggles the sidebar, ⌥⌘\ switches docked <-> floating.
   const settingsRef = useRef(settings)
   settingsRef.current = settings
@@ -162,7 +187,7 @@ export function App(): ReactNode {
   const toolbarOwnsCorner = sidebarLayout === 'floating' || !settings.sidebarOpen
 
   return (
-    <div className="relative flex h-full">
+    <div className={cn('relative flex h-full', compact && 'bg-sidebar')}>
       {!compact && (
       <Sidebar
         list={devices.list}
@@ -203,6 +228,17 @@ export function App(): ReactNode {
           appPrompt={mirror.state.appPrompt}
           onUnlock={() => dispatch('unlock')}
           reconnect={mirror.state.reconnect}
+          idleContent={
+            <ConnectPanel
+              list={devices.list}
+              error={devices.error}
+              adb={devices.adb}
+              refresh={devices.refresh}
+              connecting={mirror.state.phase === 'connecting'}
+              lastDevice={settings.lastDevice}
+              onMirror={onMirror}
+            />
+          }
         />
           {compact && (
             <ControlRail
