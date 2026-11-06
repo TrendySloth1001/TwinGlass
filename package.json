@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "fetch-server": "node scripts/fetch-server.mjs",
     "postinstall": "node scripts/fetch-server.mjs",
-    "dist:mac": "electron-vite build && electron-builder --mac --arm64"
+    "dist:mac": "electron-vite build && electron-builder --mac --arm64",
+    "ui:add": "node scripts/ui-add.mjs"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.4",

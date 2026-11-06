@@ -1,5 +1,6 @@
 // The only surface the renderer can reach (contextIsolation + sandbox).
 import type { FileResult, StartSessionRequest } from '../shared/ipc'
+import type { DeviceAction } from '../shared/shortcuts'
 
 export interface TransportInfo {
   serial: string
@@ -58,6 +59,8 @@ export interface MobMirrorApi {
   cancelQrPairing(): Promise<void>
   onQrState(cb: (s: QrState) => void): () => void
   openDeviceWindow(serial: string, kind: 'usb' | 'wifi'): Promise<void>
+  /** Device menu items / their shortcuts (⌘B back, ⇧⌘H home…), sent to the focused window. */
+  onDeviceAction(cb: (action: DeviceAction) => void): () => void
   /** APKs are installed; other files are copied to /sdcard/Download on the mirrored device. */
   dropFiles(files: File[]): Promise<FileResult[]>
   /** Returns the saved path (~/Pictures/Mob Mirror). */

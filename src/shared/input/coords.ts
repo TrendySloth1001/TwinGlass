@@ -22,6 +22,14 @@ export function clientToVideo(clientX: number, clientY: number, rect: Rect, vide
   return { x: Math.floor(x), y: Math.floor(y) }
 }
 
+/** Inverse of clientToVideo: where a video pixel is drawn on screen (centre of the pixel). */
+export function videoToClient(x: number, y: number, rect: Rect, video: Size): { x: number; y: number } {
+  const scale = Math.min(rect.width / video.width, rect.height / video.height)
+  const offX = rect.left + (rect.width - video.width * scale) / 2
+  const offY = rect.top + (rect.height - video.height * scale) / 2
+  return { x: offX + (x + 0.5) * scale, y: offY + (y + 0.5) * scale }
+}
+
 /** Like clientToVideo but clamps to the frame (use while a drag is in progress). */
 export function clientToVideoClamped(clientX: number, clientY: number, rect: Rect, video: Size): { x: number; y: number } {
   const scale = Math.min(rect.width / video.width, rect.height / video.height)

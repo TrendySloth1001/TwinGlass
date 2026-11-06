@@ -39,6 +39,19 @@
 - [x] Mirroring verified over both the ip:port and the mDNS transport ✅
 - [ ] Needs the user: scan the QR code, pair with a code, test the USB cable and the tcpip button
 
+## M5: Full control and latency (current focus)
+- [x] Multi-touch: ⌥-drag pinch/rotate, ⌥⇧-drag two-finger swipe, trackpad pinch → pinch-zoom at the cursor
+- [x] Touch indicator overlay; "Show touches on phone" setting (scrcpy `show_touches`, restored on disconnect)
+- [x] Device menu with shortcuts (⌘B Back, ⇧⌘H Home, ⌘S Recents, ⌘N/⇧⌘N panels, ⌘↑/⌘↓ volume, ⌘P power, ⌘R rotate, ⌘O screen off, ⇧⌘S screenshot, ⇧⌘R record, ⌘D disconnect), the same table used for toolbar tooltips
+- [x] Clipboard through Edit-role paste/copy/cut events (works even though the menu owns ⌘V)
+- [x] Controls help sheet (⌨ button)
+- [x] Latency instrumentation in the status bar (app ms, jitter; IPC, decode and queue in the tooltip) ✅ measured over USB and Wi-Fi
+- [x] `pointerrawupdate` for drags; `backgroundThrottling: false`
+- [x] USB mirroring ✅ verified (first wired session)
+- [x] Opt-in input trace: `localStorage['mob-mirror:debug-input']='1'` → `window.__mobMirrorInputLog`
+- [ ] Needs the user: try pinch (⌥-drag, trackpad), typing, ⌘V, and the menu shortcuts on the phone
+- [ ] Optional quality presets (e.g. "Low latency" = smaller max_size on Wi-Fi), driven by jitter measurements
+
 ## M4: Polish and packaging (in progress; ✅ marks items verified)
 - [x] UI rebuilt on React 19 + Tailwind 4 + shadcn/ui + lucide, with Magic UI accents (ADR-7) ✅ idle and live screens checked visually
 - [x] Audio: Off / Mac (phone muted) / Mac + phone; Opus → WebCodecs AudioDecoder → Web Audio jitter buffer; mute toggle ✅ decoder configures on the device (not yet listened to)

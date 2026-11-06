@@ -62,6 +62,7 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
       videoBitRate: req.videoBitRate,
       maxFps: req.maxFps,
       audio: req.audio ?? 'off',
+      showTouches: req.showTouches === true,
       stayAwake: true,
     })
     if (wc.isDestroyed() || generation.get(wc.id) !== gen) {
@@ -73,7 +74,7 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
     const { port1, port2 } = new MessageChannelMain()
     const post = (m: MainToRenderer): void => port1.postMessage(m)
 
-    session.on('video', (ev) => post({ t: 'video', ev }))
+    session.on('video', (ev) => post({ t: 'video', ev, at: performance.timeOrigin + performance.now() }))
     session.on('audio', (ev) => post({ t: 'audio', ev }))
     session.on('deviceMessage', (msg) => {
       // The device clipboard changed (autosync, or after GET_CLIPBOARD): mirror it to the Mac.

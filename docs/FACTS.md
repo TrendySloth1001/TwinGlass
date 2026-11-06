@@ -152,6 +152,20 @@ adb shell CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobi
 - **The phone's Wi-Fi IP** comes from `adb shell ip -f inet addr show wlan0`, on the `inet a.b.c.d/nn` line.
 - **Redistribution:** the Android SDK license forbids redistributing Google's prebuilt platform-tools. adb built from AOSP is Apache-2.0. Policy: detect a system adb first.
 
+## Control precision and latency (measured 2026-11-06, Nothing A024 / Android 17)
+- **Multi-touch:** the client sends DOWN/MOVE/UP per pointer id. The server turns a second pointer's DOWN/UP into `ACTION_POINTER_DOWN/UP` itself (Controller.injectTouch).
+  - The pinch/rotate "virtual finger" (id -3) is the mouse position mirrored through the centre, `(w−x, h−y)`. Tilt mirrors x only (input_manager.c).
+- **Never send `ACTION_CANCEL` for a pointer.** The server only clears a pointer on `ACTION_UP` (Pointer.setUp), so a cancelled pointer stays "down" and corrupts every later touch.
+- **Encoder:** the server already sets `KEY_PRIORITY=0` and `KEY_LATENCY=1` (SurfaceEncoder.java). Its reference client displays frames as soon as they're decoded, with no buffering.
+- **Mac-side latency (main received → frame drawn): ~2–3 ms.** IPC is 0.2–0.3 ms and hardware decode ~2 ms (the first frame is ~50 ms while the decoder warms up). The decoder queue stays at 0.
+- **Network/encoder jitter** (transit time beyond the fastest recent frame): **USB 5–11 ms** (1260×2800 at 8 Mbps); **Wi-Fi 10–24 ms with spikes to 48–65 ms** (576×1280 at 4 Mbps). Frame rate reaches 120 fps on this 120 Hz phone. USB is the low-latency path.
+- **Electron/Chromium:**
+  - `pointerrawupdate` is available (secure context) and fires with every OS move. `pointermove` is frame-aligned. Drags use rawupdate.
+  - The canvas `desynchronized: true` is honoured.
+  - An occluded window reports `visibilityState: hidden`, so `backgroundThrottling: false` is set.
+- **Precision:** the overlay dot was drawn exactly at the press point, with the CDP press at (856, 538) and the dot at (856, 538). The round trip from video pixel to screen and back is exact (unit test). Video→device quantization is about 2.2 device px over Wi-Fi (576→1260) and 1:1 over USB.
+- **⌘ shortcuts:** Electron's menu handles key equivalents before the page, so ⌘V/⌘C/⌘X reach the canvas as `paste`/`copy`/`cut` events (Edit role). Device shortcuts are menu accelerators (src/shared/shortcuts.ts).
+
 ## Build and packaging (verified 2026-11-06)
 - **electron-vite 6 does not minify the renderer by default.** With `renderer.build.minify: true`, the JS goes from 1,538 KB to 606 KB. Dropping `motion` brings it to 471 KB.
 - **electron-builder ships everything in `dependencies` inside `app.asar`.** With the renderer libraries listed there, the asar was 56 MB, including 37 MB of lucide-react sources. Moved to devDependencies, it's 2.0 MB, with only `qrcode` and its dependency tree.

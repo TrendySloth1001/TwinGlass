@@ -5,9 +5,11 @@ const KEY = 'mob-mirror:settings'
 
 export interface Settings {
   audio: AudioMode
+  /** Phone draws a dot where each touch lands (useful to check precision). */
+  showTouches: boolean
 }
 
-const DEFAULTS: Settings = { audio: 'off' }
+const DEFAULTS: Settings = { audio: 'off', showTouches: false }
 
 function load(): Settings {
   try {

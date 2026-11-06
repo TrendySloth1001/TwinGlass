@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { Switch } from '@/components/ui/switch'
+import type { Settings } from '@/hooks/use-settings'
 
 interface SidebarProps {
   list: DeviceListInfo | null
@@ -19,8 +21,8 @@ interface SidebarProps {
   activeSerial: string | null
   connecting: boolean
   onMirror: (t: TransportInfo) => void
-  audio: AudioMode
-  onAudioChange: (a: AudioMode) => void
+  settings: Settings
+  onSettingsChange: (patch: Partial<Settings>) => void
 }
 
 function stateHint(state: string): string {
@@ -83,9 +85,22 @@ export function Sidebar(p: SidebarProps): ReactNode {
 
       <Separator />
       <div className="flex flex-col gap-3 p-3">
+        <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+          Session settings · apply on next connect
+        </p>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="show-touches" className="text-xs font-normal">
+            Show touches on phone
+          </Label>
+          <Switch
+            id="show-touches"
+            checked={p.settings.showTouches}
+            onCheckedChange={(v) => p.onSettingsChange({ showTouches: v })}
+          />
+        </div>
         <div className="grid gap-1.5">
-          <Label className="text-xs text-muted-foreground">Audio (applies on next connect)</Label>
-          <Select value={p.audio} onValueChange={(v) => p.onAudioChange(v as AudioMode)}>
+          <Label className="text-xs font-normal">Audio</Label>
+          <Select value={p.settings.audio} onValueChange={(v) => p.onSettingsChange({ audio: v as AudioMode })}>
             <SelectTrigger size="sm" className="w-full">
               <SelectValue />
             </SelectTrigger>

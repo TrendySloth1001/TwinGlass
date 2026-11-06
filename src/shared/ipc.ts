@@ -10,6 +10,8 @@ export interface StartSessionRequest {
   videoBitRate?: number
   maxFps?: number
   audio?: AudioMode
+  /** Phone draws a dot where each touch lands (scrcpy show_touches; restored on disconnect). */
+  showTouches?: boolean
 }
 
 export interface FileResult {
@@ -19,7 +21,8 @@ export interface FileResult {
 }
 
 export type MainToRenderer =
-  | { t: 'video'; ev: StreamEvent }
+  /** `at`: epoch ms (performance.timeOrigin + now) when main received the packet, for latency stats. */
+  | { t: 'video'; ev: StreamEvent; at: number }
   | { t: 'audio'; ev: StreamEvent }
   | { t: 'device'; msg: DeviceMessage }
   | { t: 'log'; line: string }

@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils'
 
 interface MirrorStageProps {
   canvasRef: RefObject<HTMLCanvasElement | null>
+  /** Layer for the touch indicator dots (drawn imperatively by TouchOverlay). */
+  overlayRef: RefObject<HTMLDivElement | null>
   phase: Phase
   recording: boolean
 }
@@ -24,7 +26,7 @@ async function dropFiles(fileList: FileList): Promise<void> {
   else toast.success(results.length === 1 ? 'Done' : `${results.length} files done`, { id, description: lines })
 }
 
-export function MirrorStage({ canvasRef, phase, recording }: MirrorStageProps): ReactNode {
+export function MirrorStage({ canvasRef, overlayRef, phase, recording }: MirrorStageProps): ReactNode {
   const [dragging, setDragging] = useState(false)
   const live = phase === 'live'
 
@@ -52,8 +54,9 @@ export function MirrorStage({ canvasRef, phase, recording }: MirrorStageProps): 
       <canvas
         ref={canvasRef}
         tabIndex={0}
-        className={cn('block size-full object-contain outline-none', !live && 'invisible')}
+        className={cn('block size-full cursor-default object-contain outline-none', !live && 'invisible')}
       />
+      <div ref={overlayRef} className="pointer-events-none absolute inset-0 overflow-hidden" />
 
       {phase === 'idle' && (
         <div className="absolute inset-0 grid place-items-center overflow-hidden">

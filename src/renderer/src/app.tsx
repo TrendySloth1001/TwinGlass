@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { TransportInfo } from '../../preload/api'
+import { ControlsHelp } from '@/components/controls-help'
 import { MirrorStage } from '@/components/mirror-stage'
 import { MirrorToolbar } from '@/components/mirror-toolbar'
 import { Sidebar } from '@/components/sidebar'
@@ -19,21 +20,29 @@ function autoConnectTarget(): TransportInfo | null {
 
 export function App(): ReactNode {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
   const devices = useDevices()
-  const mirror = useMirror(canvasRef)
+  const mirror = useMirror(canvasRef, overlayRef)
   const [settings, updateSettings] = useSettings()
-  const { connect } = mirror
+  const [helpOpen, setHelpOpen] = useState(false)
+  const { connect, runAction } = mirror
 
-  const onMirror = useCallback((t: TransportInfo) => void connect(t, settings.audio), [connect, settings.audio])
+  const onMirror = useCallback(
+    (t: TransportInfo) => void connect(t, { audio: settings.audio, showTouches: settings.showTouches }),
+    [connect, settings.audio, settings.showTouches],
+  )
+
+  // Device menu shortcuts (⌘B back, ⇧⌘H home, …) arrive from main for the focused window.
+  useEffect(() => window.mobMirror.onDeviceAction(runAction), [runAction])
 
   const autoConnected = useRef(false)
   useEffect(() => {
     const target = autoConnectTarget()
     if (target && !autoConnected.current) {
       autoConnected.current = true
-      void connect(target, settings.audio)
+      onMirror(target)
     }
-  }, [connect, settings.audio])
+  }, [onMirror])
 
   return (
     <div className="flex h-full">
@@ -45,14 +54,20 @@ export function App(): ReactNode {
         activeSerial={mirror.state.transport?.serial ?? null}
         connecting={mirror.state.phase === 'connecting'}
         onMirror={onMirror}
-        audio={settings.audio}
-        onAudioChange={(audio) => updateSettings({ audio })}
+        settings={settings}
+        onSettingsChange={updateSettings}
       />
       <main className="flex min-w-0 flex-1 flex-col">
-        <MirrorToolbar mirror={mirror} />
-        <MirrorStage canvasRef={canvasRef} phase={mirror.state.phase} recording={mirror.state.recordingSince !== null} />
+        <MirrorToolbar mirror={mirror} onShowHelp={() => setHelpOpen(true)} />
+        <MirrorStage
+          canvasRef={canvasRef}
+          overlayRef={overlayRef}
+          phase={mirror.state.phase}
+          recording={mirror.state.recordingSince !== null}
+        />
         <StatusBar state={mirror.state} />
       </main>
+      <ControlsHelp open={helpOpen} onOpenChange={setHelpOpen} />
     </div>
   )
 }

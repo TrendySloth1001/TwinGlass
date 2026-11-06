@@ -3,6 +3,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { Adb, findAdb } from './adb/adb'
 import { registerDevicesIpc, stopDeviceTracking } from './devices-ipc'
 import { closeAllRecordings, registerMediaIpc } from './media-ipc'
+import { installMenu } from './menu'
 import { registerSessionIpc, stopAllSessions } from './session-ipc'
 
 export function serverPath(): string {
@@ -29,6 +30,10 @@ function createWindow(autoConnect?: { serial: string; kind: string }): BrowserWi
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
+      // A mirror must keep decoding/drawing at full rate when the window is behind others or
+      // unfocused; Chromium otherwise throttles timers/rendering of hidden pages (verified: the
+      // page reported visibilityState "hidden" while occluded).
+      backgroundThrottling: false,
     },
   })
   const hash = autoConnect ? `connect=${encodeURIComponent(autoConnect.serial)}&kind=${autoConnect.kind}` : ''
@@ -48,6 +53,7 @@ registerMediaIpc()
 void app.whenReady().then(() => {
   const path = findAdb()
   adb = path ? new Adb(path) : null
+  installMenu()
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

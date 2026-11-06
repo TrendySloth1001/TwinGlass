@@ -2,11 +2,14 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { toast } from 'sonner'
 import { QualityPreset, type AudioMode, type MainToRenderer, type RendererToMain } from '@shared/ipc'
-import { setDisplayPower } from '@shared/scrcpy/control'
+import { AndroidKey } from '@shared/input/keycodes'
+import { expandNotificationPanel, expandSettingsPanel, rotateDevice, setDisplayPower } from '@shared/scrcpy/control'
+import type { DeviceAction } from '@shared/shortcuts'
 import type { TransportInfo } from '../../../preload/api'
 import { AudioPlayer } from '@/engine/audio-player'
 import { InputController } from '@/engine/input'
 import { Recorder } from '@/engine/recorder'
+import { TouchOverlay } from '@/engine/touch-overlay'
 import { VideoView, type VideoStats } from '@/engine/video-view'
 
 export type Phase = 'idle' | 'connecting' | 'live'
@@ -39,6 +42,7 @@ interface Engine {
   input: InputController
   audio: AudioPlayer | null
   recorder: Recorder
+  overlay: TouchOverlay | null
   timer: number
 }
 
@@ -58,9 +62,16 @@ function waitForPort(): { promise: Promise<{ port: MessagePort; deviceName: stri
 
 const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
+export interface ConnectOptions {
+  audio: AudioMode
+  showTouches: boolean
+}
+
 export interface Mirror {
   state: MirrorState
-  connect: (t: TransportInfo, audio: AudioMode) => Promise<void>
+  connect: (t: TransportInfo, opts: ConnectOptions) => Promise<void>
+  /** Runs a Device menu / toolbar action (no-op unless live). */
+  runAction: (action: DeviceAction) => void
   disconnect: () => void
   send: (msg: Uint8Array) => void
   pressKey: (keycode: number) => void
@@ -70,7 +81,10 @@ export interface Mirror {
   toggleRecording: () => Promise<void>
 }
 
-export function useMirror(canvasRef: RefObject<HTMLCanvasElement | null>): Mirror {
+export function useMirror(
+  canvasRef: RefObject<HTMLCanvasElement | null>,
+  overlayRef: RefObject<HTMLDivElement | null>,
+): Mirror {
   const [state, setState] = useState<MirrorState>(IDLE)
   const engine = useRef<Engine | null>(null)
   const busy = useRef(false)
@@ -85,6 +99,7 @@ export function useMirror(canvasRef: RefObject<HTMLCanvasElement | null>): Mirro
       clearInterval(e.timer)
       if (e.recorder.active) void e.recorder.stop()
       e.input.dispose()
+      e.overlay?.dispose()
       e.video.dispose()
       e.audio?.dispose()
       if (notifyMain) e.port.postMessage({ t: 'stop' } satisfies RendererToMain)
@@ -99,7 +114,8 @@ export function useMirror(canvasRef: RefObject<HTMLCanvasElement | null>): Mirro
   }, [])
 
   const connect = useCallback(
-    async (t: TransportInfo, audioMode: AudioMode) => {
+    async (t: TransportInfo, opts: ConnectOptions) => {
+      const audioMode = opts.audio
       const canvas = canvasRef.current
       if (busy.current || !canvas) return
       busy.current = true
@@ -109,7 +125,12 @@ export function useMirror(canvasRef: RefObject<HTMLCanvasElement | null>): Mirro
       setState({ ...IDLE, phase: 'connecting', transport: t })
       const wait = waitForPort()
       try {
-        await window.mobMirror.startSession({ serial: t.serial, audio: audioMode, ...QualityPreset[t.kind] })
+        await window.mobMirror.startSession({
+          serial: t.serial,
+          audio: audioMode,
+          showTouches: opts.showTouches,
+          ...QualityPreset[t.kind],
+        })
         const { port, deviceName } = await wait.promise
         if (gen !== attempt.current) {
           port.close()
@@ -119,11 +140,14 @@ export function useMirror(canvasRef: RefObject<HTMLCanvasElement | null>): Mirro
         const video = new VideoView(canvas, (e) => toast.error(`Video: ${e.message}`), () => {})
         const audio = audioMode === 'off' ? null : new AudioPlayer((e) => toast.error(`Audio: ${e.message}`))
         const post = (data: Uint8Array): void => port.postMessage({ t: 'control', data } satisfies RendererToMain)
-        const input = new InputController(canvas, () => video.size, post, () => window.mobMirror.readClipboard())
+        const overlay = overlayRef.current ? new TouchOverlay(overlayRef.current, canvas) : null
+        const input = new InputController(canvas, () => video.size, post, (points, size) =>
+          points.length ? overlay?.show(points, size) : overlay?.clear(),
+        )
         const recorder = new Recorder()
 
         port.onmessage = ({ data }: MessageEvent<MainToRenderer>) => {
-          if (data.t === 'video') video.handle(data.ev)
+          if (data.t === 'video') video.handle(data.ev, data.at)
           else if (data.t === 'audio') audio?.handle(data.ev)
           else if (data.t === 'log') console.debug('[scrcpy]', data.line.trimEnd())
           else if (data.t === 'closed') {
@@ -138,7 +162,7 @@ export function useMirror(canvasRef: RefObject<HTMLCanvasElement | null>): Mirro
           patch({ stats: video.stats(), audio: audio ? audio.state : 'off' })
         }, 1000)
 
-        engine.current = { port, video, input, audio, recorder, timer }
+        engine.current = { port, video, input, audio, recorder, overlay, timer }
         setState({ ...IDLE, phase: 'live', transport: t, deviceName, audio: audio ? 'waiting' : 'off' })
         canvas.focus()
       } catch (e) {
@@ -150,7 +174,7 @@ export function useMirror(canvasRef: RefObject<HTMLCanvasElement | null>): Mirro
         busy.current = false
       }
     },
-    [canvasRef, patch, teardown],
+    [canvasRef, overlayRef, patch, teardown],
   )
 
   const disconnect = useCallback(() => {
@@ -226,5 +250,57 @@ export function useMirror(canvasRef: RefObject<HTMLCanvasElement | null>): Mirro
     [teardown],
   )
 
-  return { state, connect, disconnect, send, pressKey, toggleScreenOff, toggleMute, screenshot, toggleRecording }
+  // Latest callbacks for runAction, so the menu subscription never sees stale closures.
+  const actions = useRef({ disconnect, toggleScreenOff, screenshot, toggleRecording })
+  actions.current = { disconnect, toggleScreenOff, screenshot, toggleRecording }
+
+  const runAction = useCallback(
+    (action: DeviceAction) => {
+      if (!engine.current) return
+      const a = actions.current
+      const key = (k: number): void => engine.current?.input.pressKey(k)
+      switch (action) {
+        case 'back':
+          return key(AndroidKey.BACK)
+        case 'home':
+          return key(AndroidKey.HOME)
+        case 'recents':
+          return key(AndroidKey.APP_SWITCH)
+        case 'notifications':
+          return send(expandNotificationPanel())
+        case 'quickSettings':
+          return send(expandSettingsPanel())
+        case 'power':
+          return key(AndroidKey.POWER)
+        case 'volumeUp':
+          return key(AndroidKey.VOLUME_UP)
+        case 'volumeDown':
+          return key(AndroidKey.VOLUME_DOWN)
+        case 'rotate':
+          return send(rotateDevice())
+        case 'screenOff':
+          return a.toggleScreenOff()
+        case 'screenshot':
+          return void a.screenshot()
+        case 'record':
+          return void a.toggleRecording()
+        case 'disconnect':
+          return a.disconnect()
+      }
+    },
+    [send],
+  )
+
+  return {
+    state,
+    connect,
+    runAction,
+    disconnect,
+    send,
+    pressKey,
+    toggleScreenOff,
+    toggleMute,
+    screenshot,
+    toggleRecording,
+  }
 }

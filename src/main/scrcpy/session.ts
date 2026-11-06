@@ -23,6 +23,8 @@ export interface SessionOptions {
    * both: audio_source=playback + audio_dup (Android 13+, keeps the phone playing; apps may opt out).
    */
   audio?: AudioMode
+  /** scrcpy show_touches: the phone draws touch dots (setting restored by the server's cleanup). */
+  showTouches?: boolean
   logLevel?: 'verbose' | 'debug' | 'info' | 'warn' | 'error'
 }
 
@@ -72,6 +74,7 @@ export function buildServerArgs(scid: string, o: SessionOptions): string[] {
     args.push('audio=true', 'audio_codec=opus')
     if (audio === 'both') args.push('audio_source=playback', 'audio_dup=true')
   }
+  if (o.showTouches) args.push('show_touches=true')
   if (o.maxSize) args.push(`max_size=${o.maxSize}`)
   if (o.videoBitRate) args.push(`video_bit_rate=${o.videoBitRate}`)
   if (o.maxFps) args.push(`max_fps=${o.maxFps}`)

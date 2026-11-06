@@ -30,6 +30,7 @@ const api: MobMirrorApi = {
   cancelQrPairing: () => ipcRenderer.invoke('wireless:qr:cancel'),
   onQrState: (cb) => subscribe('wireless:qr:state', cb),
   openDeviceWindow: (serial, kind) => ipcRenderer.invoke('window:open-device', serial, kind),
+  onDeviceAction: (cb) => subscribe('device:action', cb),
   // Only real dropped File objects are accepted: the page can't hand main an arbitrary path string.
   // (Sandboxed renderers have no File.path; webUtils.getPathForFile is the supported replacement.)
   dropFiles: (files) =>

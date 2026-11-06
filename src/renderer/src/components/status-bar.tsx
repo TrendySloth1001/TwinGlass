@@ -1,4 +1,4 @@
-import { Circle, Cpu, Gauge, Music } from 'lucide-react'
+import { Circle, Cpu, Gauge, Music, Timer } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import type { MirrorState } from '@/hooks/use-mirror'
 
@@ -36,6 +36,18 @@ export function StatusBar({ state }: { state: MirrorState }): ReactNode {
       <span className="flex items-center gap-1">
         <Cpu className="size-3" /> {s?.codec ?? '…'} · {s?.hardware ?? '…'} decode
       </span>
+      {s && (
+        <span
+          className="flex items-center gap-1"
+          title={
+            'Mac-side latency: packet received → frame on screen (IPC + decode + draw).\n' +
+            `IPC ${s.latency.ipcMs.toFixed(1)} ms · decode ${s.latency.decodeMs.toFixed(1)} ms · decoder queue ${s.latency.queue}\n` +
+            'Jitter: extra network/encoder delay vs the fastest recent frame (Wi-Fi stalls show up here).'
+          }
+        >
+          <Timer className="size-3" /> {s.latency.appMs.toFixed(0)} ms app · {s.latency.jitterMs.toFixed(0)} ms jitter
+        </span>
+      )}
       <span className="flex items-center gap-1">
         <Music className="size-3" /> {AUDIO_LABEL[state.audio]}
         {state.muted && ' (muted)'}
