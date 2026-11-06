@@ -1,7 +1,8 @@
 // Owns one mirroring session: MessagePort, video decoder, audio player, input and recorder.
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { toast } from 'sonner'
-import { QualityPreset, type AudioMode, type MainToRenderer, type RendererToMain } from '@shared/ipc'
+import type { AudioMode, MainToRenderer, RendererToMain } from '@shared/ipc'
+import { videoParams, type CodecPreference, type Quality } from '@shared/quality'
 import { AndroidKey } from '@shared/input/keycodes'
 import { expandNotificationPanel, expandSettingsPanel, rotateDevice, setDisplayPower } from '@shared/scrcpy/control'
 import type { DeviceAction } from '@shared/shortcuts'
@@ -78,11 +79,25 @@ export interface ConnectOptions {
   showTouches: boolean
   /** Hardware id (ro.serialno): lets a reconnect find the phone on another transport (USB/Wi-Fi). */
   deviceId?: string
+  quality: Quality
+  codec: CodecPreference
+}
+
+/** Can this Mac hardware-decode HEVC? (verified true on Apple Silicon / Electron 45). Cached. */
+let hevcSupport: Promise<boolean> | null = null
+function macDecodesHevc(): Promise<boolean> {
+  hevcSupport ??= VideoDecoder.isConfigSupported({ codec: 'hvc1.1.6.L153.B0', hardwareAcceleration: 'prefer-hardware' }).then(
+    (r) => r.supported === true,
+    () => false,
+  )
+  return hevcSupport
 }
 
 export interface Mirror {
   state: MirrorState
   connect: (t: TransportInfo, opts: ConnectOptions) => Promise<void>
+  /** Restart the live session with changed options (quality, codec, audio, show touches). */
+  restart: (patch: Partial<ConnectOptions>) => Promise<void>
   /** Runs a Device menu / toolbar action (no-op unless live). */
   runAction: (action: DeviceAction) => void
   disconnect: () => void
@@ -103,6 +118,9 @@ export function useMirror(
   const busy = useRef(false)
   const attempt = useRef(0)
   const patch = useCallback((p: Partial<MirrorState>) => setState((s) => ({ ...s, ...p })), [])
+  // Latest state for callbacks (side effects stay out of setState updaters: StrictMode runs them twice).
+  const stateRef = useRef(state)
+  stateRef.current = state
 
   const teardown = useCallback(
     (notifyMain: boolean) => {
@@ -147,12 +165,20 @@ export function useMirror(
       }
       const wait = waitForPort()
       try {
-        await window.mobMirror.startSession({
+        const wantHevc = opts.codec === 'h265' || (opts.codec === 'auto' && (await macDecodesHevc()))
+        const request = {
           serial: t.serial,
           audio: audioMode,
           showTouches: opts.showTouches,
-          ...QualityPreset[t.kind],
-        })
+          ...videoParams(opts.quality, t.kind),
+        }
+        try {
+          await window.mobMirror.startSession({ ...request, videoCodec: wantHevc ? 'h265' : 'h264' })
+        } catch (e) {
+          // Phones without an HEVC encoder make the server fail: fall back to H.264 once ("auto" only).
+          if (!wantHevc || opts.codec !== 'auto' || gen !== attempt.current) throw e
+          await window.mobMirror.startSession({ ...request, videoCodec: 'h264' })
+        }
         const { port, deviceName } = await wait.promise
         if (gen !== attempt.current) {
           port.close()
@@ -212,13 +238,27 @@ export function useMirror(
     [canvasRef, overlayRef, patch, teardown],
   )
 
+  /** Transport + options of the current/last session, for restarting with new settings. */
+  const last = useRef<{ t: TransportInfo; opts: ConnectOptions } | null>(null)
+
   const connect = useCallback(
     async (t: TransportInfo, opts: ConnectOptions): Promise<void> => {
+      last.current = { t, opts }
       // Disconnect (or unmount, or a reconnect loop) is cancelled by bumping this.
       const gen = ++attempt.current
       await connectOnce(t, opts, gen, 'fresh')
     },
     [connectOnce],
+  )
+
+  /** Applies new session settings now: restarts the live mirror on the same transport (~1 s). */
+  const restart = useCallback(
+    async (patch: Partial<ConnectOptions>): Promise<void> => {
+      const l = last.current
+      if (!l || stateRef.current.phase !== 'live') return
+      await connect(stateRef.current.transport ?? l.t, { ...l.opts, ...patch })
+    },
+    [connect],
   )
 
   /**
@@ -266,9 +306,7 @@ export function useMirror(
 
   const pressKey = useCallback((keycode: number) => engine.current?.input.pressKey(keycode), [])
 
-  // Side effects stay out of setState updaters (StrictMode runs updaters twice in development).
-  const stateRef = useRef(state)
-  stateRef.current = state
+  // (stateRef is declared at the top of the hook: side effects stay out of setState updaters.)
 
   const toggleScreenOff = useCallback(() => {
     const off = !stateRef.current.screenOff
@@ -376,6 +414,7 @@ export function useMirror(
   return {
     state,
     connect,
+    restart,
     runAction,
     disconnect,
     send,

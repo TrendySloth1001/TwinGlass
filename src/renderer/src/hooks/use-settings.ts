@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { AudioMode } from '@shared/ipc'
+import type { CodecPreference, Quality } from '@shared/quality'
 
 const KEY = 'mob-mirror:settings'
 
@@ -7,9 +8,11 @@ export interface Settings {
   audio: AudioMode
   /** Phone draws a dot where each touch lands (useful to check precision). */
   showTouches: boolean
+  quality: Quality
+  codec: CodecPreference
 }
 
-const DEFAULTS: Settings = { audio: 'off', showTouches: false }
+const DEFAULTS: Settings = { audio: 'off', showTouches: false, quality: 'auto', codec: 'auto' }
 
 function load(): Settings {
   try {

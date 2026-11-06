@@ -7,8 +7,8 @@ const key = Uint8Array.from([0, 0, 0, 1, 0x65, 1])
 const delta = Uint8Array.from([0, 0, 0, 1, 0x41, 2])
 
 describe('H264Planner', () => {
-  it('rejects non-H.264 streams', () => {
-    expect(() => new H264Planner().handle({ type: 'codec', codecId: CodecId.H265 })).toThrow()
+  it('rejects codecs other than H.264/H.265 (e.g. AV1: no hardware decode on the Mac)', () => {
+    expect(() => new H264Planner().handle({ type: 'codec', codecId: CodecId.AV1 })).toThrow()
   })
 
   it('configures on config, merges SPS/PPS into keyframes, passes deltas', () => {

@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import type { Settings } from '@/hooks/use-settings'
+import { QUALITY_LABELS, type CodecPreference, type Quality } from '@shared/quality'
 
 interface SidebarProps {
   list: DeviceListInfo | null
@@ -87,8 +88,36 @@ export function Sidebar(p: SidebarProps): ReactNode {
       <Separator />
       <div className="flex flex-col gap-3 p-3">
         <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-          Session settings · apply on next connect
+          Session settings · applied right away
         </p>
+        <div className="grid gap-1.5">
+          <Label className="text-xs font-normal">Quality</Label>
+          <Select value={p.settings.quality} onValueChange={(v) => p.onSettingsChange({ quality: v as Quality })}>
+            <SelectTrigger size="sm" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(QUALITY_LABELS) as Quality[]).map((q) => (
+                <SelectItem key={q} value={q}>
+                  {QUALITY_LABELS[q]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-1.5">
+          <Label className="text-xs font-normal">Codec</Label>
+          <Select value={p.settings.codec} onValueChange={(v) => p.onSettingsChange({ codec: v as CodecPreference })}>
+            <SelectTrigger size="sm" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="auto">Auto (H.265 when supported)</SelectItem>
+              <SelectItem value="h265">H.265: sharper at the same bitrate</SelectItem>
+              <SelectItem value="h264">H.264: most compatible</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex items-center justify-between gap-2">
           <Label htmlFor="show-touches" className="text-xs font-normal">
             Show touches on phone

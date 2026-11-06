@@ -96,6 +96,7 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
       maxSize: req.maxSize,
       videoBitRate: req.videoBitRate,
       maxFps: req.maxFps,
+      videoCodec: req.videoCodec === 'h265' ? 'h265' : 'h264',
       audio: req.audio ?? 'off',
       showTouches: req.showTouches === true,
       stayAwake: true,

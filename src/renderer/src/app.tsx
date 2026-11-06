@@ -80,8 +80,24 @@ export function App(): ReactNode {
 
   const onMirror = useCallback(
     (t: TransportInfo, deviceId?: string) =>
-      void connect(t, { audio: settings.audio, showTouches: settings.showTouches, deviceId }),
-    [connect, settings.audio, settings.showTouches],
+      void connect(t, {
+        audio: settings.audio,
+        showTouches: settings.showTouches,
+        quality: settings.quality,
+        codec: settings.codec,
+        deviceId,
+      }),
+    [connect, settings.audio, settings.showTouches, settings.quality, settings.codec],
+  )
+
+  /** Session settings apply immediately: restart a live mirror with the new values. */
+  const { restart } = mirror
+  const onSettingsChange = useCallback(
+    (patch: Partial<typeof settings>) => {
+      updateSettings(patch)
+      void restart(patch)
+    },
+    [restart, updateSettings],
   )
 
   // Device menu shortcuts (⌘B back, ⇧⌘H home, …) arrive from main for the focused window.
@@ -111,7 +127,7 @@ export function App(): ReactNode {
         connecting={mirror.state.phase === 'connecting'}
         onMirror={onMirror}
         settings={settings}
-        onSettingsChange={updateSettings}
+        onSettingsChange={onSettingsChange}
       />
       <main className="flex min-w-0 flex-1 flex-col">
         <MirrorToolbar mirror={mirror} onAction={dispatch} onShowHelp={() => setHelpOpen(true)} />

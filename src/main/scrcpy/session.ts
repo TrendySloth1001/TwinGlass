@@ -25,6 +25,8 @@ export interface SessionOptions {
   audio?: AudioMode
   /** scrcpy show_touches: the phone draws touch dots (setting restored by the server's cleanup). */
   showTouches?: boolean
+  /** h265 = sharper at the same bitrate (both hardware on the test phone and the Mac). */
+  videoCodec?: 'h264' | 'h265'
   logLevel?: 'verbose' | 'debug' | 'info' | 'warn' | 'error'
 }
 
@@ -65,7 +67,7 @@ export function buildServerArgs(scid: string, o: SessionOptions): string[] {
     `log_level=${o.logLevel ?? 'info'}`,
     'tunnel_forward=true',
     `control=${o.control ?? true}`,
-    'video_codec=h264',
+    `video_codec=${o.videoCodec ?? 'h264'}`,
     `stay_awake=${o.stayAwake ?? false}`,
   ]
   const audio = o.audio ?? 'off'

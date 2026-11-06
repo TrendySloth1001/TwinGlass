@@ -3,11 +3,13 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { CodecId } from '@shared/scrcpy/constants'
 import { h264CodecString } from '@shared/scrcpy/h264'
+import { hevcCodecString } from '@shared/scrcpy/hevc'
 import type { StreamEvent } from '@shared/scrcpy/stream'
 import { Adb, findAdb } from '../../src/main/adb/adb'
 import { ScrcpySession } from '../../src/main/scrcpy/session'
 
 const serial = process.env.MOB_DEVICE
+const codec = process.env.MOB_CODEC === 'h265' ? 'h265' : 'h264'
 
 describe.skipIf(!serial)('scrcpy session on a real device', () => {
   it('handshakes and receives codec, session, config and a keyframe', async () => {
@@ -17,6 +19,7 @@ describe.skipIf(!serial)('scrcpy session on a real device', () => {
       serverPath: join(__dirname, '../../resources/scrcpy-server-v5.0.1'),
       maxSize: 1024,
       videoBitRate: 4_000_000,
+      videoCodec: codec,
     })
     const events: StreamEvent[] = []
     await new Promise<void>((resolve, reject) => {
@@ -32,12 +35,13 @@ describe.skipIf(!serial)('scrcpy session on a real device', () => {
     })
     s.close()
 
-    console.log('device:', s.deviceName, events.slice(0, 3))
+    console.log('device:', s.deviceName, events.slice(0, 2))
     expect(s.deviceName.length).toBeGreaterThan(0)
-    expect(events[0]).toEqual({ type: 'codec', codecId: CodecId.H264 })
+    expect(events[0]).toEqual({ type: 'codec', codecId: codec === 'h265' ? CodecId.H265 : CodecId.H264 })
     expect(events[1]).toMatchObject({ type: 'session' })
-    const cfg = events.find((e) => e.type === 'config')
+    const cfg = events.find((e) => e.type === 'config') as { data: Uint8Array } | undefined
     expect(cfg).toBeDefined()
-    console.log('codec string:', h264CodecString((cfg as { data: Uint8Array }).data))
+    console.log('config hex:', Buffer.from(cfg!.data).toString('hex'))
+    console.log('codec string:', codec === 'h265' ? hevcCodecString(cfg!.data) : h264CodecString(cfg!.data))
   }, 30000)
 })

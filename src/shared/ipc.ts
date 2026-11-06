@@ -12,6 +12,7 @@ export interface StartSessionRequest {
   audio?: AudioMode
   /** Phone draws a dot where each touch lands (scrcpy show_touches; restored on disconnect). */
   showTouches?: boolean
+  videoCodec?: 'h264' | 'h265'
 }
 
 export interface FileResult {
@@ -32,9 +33,3 @@ export type MainToRenderer =
   | { t: 'closed'; error?: string; unexpected: boolean }
 
 export type RendererToMain = { t: 'control'; data: Uint8Array } | { t: 'stop' }
-
-/** Quality presets (docs/FACTS.md): Wi-Fi gets a lower bitrate and resolution. */
-export const QualityPreset = {
-  usb: { videoBitRate: 8_000_000, maxSize: 0 },
-  wifi: { videoBitRate: 4_000_000, maxSize: 1280 },
-} as const
