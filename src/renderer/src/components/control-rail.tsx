@@ -84,13 +84,15 @@ interface ControlRailProps {
   /** Leave compact mode: the full view with devices, settings and the toolbar. */
   onFullView: () => void
   onOpenSettings: () => void
+  /** Extra classes (e.g. margins that align the strip with a framed phone). */
+  className?: string
 }
 
 /**
  * Vertical controls on the right of the compact mirror window. Primary actions are always
  * visible; the rest sit in a menu. When the window is short, the middle section scrolls.
  */
-export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSettings }: ControlRailProps): ReactNode {
+export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSettings, className }: ControlRailProps): ReactNode {
   const { state } = mirror
   const live = state.phase === 'live'
   const recording = state.recordingSince !== null
@@ -112,7 +114,10 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSe
     <nav
       ref={navRef}
       aria-label="Phone controls"
-      className="dark flex w-12 shrink-0 flex-col items-center rounded-2xl border border-sidebar-border bg-sidebar py-1.5 text-foreground [-webkit-app-region:no-drag]"
+      className={cn(
+        'dark flex w-12 shrink-0 flex-col items-center rounded-2xl border border-sidebar-border bg-sidebar py-1.5 text-foreground [-webkit-app-region:no-drag]',
+        className,
+      )}
     >
       <div className={cn('flex min-h-0 flex-1 flex-col items-center gap-0.5 overflow-y-auto', !live && 'pointer-events-none opacity-40')}>
         <RailButton label="Back" shortcut={`${sc('back')} · right-click`} onClick={run('back')}>

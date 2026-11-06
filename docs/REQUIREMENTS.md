@@ -51,6 +51,7 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - Side buttons work (volume, power), and so does Classic's home button.
   - The compact window takes the exact phone shape (transparent around it); in the full view the phone is centred with a shadow.
   - The designs are generic, not copies of a brand's phone.
+  - The pieces around a framed phone match the control strip: dock-style pills behind the traffic lights and the name, a navigation dock under the phone, and the strip aligned with the phone body (2026-11-06).
 - ✅ Sidebar: docked or floating, collapsible, with sections. The floating panel stays inside the stage.
 - ✅ Responsive layout down to 480 px. The toolbar overflows into a menu and the sidebar floats automatically when narrow.
 - ✅ Notifications:

@@ -287,13 +287,16 @@ export function App(): ReactNode {
           }
         />
         </div>
-        {compact && settings.navBar && <NavBar onAction={dispatch} disabled={!live} />}
+        {compact && settings.navBar && <NavBar onAction={dispatch} disabled={!live} floating={settings.frame !== 'none'} />}
         {!compact && settings.showStatusBar && <StatusBar state={mirror.state} />}
       </main>
       {/* The see-through strip between phone and rail: also a handle to move the window. */}
       {compact && <div aria-hidden className="w-2 shrink-0 [-webkit-app-region:drag]" />}
       {compact && (
         <ControlRail
+          // With a phone frame, line the strip up with the phone body (below the title pills,
+          // above the nav dock) so the pieces read as one layout.
+          className={settings.frame !== 'none' ? cn('mt-7', settings.navBar && 'mb-10') : undefined}
           mirror={mirror}
           onAction={dispatch}
           onShowHelp={() => setHelpOpen(true)}
