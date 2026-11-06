@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { AudioMode } from '@shared/ipc'
 import type { ThemePref } from '@/hooks/use-theme'
 import type { PopupPref } from '@/lib/notify'
-import type { CodecPreference, Quality } from '@shared/quality'
+import { QUALITY_LABELS, type CodecPreference, type Quality } from '@shared/quality'
 
 const KEY = 'mob-mirror:settings'
 
@@ -82,9 +82,51 @@ export const DEFAULT_SETTINGS = DEFAULTS
 /** Settings that need a new video/audio stream: changing them restarts a live mirror (~1 s). */
 export const STREAM_KEYS = ['audio', 'quality', 'codec', 'maxFps', 'stayAwake', 'clipboardSync'] as const
 
+/** Allowed values for the enum-like settings. Anything else (old version, hand edit) -> default. */
+const ALLOWED: Partial<Record<keyof Settings, readonly unknown[]>> = {
+  audio: ['off', 'mac', 'both'],
+  quality: Object.keys(QUALITY_LABELS),
+  codec: ['auto', 'h264', 'h265'],
+  sidebarLayout: ['docked', 'floating'],
+  viewMode: ['compact', 'full'],
+  theme: ['system', 'light', 'dark'],
+  popups: ['all', 'errors', 'off'],
+  maxFps: [0, 30, 60, 90, 120],
+  scrollSpeed: [0.5, 1, 1.5, 2.5],
+}
+
+/**
+ * Validates stored settings field by field: wrong type or unknown value -> that field's default,
+ * unknown keys dropped. A corrupt or older settings blob can never put the UI in an impossible state.
+ */
+export function sanitizeSettings(raw: unknown): Settings {
+  const src = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+  const out: Record<string, unknown> = { ...DEFAULTS }
+  for (const k of Object.keys(DEFAULTS) as (keyof Settings)[]) {
+    const v = src[k]
+    if (v === undefined) continue
+    if (k === 'lastDevice') {
+      if (v === null || typeof v === 'string') out[k] = v
+    } else if (k === 'closedSections') {
+      if (Array.isArray(v) && v.every((x) => typeof x === 'string')) out[k] = v
+    } else if (typeof v === typeof DEFAULTS[k] && (!ALLOWED[k] || ALLOWED[k]!.includes(v))) {
+      out[k] = v
+    }
+  }
+  return out as unknown as Settings
+}
+
+function parse(json: string | null): Settings {
+  try {
+    return sanitizeSettings(JSON.parse(json ?? '{}'))
+  } catch {
+    return DEFAULTS
+  }
+}
+
 function load(): Settings {
   try {
-    return { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Settings>) }
+    return parse(localStorage.getItem(KEY))
   } catch {
     return DEFAULTS
   }
@@ -102,6 +144,14 @@ export function useSettings(): [Settings, (patch: Partial<Settings>) => void] {
       }
       return next
     })
+  }, [])
+  // Other windows ("Mirror in new window") change settings too: stay in sync.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent): void => {
+      if (e.key === KEY) setSettings(parse(e.newValue))
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
   }, [])
   return [settings, update]
 }

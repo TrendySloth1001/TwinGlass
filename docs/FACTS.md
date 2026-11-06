@@ -223,3 +223,15 @@ adb shell CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobi
 - With auto-rotate on, scrcpy's ROTATE_DEVICE (`freezeRotation` followed by `thawRotation`) gets undone at once by the sensor. `mUserRotation` changes but the display stays at 0.
 - What works: `cmd window user-rotation -d 0 lock <0-3>` and `free`.
 - To read the state, look at the `Display: mDisplayId=0` block of `dumpsys window displays` (`mRotation=`, `mUserRotationMode=`). Scrcpy's virtual display is listed first.
+
+## Unlock on phones with an under-display fingerprint sensor, and system BiometricPrompt (verified on the A024, Android 17, 2026-11-06)
+- **Lock screen.** `wm dismiss-keyguard` shows SystemUI's **alternate bouncer** instead of the PIN pad. That is the fingerprint overlay, window `AlternateBouncerView`.
+  - It takes no key input, and `mCurrentFocus=null`, so a typed PIN is lost. No failure is counted.
+  - A tap outside the sensor (top-centre quarter) switches to the PIN pad. `dumpsys activity service com.android.systemui` then reports `isPrimaryBouncerShowingOrWillBeShowing=true` and `isAlternateBouncerShowing=false`.
+  - The `AlternateBouncerView` window exists only while the overlay is shown.
+- **WhatsApp's own app lock.** It uses `com.whatsapp/.authentication.AppAuthenticationActivity`, which shows Android's system **BiometricPrompt** (window `BiometricPrompt`, input focus null).
+  - `dumpsys biometric` shows `CredentialRequested: true`, so the device PIN is accepted.
+  - The PIN pad is behind the button `com.android.systemui:id/button_use_credential` ("Use PIN"). `uiautomator dump` finds it even though the prompt is hidden from capture.
+  - The sequence is: tap it, wait about 700 ms, type the PIN, press Enter. The prompt closes and the app resumes. Verified end to end.
+  - Prompts without that button are biometric-only, and the PIN is never typed there.
+- **Dev note.** During quick successive `electron-vite dev --watch` restarts, the old Electron sometimes survived. It quits normally on SIGTERM, so electron-vite lost track of it. If "No handler registered" errors appear, look for two Electron processes.

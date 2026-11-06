@@ -84,3 +84,38 @@ describe('lock state parsing', () => {
     expect(isTypeableSecret('pässwörd')).toBe(false)
   })
 })
+
+describe('alternate (fingerprint) bouncer', () => {
+  it('is showing only while its window exists', async () => {
+    const { parseAltBouncerShowing } = await import('../src/main/adb/lock')
+    expect(parseAltBouncerShowing('1\n')).toBe(true)
+    expect(parseAltBouncerShowing('0\n')).toBe(false)
+    expect(parseAltBouncerShowing('')).toBe(false)
+  })
+})
+
+describe('system BiometricPrompt (WhatsApp app lock)', () => {
+  // Trimmed from `uiautomator dump` on the A024 with WhatsApp's lock showing.
+  const XML =
+    '<hierarchy rotation="0"><node index="0" text="" resource-id="" package="com.android.systemui" bounds="[0,0][1260,2800]">' +
+    '<node text="Unlock to use WhatsApp" resource-id="com.android.systemui:id/title" package="com.android.systemui" bounds="[196,2017][1065,2164]" />' +
+    '<node text="Use PIN" resource-id="com.android.systemui:id/button_use_credential" class="android.widget.Button" package="com.android.systemui" bounds="[72,2632][336,2776]" />' +
+    '</node></hierarchy>'
+
+  it('finds the Use PIN button centre and the screen size', async () => {
+    const { parseUseCredentialButton } = await import('../src/main/adb/lock')
+    expect(parseUseCredentialButton(XML)).toEqual({ x: 204, y: 2704, screen: { width: 1260, height: 2800 } })
+  })
+  it('returns null for biometric-only prompts (no Use PIN button)', async () => {
+    const { parseUseCredentialButton } = await import('../src/main/adb/lock')
+    expect(parseUseCredentialButton(XML.replace(/<node text="Use PIN"[^>]*\/>/, ''))).toBeNull()
+  })
+  it('counts the prompt as a credential prompt, owned by the app', async () => {
+    const { isCredentialPrompt, promptOwner, parseBiometricPromptShowing } = await import('../src/main/adb/lock')
+    const wa = { package: 'com.whatsapp', activity: '.authentication.AppAuthenticationActivity' }
+    expect(isCredentialPrompt(wa)).toBe(true) // activity name alone
+    expect(isCredentialPrompt({ package: 'x', activity: '.Main' }, null, true)).toBe(true)
+    expect(promptOwner({ package: 'com.whatsapp', activity: '.Main' }, null, true)).toBe('com.whatsapp')
+    expect(parseBiometricPromptShowing('1')).toBe(true)
+  })
+})

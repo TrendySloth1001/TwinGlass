@@ -4,11 +4,12 @@ import { toast } from 'sonner'
 import type { AudioMode, MainToRenderer, RendererToMain } from '@shared/ipc'
 import { videoParams, type CodecPreference, type Quality } from '@shared/quality'
 import { AndroidKey } from '@shared/input/keycodes'
-import { expandNotificationPanel, expandSettingsPanel, setDisplayPower } from '@shared/scrcpy/control'
+import { expandNotificationPanel, expandSettingsPanel, resetVideo, setDisplayPower } from '@shared/scrcpy/control'
 import type { DeviceAction } from '@shared/shortcuts'
-import type { TransportInfo } from '../../../preload/api'
+import type { DeviceInfo, TransportInfo } from '../../../preload/api'
 import { AudioPlayer } from '@/engine/audio-player'
 import { InputController, type InputOptions } from '@/engine/input'
+import { backoffDelay } from '@shared/util/backoff'
 import { Recorder } from '@/engine/recorder'
 import { TouchOverlay } from '@/engine/touch-overlay'
 import { notify } from '@/lib/notify'
@@ -50,7 +51,6 @@ const IDLE: MirrorState = {
 
 /** How long to keep trying after an unexpected drop (the router deauth + rejoin seen in the logs takes seconds). */
 const RECONNECT_WINDOW_MS = 90_000
-const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 interface Engine {
   port: MessagePort
@@ -213,9 +213,14 @@ export function useMirror(
           return false
         }
 
-        const video = new VideoView(canvas, (e) => toast.error(`Video: ${e.message}`), () => {})
-        const audio = audioMode === 'off' ? null : new AudioPlayer((e) => toast.error(`Audio: ${e.message}`))
         const post = (data: Uint8Array): void => port.postMessage({ t: 'control', data } satisfies RendererToMain)
+        const video = new VideoView(
+          canvas,
+          (e) => console.warn('[video] decoder error, recovering:', e.message), // recovers by itself: no toast spam
+          () => {},
+          () => post(resetVideo()),
+        )
+        const audio = audioMode === 'off' ? null : new AudioPlayer((e) => toast.error(`Audio: ${e.message}`))
         const overlay = overlayRef.current ? new TouchOverlay(overlayRef.current, canvas) : null
         const input = new InputController(canvas, () => video.size, post, (points, size) =>
           points.length && showTouches.current ? overlay?.show(points, size) : overlay?.clear(),
@@ -324,12 +329,26 @@ export function useMirror(
       const started = Date.now()
       setState({ ...IDLE, phase: 'reconnecting', transport: lost, reconnect: { attempt: 0, reason } })
       void (async () => {
+        const match = (devices: DeviceInfo[]): DeviceInfo | undefined =>
+          devices.find((d) => (opts.deviceId && d.id === opts.deviceId) || d.transports.some((x) => x.serial === lost.serial))
         for (let n = 1; Date.now() - started < RECONNECT_WINDOW_MS; n++) {
-          await sleep(Math.min(1000 * n, 4000))
+          // Event-driven: retry the moment adb reports the phone again (USB replug, Wi-Fi rejoin),
+          // with exponential backoff + jitter as the fallback when no event comes.
+          await new Promise<void>((resolve) => {
+            const timer = setTimeout(done, backoffDelay(n - 1, 500, 4000))
+            const off = window.mobMirror.onDevicesChanged((l) => {
+              if (match(l.devices)) done()
+            })
+            function done(): void {
+              clearTimeout(timer)
+              off()
+              resolve()
+            }
+          })
           if (gen !== attempt.current) return
           patch({ reconnect: { attempt: n, reason } })
-          const { devices } = await window.mobMirror.listDevices().catch(() => ({ devices: [] }))
-          const dev = devices.find((d) => (opts.deviceId && d.id === opts.deviceId) || d.transports.some((x) => x.serial === lost.serial))
+          const { devices } = await window.mobMirror.listDevices().catch(() => ({ devices: [] as DeviceInfo[] }))
+          const dev = match(devices)
           const next = dev?.transports[0]
           if (!next) continue
           if (await connectOnce(next, { ...opts, deviceId: dev.id }, gen, 'reconnect')) {

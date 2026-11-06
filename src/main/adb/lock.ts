@@ -89,20 +89,22 @@ export function parseFocusedWindow(line: string): string | null {
 }
 
 const CREDENTIAL_RE =
-  /ConfirmDeviceCredential|ConfirmLock(Password|Pin)|ConfirmCredential|AppLock|applocker|app_?lock|LockedApp|PrivacyLock|PrivateSpaceAuth|BiometricPrompt|UnlockActivity/i
+  /ConfirmDeviceCredential|ConfirmLock(Password|Pin)|ConfirmCredential|AppLock|applocker|app_?lock|LockedApp|PrivacyLock|PrivateSpaceAuth|BiometricPrompt|UnlockActivity|AppAuthentication/i
 
 /**
  * Screens that ask for the device PIN/password over an app (app locks, "confirm your PIN" prompts),
  * judged from the resumed activity and the focused window. Deliberately narrow: typing the PIN into
  * anything else (e.g. a chat field) would leak it, so other screens need explicit confirmation.
  */
-export function isCredentialPrompt(a: TopActivity | null, focusedWindow: string | null = null): boolean {
+export function isCredentialPrompt(a: TopActivity | null, focusedWindow: string | null = null, biometric = false): boolean {
+  if (biometric) return true // Android's system BiometricPrompt (see BIOMETRIC_PROMPT_DUMP)
   if (a && CREDENTIAL_RE.test(`${a.package}/${a.activity}`)) return true
   return focusedWindow !== null && CREDENTIAL_RE.test(focusedWindow)
 }
 
 /** Package (or window title) that owns a recognised prompt, for messages. */
-export function promptOwner(a: TopActivity | null, focusedWindow: string | null): string | null {
+export function promptOwner(a: TopActivity | null, focusedWindow: string | null, biometric = false): string | null {
+  if (biometric && a) return a.package // the app that asked for the system prompt
   if (focusedWindow && CREDENTIAL_RE.test(focusedWindow)) return focusedWindow.split('/')[0]!
   if (a && CREDENTIAL_RE.test(`${a.package}/${a.activity}`)) return a.package
   return null
@@ -121,4 +123,43 @@ export const LOCK_POLL_CMDS = [
   KEYGUARD_DUMP.slice(1).join(' '),
   TOP_ACTIVITY_DUMP[1]!,
   FOCUS_DUMP[1]!,
+  'dumpsys window windows | grep -c "BiometricPrompt}"',
 ]
+
+/**
+ * Phones with an under-display fingerprint sensor (verified on the Nothing A024, Android 17):
+ * `wm dismiss-keyguard` shows SystemUI's "alternate bouncer" (fingerprint overlay, window
+ * AlternateBouncerView) instead of the PIN pad. It takes no key input, so a typed PIN goes
+ * nowhere. A tap outside the sensor switches to the primary (PIN) bouncer; SystemUI then reports
+ * isPrimaryBouncerShowingOrWillBeShowing=true. The window only exists while the overlay is shown.
+ */
+export const ALT_BOUNCER_DUMP = ['shell', 'dumpsys window windows | grep -c "AlternateBouncerView}"']
+
+export function parseAltBouncerShowing(out: string): boolean {
+  return Number.parseInt(out.trim(), 10) > 0
+}
+
+/**
+ * Android's system BiometricPrompt over an app (verified: WhatsApp's own app lock,
+ * com.whatsapp/.authentication.AppAuthenticationActivity, Android 17). SystemUI draws it in a
+ * window titled "BiometricPrompt" that exists only while it is shown; input focus is null, so the
+ * focused-window check alone misses it.
+ */
+export const BIOMETRIC_PROMPT_DUMP = ['shell', 'dumpsys window windows | grep -c "BiometricPrompt}"']
+
+export function parseBiometricPromptShowing(out: string): boolean {
+  return Number.parseInt(out.trim(), 10) > 0
+}
+
+/**
+ * The prompt opens on fingerprint; the phone PIN needs its "Use PIN" / "Use password" button
+ * (com.android.systemui:id/button_use_credential), present only when the app allows the device
+ * credential. Returns its centre and the screen size, from `uiautomator dump` XML.
+ */
+export function parseUseCredentialButton(xml: string): { x: number; y: number; screen: { width: number; height: number } } | null {
+  const btn = /<node[^>]*resource-id="com\.android\.systemui:id\/button_use_credential"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/.exec(xml)
+  const root = /bounds="\[0,0\]\[(\d+),(\d+)\]"/.exec(xml)
+  if (!btn || !root) return null
+  const [x1, y1, x2, y2] = btn.slice(1, 5).map(Number) as [number, number, number, number]
+  return { x: (x1 + x2) / 2, y: (y1 + y2) / 2, screen: { width: Number(root[1]), height: Number(root[2]) } }
+}

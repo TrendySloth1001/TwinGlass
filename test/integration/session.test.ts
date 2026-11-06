@@ -5,6 +5,7 @@ import { CodecId } from '@shared/scrcpy/constants'
 import { h264CodecString } from '@shared/scrcpy/h264'
 import { hevcCodecString } from '@shared/scrcpy/hevc'
 import type { StreamEvent } from '@shared/scrcpy/stream'
+import { resetVideo } from '@shared/scrcpy/control'
 import { Adb, findAdb } from '../../src/main/adb/adb'
 import { ScrcpySession } from '../../src/main/scrcpy/session'
 
@@ -43,5 +44,36 @@ describe.skipIf(!serial)('scrcpy session on a real device', () => {
     expect(cfg).toBeDefined()
     console.log('config hex:', Buffer.from(cfg!.data).toString('hex'))
     console.log('codec string:', codec === 'h265' ? hevcCodecString(cfg!.data) : h264CodecString(cfg!.data))
+  }, 30000)
+
+  it('RESET_VIDEO makes the phone send a new keyframe right away', async () => {
+    const adb = new Adb(findAdb()!)
+    const s = await ScrcpySession.start(adb, {
+      serial: serial!,
+      serverPath: join(__dirname, '../../resources/scrcpy-server-v5.0.1'),
+      maxSize: 1024,
+      videoBitRate: 4_000_000,
+      videoCodec: codec,
+    })
+    let keys = 0
+    let resetAt = 0
+    const ms = await new Promise<number>((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error(`no keyframe after reset (keys=${keys})`)), 8000)
+      s.on('video', (e) => {
+        if (e.type !== 'packet' || !e.keyFrame) return
+        keys++
+        if (keys === 1) {
+          resetAt = Date.now()
+          s.sendControl(resetVideo())
+        } else {
+          clearTimeout(t)
+          resolve(Date.now() - resetAt)
+        }
+      })
+      s.begin()
+    })
+    s.close()
+    console.log(`keyframe ${ms} ms after RESET_VIDEO`)
+    expect(ms).toBeLessThan(3000) // vs up to 10 s for the next scheduled keyframe
   }, 30000)
 })

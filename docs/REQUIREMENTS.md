@@ -29,6 +29,10 @@ The dates are when each item was asked for (2026-11-06 unless noted).
 - ✅ Unlock the lock screen by typing the PIN blindly. The PIN screen is FLAG_SECURE, so it shows black in the mirror.
 - ✅ Touch ID releases the saved PIN, and the **system prompt appears directly**, with no extra click.
 - ✅ Robust: waits on the phone's state instead of fixed delays, uses the failure counter, never retries a wrong PIN, and respects lockouts.
+- ✅ **Saved PIN typed directly, no Touch ID** (the user's call, 2026-11-06). Touch ID is optional in Settings → Unlock. **Agent (MCP) unlocks always require Touch ID.**
+- ✅ **Fingerprint-sensor phones:** the lock screen shows a fingerprint overlay, and the app taps outside the sensor to reach the PIN pad. Verified: unlock in 4 s.
+- ✅ **WhatsApp's own lock (system BiometricPrompt):** detected; the app taps "Use PIN" and types the PIN. Verified end to end. Prompts that accept only biometrics never get the PIN typed.
+- After the lock screen opens, if an app lock asks for the PIN next, it is typed once more automatically.
 - **Unlocking locked apps.** Nothing's `com.nothing.applocker` draws an **overlay window**, so detection uses the focused window as well as the activity.
   - The overlay detection still needs the user to open a locked app to confirm it.
 
@@ -71,6 +75,21 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - adb is re-detected if it was missing.
   - The adb server can be restarted from inside the app.
   - Mirrors reconnect by themselves.
+
+## Engineering quality (2026-11-06: "consistency, robustness, the best algorithms")
+- ✅ **Control queue.** When the control socket backs up, stale touch MOVEs coalesce per pointer (scrcpy's controller design); taps, keys and text are never dropped or reordered.
+- ✅ **Fast keyframes.** RESET_VIDEO requests a keyframe on decoder errors and when the decode queue exceeds 6 frames, rate-limited to 1/s. Verified on the device: a keyframe arrives 180 ms after the request, against up to 10 s before.
+- ✅ **Reconnect** is event-driven (it retries the moment adb reports the phone), with exponential backoff and equal jitter as the fallback.
+- ✅ **adb:** at most 4 commands at once per phone (FIFO); the lock poll is one batched shell round trip instead of three.
+- ✅ **Settings:** each field is validated on load (bad or old value: default) and synced across windows.
+- ✅ **Error boundary:** a UI crash shows the error with a "Reload window" button instead of a blank window.
+
+## Backlog (ideas the user shared, 2026-11-06; not started)
+- Drag and drop, both ways, with resumable transfers (phone → Mac too).
+- URL handoff: open a URL copied on the Mac on the phone.
+- Notification actions: reply, dismiss and open phone notifications from the Mac.
+- Clipboard history with search.
+- Quick app launcher for installed Android apps.
 
 ## Agents (MCP)
 - ✅ Coding agents (Claude Code and others) can control the phone through the local MCP server. It is off by default and protected by a token.

@@ -9,6 +9,14 @@ export type DecoderAction =
   | { kind: 'size'; width: number; height: number }
   | { kind: 'configure'; codec: string }
   | { kind: 'decode'; type: 'key' | 'delta'; timestamp: number; data: Uint8Array }
+  /** Ask the phone for a keyframe now (scrcpy RESET_VIDEO) instead of waiting for the next one. */
+  | { kind: 'requestKeyFrame' }
+
+/**
+ * Decoder backlog (frames) that counts as "falling behind": ~100 ms at 60 fps. Beyond it, showing
+ * every late frame only adds lag, so jump to a fresh keyframe instead.
+ */
+export const MAX_DECODE_QUEUE = 6
 
 /** Plans WebCodecs actions for an H.264 or H.265 (Annex-B) scrcpy stream. */
 export class H264Planner {
@@ -48,6 +56,12 @@ export class H264Planner {
         const timestamp = Number(ev.pts)
         if (!ev.keyFrame) {
           if (this.needKey) return []
+          if (queueSize > MAX_DECODE_QUEUE) {
+            // Falling behind between keyframes (scrcpy's default interval is 10 s): flush, wait for a
+            // keyframe, and ask for one right away.
+            this.needKey = true
+            return [{ kind: 'configure', codec: this.codec }, { kind: 'requestKeyFrame' }]
+          }
           return [{ kind: 'decode', type: 'delta', timestamp, data: ev.data }]
         }
         this.needKey = false

@@ -13,8 +13,8 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, ipcMain, safeStorage, systemPreferences } from 'electron'
 import { AndroidKey } from '@shared/input/keycodes'
-import { KeyAction } from '@shared/scrcpy/constants'
-import { injectKeycode, injectText } from '@shared/scrcpy/control'
+import { KeyAction, MotionAction, PointerId } from '@shared/scrcpy/constants'
+import { injectKeycode, injectText, injectTouch } from '@shared/scrcpy/control'
 import type { Adb } from './adb/adb'
 import {
   CREDENTIAL_DUMP,
@@ -33,6 +33,11 @@ import {
   type CredentialType,
   type LockCounters,
   type TopActivity,
+  ALT_BOUNCER_DUMP,
+  parseAltBouncerShowing,
+  BIOMETRIC_PROMPT_DUMP,
+  parseBiometricPromptShowing,
+  parseUseCredentialButton,
 } from './adb/lock'
 import type { ScrcpySession } from './scrcpy/session'
 
@@ -128,13 +133,17 @@ export async function isLocked(adb: Adb, serial: string): Promise<boolean | null
   return parseKeyguardShowing(await adb.runLoose(KEYGUARD_DUMP, serial))
 }
 
+const biometricShowing = async (adb: Adb, serial: string): Promise<boolean> =>
+  parseBiometricPromptShowing(await adb.runLoose(BIOMETRIC_PROMPT_DUMP, serial, 4000))
+
 async function status(adb: Adb, serial: string): Promise<UnlockStatus> {
-  const [locked, creds, id, foreground, focus] = await Promise.all([
+  const [locked, creds, id, foreground, focus, bio] = await Promise.all([
     isLocked(adb, serial),
     adb.runLoose(CREDENTIAL_DUMP, serial),
     deviceId(adb, serial),
     topActivity(adb, serial),
     focusedWindow(adb, serial),
+    biometricShowing(adb, serial),
   ])
   return {
     credential: parseCredentialType(creds),
@@ -144,8 +153,8 @@ async function status(adb: Adb, serial: string): Promise<UnlockStatus> {
     touchId: canTouchId(),
     foreground,
     focusedWindow: focus,
-    credentialPrompt: locked === false && isCredentialPrompt(foreground, focus),
-    promptOwner: locked === false ? promptOwner(foreground, focus) : null,
+    credentialPrompt: locked === false && isCredentialPrompt(foreground, focus, bio),
+    promptOwner: locked === false ? promptOwner(foreground, focus, bio) : null,
   }
 }
 
@@ -215,7 +224,20 @@ async function typeIntoPrompt(
 ): Promise<{ ok: boolean; message: string }> {
   const serial = session.serial
   const focusBefore = await focusedWindow(adb, serial)
-  const recognised = isCredentialPrompt(prompt, focusBefore)
+  const bioBefore = await biometricShowing(adb, serial)
+  const recognised = isCredentialPrompt(prompt, focusBefore, bioBefore)
+  if (bioBefore) {
+    // System BiometricPrompt: switch it from fingerprint to the PIN pad first. No "Use PIN"
+    // button = the app accepts only biometrics; then nothing is typed (the PIN must never land
+    // in some other field).
+    const switched = await useCredentialInBiometricPrompt(adb, session)
+    if (!switched) {
+      return {
+        ok: false,
+        message: `${prompt?.package ?? 'This app'} only accepts a fingerprint here, not the phone PIN. Use the sensor on the phone.`,
+      }
+    }
+  }
   const screenKey = async (): Promise<string> => {
     const a = await topActivity(adb, serial)
     return `${a ? `${a.package}/${a.activity}` : ''}|${(await focusedWindow(adb, serial)) ?? ''}`
@@ -231,14 +253,14 @@ async function typeIntoPrompt(
   const gone = await waitFor(
     async () =>
       recognised
-        ? !isCredentialPrompt(await topActivity(adb, serial), await focusedWindow(adb, serial))
+        ? !isCredentialPrompt(await topActivity(adb, serial), await focusedWindow(adb, serial), await biometricShowing(adb, serial))
         : (await screenKey()) !== keyBefore,
     3500,
     250,
   )
   if (gone) {
     onSuccess()
-    return { ok: true, message: `Unlocked ${promptOwner(prompt, focusBefore) ?? prompt?.package ?? 'the app'}.` }
+    return { ok: true, message: `Unlocked ${promptOwner(prompt, focusBefore, bioBefore) ?? prompt?.package ?? 'the app'}.` }
   }
   const after = await counters(adb, serial)
   if (before.failures !== null && after.failures !== null && after.failures > before.failures) {
@@ -260,6 +282,13 @@ async function attempt(adb: Adb, session: ScrcpySession, secret: string | null):
   // Shows the PIN/password bouncer (verified on Android 17: "prompting user for auth if necessary").
   await adb.runLoose(['shell', 'wm', 'dismiss-keyguard'], serial)
   await sleep(650) // bouncer slide-in animation; it is FLAG_SECURE so we can't watch it
+  // Under-display fingerprint phones show the fingerprint overlay instead of the PIN pad: a tap
+  // outside the sensor (upper quarter of the screen) brings up the PIN pad.
+  if (parseAltBouncerShowing(await adb.runLoose(ALT_BOUNCER_DUMP, serial, 4000))) {
+    tapOutsideSensor(session)
+    await waitFor(async () => !parseAltBouncerShowing(await adb.runLoose(ALT_BOUNCER_DUMP, serial, 4000)), 1500, 150)
+    await sleep(400) // PIN pad animation
+  }
   if (secret) {
     // Clear anything already typed (e.g. the user started on the phone); DEL on an empty field is a no-op.
     press(session, KEYCODE_DEL, Math.min(secret.length + 4, 24))
@@ -271,6 +300,41 @@ async function attempt(adb: Adb, session: ScrcpySession, secret: string | null):
     const locked = await isLocked(adb, serial)
     return locked === null ? null : !locked
   }, 3500, 200)
+}
+
+/** Taps the system BiometricPrompt's "Use PIN" button (found via uiautomator). True when tapped. */
+async function useCredentialInBiometricPrompt(adb: Adb, session: ScrcpySession): Promise<boolean> {
+  const xml = await adb.runLoose(['shell', 'uiautomator dump /sdcard/.mm-ui.xml >/dev/null 2>&1; cat /sdcard/.mm-ui.xml; rm -f /sdcard/.mm-ui.xml'], session.serial, 10000)
+  const btn = parseUseCredentialButton(xml)
+  const video = session.videoSize
+  if (!btn || !video) return false
+  // uiautomator reports display pixels; touches go in the mirror's video coordinates.
+  tap(session, (btn.x * video.width) / btn.screen.width, (btn.y * video.height) / btn.screen.height)
+  await sleep(700) // the prompt animates from the fingerprint view to the PIN pad
+  return true
+}
+
+function tap(session: ScrcpySession, x: number, y: number): void {
+  const size = session.videoSize
+  if (!size) return
+  const position = { x, y, screen: size }
+  for (const action of [MotionAction.DOWN, MotionAction.UP]) {
+    session.sendControl(
+      injectTouch({ action, pointerId: PointerId.GENERIC_FINGER, position, pressure: action === MotionAction.DOWN ? 1 : 0, actionButton: 0, buttons: 0 }),
+    )
+  }
+}
+
+/** One finger tap at the top-centre quarter of the screen, in the mirror's video coordinates. */
+function tapOutsideSensor(session: ScrcpySession): void {
+  const size = session.videoSize
+  if (!size) return
+  const position = { x: size.width / 2, y: size.height / 4, screen: size }
+  for (const action of [MotionAction.DOWN, MotionAction.UP]) {
+    session.sendControl(
+      injectTouch({ action, pointerId: PointerId.GENERIC_FINGER, position, pressure: action === MotionAction.DOWN ? 1 : 0, actionButton: 0, buttons: 0 }),
+    )
+  }
 }
 
 const KEYCODE_DEL = 67

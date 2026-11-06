@@ -44,6 +44,19 @@ describe('H264Planner', () => {
     expect(actions.map((a) => a.kind)).toEqual(['configure', 'decode'])
   })
 
+  it('falls behind between keyframes: flush, wait for a keyframe, and request one', () => {
+    const p = new H264Planner()
+    p.handle({ type: 'config', data: config })
+    p.handle({ type: 'packet', pts: 1n, keyFrame: true, data: key })
+    expect(p.handle({ type: 'packet', pts: 2n, keyFrame: false, data: delta }, 6)[0]?.kind).toBe('decode')
+    expect(p.handle({ type: 'packet', pts: 3n, keyFrame: false, data: delta }, 7).map((a) => a.kind)).toEqual([
+      'configure',
+      'requestKeyFrame',
+    ])
+    expect(p.handle({ type: 'packet', pts: 4n, keyFrame: false, data: delta })).toEqual([])
+    expect(p.handle({ type: 'packet', pts: 5n, keyFrame: true, data: key }).map((a) => a.kind)).toEqual(['decode'])
+  })
+
   it('ignores packets before any config', () => {
     expect(new H264Planner().handle({ type: 'packet', pts: 1n, keyFrame: true, data: key })).toEqual([])
   })

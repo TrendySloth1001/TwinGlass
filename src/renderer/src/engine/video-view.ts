@@ -64,6 +64,8 @@ export class VideoView {
     private readonly canvas: HTMLCanvasElement,
     private readonly onError: (e: Error) => void,
     private readonly onSize: (w: number, h: number) => void,
+    /** Sends RESET_VIDEO to the phone (new keyframe now). */
+    private readonly onRequestKeyFrame: () => void = () => {},
   ) {
     // desynchronized: low-latency canvas that can bypass the compositor's extra frame of delay.
     this.ctx = canvas.getContext('2d', { alpha: false, desynchronized: true })!
@@ -83,11 +85,24 @@ export class VideoView {
         this.inflight.clear()
         this.decoder = this.createDecoder()
         this.planner.requestKeyFrame()
+        this.requestKeyFrame() // don't wait up to 10 s for the phone's next scheduled keyframe
         const codec = this.planner.codecString
         if (codec) this.configure(codec)
       },
     })
   }
+
+  private lastKeyRequest = 0
+  /** Rate-limited (1/s): each RESET_VIDEO restarts the phone's encoder. */
+  private requestKeyFrame(): void {
+    const now = performance.now()
+    if (now - this.lastKeyRequest < 1000) return
+    this.lastKeyRequest = now
+    this.keyRequests++
+    this.onRequestKeyFrame()
+  }
+  /** Keyframes requested so far (diagnostics). */
+  keyRequests = 0
 
   private draw(frame: VideoFrame): void {
     const w = frame.displayWidth
@@ -140,6 +155,8 @@ export class VideoView {
         this.onSize(a.width, a.height)
       } else if (a.kind === 'configure') {
         this.configure(a.codec)
+      } else if (a.kind === 'requestKeyFrame') {
+        this.requestKeyFrame()
       } else if (this.decoder.state === 'configured') {
         this.inflight.set(a.timestamp, [receivedAt ?? now, wallNow()])
         if (this.inflight.size > 120) this.inflight.delete(this.inflight.keys().next().value!) // dropped frames
