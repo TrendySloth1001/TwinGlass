@@ -49,6 +49,9 @@ export interface UnlockStatusInfo {
   canSave: boolean
   /** Touch ID can be prompted now; required to use the saved secret. */
   touchId: boolean
+  foreground: { package: string; activity: string } | null
+  /** A recognised app-lock / confirm-PIN screen is in front of the unlocked phone. */
+  credentialPrompt: boolean
 }
 
 export type QrState =
@@ -81,7 +84,7 @@ export interface MobMirrorApi {
   /** Lock type/state of the mirrored phone and whether a secret is saved for it. */
   unlockStatus(): Promise<UnlockStatusInfo>
   /** Wakes the phone, shows the bouncer and types the secret (omit `secret` to use the saved one). */
-  unlock(req: { secret?: string; remember?: boolean }): Promise<OpResult>
+  unlock(req: { secret?: string; remember?: boolean; target?: 'auto' | 'screen' }): Promise<OpResult>
   forgetUnlockSecret(): Promise<void>
   /** Local MCP server for coding agents (off by default). */
   agentStatus(): Promise<AgentStatusInfo>

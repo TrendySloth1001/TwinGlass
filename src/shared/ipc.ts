@@ -28,7 +28,7 @@ export type MainToRenderer =
   | { t: 'device'; msg: DeviceMessage }
   | { t: 'log'; line: string }
   /** Lock screen shown / dismissed on the phone (polled by main, sent on change). */
-  | { t: 'lock'; locked: boolean }
+  | { t: 'lock'; locked: boolean; appPrompt: string | null }
   /** `unexpected`: not requested by the user (link died, server exited) -> the renderer reconnects. */
   | { t: 'closed'; error?: string; unexpected: boolean }
 

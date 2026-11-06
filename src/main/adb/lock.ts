@@ -61,6 +61,33 @@ export function parseAwake(dumpsysPower: string): boolean | null {
   return m ? m[1] === 'Awake' : null
 }
 
+export interface TopActivity {
+  package: string
+  activity: string
+}
+
+export const TOP_ACTIVITY_DUMP = ['shell', 'dumpsys activity activities | grep -m1 topResumedActivity']
+
+/** "topResumedActivity=ActivityRecord{164407815 u0 com.nothing.launcher/com.android.searchlauncher.SearchLauncher t5398}" */
+export function parseTopActivity(line: string): TopActivity | null {
+  const m = /u\d+ ([\w.]+)\/([\w.$]+)/.exec(line)
+  if (!m) return null
+  const activity = m[2]!.startsWith('.') ? m[1]! + m[2]! : m[2]!
+  return { package: m[1]!, activity }
+}
+
+/**
+ * Screens that ask for the device PIN/password over an app (app locks, "confirm your PIN" prompts).
+ * Deliberately narrow: typing the PIN into anything else (e.g. a chat field) would leak it, so
+ * other screens need the user's explicit confirmation instead.
+ */
+export function isCredentialPrompt(a: TopActivity | null): boolean {
+  if (!a) return false
+  return /ConfirmDeviceCredential|ConfirmLock(Password|Pin)|ConfirmCredential|AppLock|Applock|app_?lock|LockedApp|PrivacyLock|PrivateSpaceAuth|BiometricPrompt|UnlockActivity/i.test(
+    `${a.package}/${a.activity}`,
+  )
+}
+
 /** Only printable ASCII can be typed reliably through scrcpy text injection (docs/FACTS.md). */
 export function isTypeableSecret(secret: string): boolean {
   return secret.length > 0 && secret.length <= 64 && /^[\x20-\x7e]+$/.test(secret)

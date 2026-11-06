@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isCredentialPrompt,
+  parseTopActivity,
   isTypeableSecret,
   parseAwake,
   parseCredentialType,
@@ -41,6 +43,23 @@ describe('lock state parsing', () => {
     expect(parseAwake('  mWakefulness=Awake\n')).toBe(true)
     expect(parseAwake('  mWakefulness=Asleep\n')).toBe(false)
     expect(parseAwake('')).toBeNull()
+  })
+
+  it('parses the foreground activity (Android 17 format)', () => {
+    const line = 'topResumedActivity=ActivityRecord{164407815 u0 com.nothing.launcher/com.android.searchlauncher.SearchLauncher t5398}'
+    expect(parseTopActivity(line)).toEqual({ package: 'com.nothing.launcher', activity: 'com.android.searchlauncher.SearchLauncher' })
+    expect(parseTopActivity('ActivityRecord{1 u0 com.whatsapp/.Main t2}')).toEqual({ package: 'com.whatsapp', activity: 'com.whatsapp.Main' })
+    expect(parseTopActivity('')).toBeNull()
+  })
+
+  it('recognises credential prompts narrowly', () => {
+    const p = (pkg: string, activity: string): boolean => isCredentialPrompt({ package: pkg, activity })
+    expect(p('com.android.settings', 'com.android.settings.password.ConfirmDeviceCredentialActivity')).toBe(true)
+    expect(p('com.android.settings', 'com.android.settings.password.ConfirmLockPassword$InternalActivity')).toBe(true)
+    expect(p('com.nothing.applocker', 'com.nothing.applocker.AppLockActivity')).toBe(true)
+    expect(p('com.whatsapp', 'com.whatsapp.Main')).toBe(false)
+    expect(p('com.nothing.launcher', 'com.android.searchlauncher.SearchLauncher')).toBe(false)
+    expect(isCredentialPrompt(null)).toBe(false)
   })
 
   it('only accepts secrets that text injection can type reliably', () => {

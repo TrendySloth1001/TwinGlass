@@ -24,8 +24,12 @@ import {
   parseCredentialType,
   parseKeyguardShowing,
   parseLockCounters,
+  isCredentialPrompt,
+  parseTopActivity,
+  TOP_ACTIVITY_DUMP,
   type CredentialType,
   type LockCounters,
+  type TopActivity,
 } from './adb/lock'
 import type { ScrcpySession } from './scrcpy/session'
 
@@ -40,12 +44,25 @@ export interface UnlockStatus {
   canSave: boolean
   /** Touch ID can be prompted right now; a saved secret is only released after it succeeds. */
   touchId: boolean
+  /** Foreground app/activity (e.g. an app lock asking for the PIN while the phone is unlocked). */
+  foreground: TopActivity | null
+  /** The foreground screen is a recognised PIN prompt (app lock / confirm credential). */
+  credentialPrompt: boolean
 }
 
 export interface UnlockRequest {
   /** Omit to use the saved secret. */
   secret?: string
   remember?: boolean
+  /**
+   * "screen": the phone is unlocked but the current screen asks for the PIN (an app lock that
+   * wasn't recognised automatically); the user explicitly confirmed typing it there.
+   */
+  target?: 'auto' | 'screen'
+}
+
+export async function topActivity(adb: Adb, serial: string): Promise<TopActivity | null> {
+  return parseTopActivity(await adb.runLoose(TOP_ACTIVITY_DUMP, serial))
 }
 
 // ---- encrypted per-device store ----
@@ -100,10 +117,11 @@ export async function isLocked(adb: Adb, serial: string): Promise<boolean | null
 }
 
 async function status(adb: Adb, serial: string): Promise<UnlockStatus> {
-  const [locked, creds, id] = await Promise.all([
+  const [locked, creds, id, foreground] = await Promise.all([
     isLocked(adb, serial),
     adb.runLoose(CREDENTIAL_DUMP, serial),
     deviceId(adb, serial),
+    topActivity(adb, serial),
   ])
   return {
     credential: parseCredentialType(creds),
@@ -111,6 +129,8 @@ async function status(adb: Adb, serial: string): Promise<UnlockStatus> {
     saved: id in readStore(),
     canSave: safeStorage.isEncryptionAvailable(),
     touchId: canTouchId(),
+    foreground,
+    credentialPrompt: locked === false && isCredentialPrompt(foreground),
   }
 }
 
@@ -156,6 +176,42 @@ async function waitFor(check: () => Promise<boolean | null>, timeoutMs: number, 
     if ((await check()) === true) return true
     if (Date.now() >= end) return false
     await sleep(stepMs)
+  }
+}
+
+/**
+ * App lock / "confirm your PIN" prompt over an unlocked phone: type the secret into the focused
+ * field and press Enter. Success = the prompt went away (foreground changed). Never retried: the
+ * phone's failure counter tells a wrong PIN apart from "nothing happened".
+ */
+async function typeIntoPrompt(
+  adb: Adb,
+  session: ScrcpySession,
+  secret: string,
+  prompt: TopActivity | null,
+  before: LockCounters,
+  onSuccess: () => void,
+): Promise<{ ok: boolean; message: string }> {
+  const serial = session.serial
+  press(session, AndroidKey.WAKEUP)
+  press(session, KEYCODE_DEL, Math.min(secret.length + 4, 24))
+  session.sendControl(injectText(secret))
+  await sleep(120)
+  press(session, AndroidKey.ENTER)
+  const key = (a: TopActivity | null): string => (a ? `${a.package}/${a.activity}` : '')
+  const gone = await waitFor(async () => key(await topActivity(adb, serial)) !== key(prompt), 3500, 250)
+  if (gone) {
+    onSuccess()
+    return { ok: true, message: `Unlocked ${prompt?.package ?? 'the app'}.` }
+  }
+  const after = await counters(adb, serial)
+  if (before.failures !== null && after.failures !== null && after.failures > before.failures) {
+    return { ok: false, message: 'The app’s PIN prompt rejected the PIN. Mob Mirror never retries a wrong PIN.' }
+  }
+  return {
+    ok: false,
+    message:
+      'The PIN screen didn’t go away. Tap the PIN field on the mirror first (so it has focus), or this app may use its own PIN rather than the phone’s.',
   }
 }
 
@@ -214,10 +270,26 @@ async function unlockOnce(adb: Adb, session: ScrcpySession, req: UnlockRequest, 
   }
 
   // Checked before Touch ID, so an unlocked phone never triggers a fingerprint prompt.
-  if (st.locked === false) {
+  // Phone unlocked: either an app-lock style PIN prompt is in front (recognised, or the user
+  // confirmed "type into this screen"), or there is nothing to do.
+  const appPrompt = st.locked === false && (st.credentialPrompt || req.target === 'screen')
+  if (st.locked === false && !appPrompt) {
     press(session, AndroidKey.WAKEUP) // screen may just be off (not locked yet): turn it on
     if (req.remember && req.secret) saveSecret(id, req.secret)
     return { ok: true, message: 'The phone is already unlocked.' }
+  }
+  if (appPrompt) {
+    if (!needsSecret) return { ok: false, message: 'This phone has no PIN set, so there is nothing to type.' }
+    if (fromStore) {
+      if (!(id in readStore())) return { ok: false, message: 'Enter the phone’s PIN or password.' }
+      const gate = await confirmWithTouchId()
+      if (!gate.ok) return gate
+    }
+    const secret = req.secret ?? (fromStore ? loadSecret(id) : null) ?? ''
+    if (!secret) return { ok: false, message: 'Enter the phone’s PIN or password.' }
+    return typeIntoPrompt(adb, session, secret, st.foreground, before, () => {
+      if (req.remember && req.secret) saveSecret(id, req.secret)
+    })
   }
 
   if (fromStore) {
@@ -289,6 +361,7 @@ export function registerUnlockIpc(getAdb: () => Adb | null, getSession: (webCont
     const clean: UnlockRequest = {
       secret: typeof req?.secret === 'string' ? req.secret : undefined,
       remember: req?.remember === true,
+      target: req?.target === 'screen' ? 'screen' : 'auto',
     }
     return unlock(adb, session, clean)
   })

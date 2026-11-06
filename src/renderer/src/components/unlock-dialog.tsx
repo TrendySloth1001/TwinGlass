@@ -42,7 +42,7 @@ export function UnlockDialog({
     window.mobMirror.unlockStatus().then(setStatus, (e: unknown) => setResult({ kind: 'error', text: String(e) }))
   }, [open, initialError])
 
-  const run = async (req: { secret?: string; remember?: boolean }): Promise<void> => {
+  const run = async (req: { secret?: string; remember?: boolean; target?: 'auto' | 'screen' }): Promise<void> => {
     setResult({ kind: 'busy' })
     try {
       const r = await window.mobMirror.unlock(req)
@@ -59,9 +59,13 @@ export function UnlockDialog({
     }
   }
 
+  /** Phone already unlocked: the PIN goes into the current screen (app lock), explicitly confirmed. */
+  const screenMode = status?.locked === false
+  const target = screenMode ? ('screen' as const) : ('auto' as const)
+
   const submit = (e: FormEvent): void => {
     e.preventDefault()
-    if (secret) void run({ secret, remember })
+    if (secret) void run({ secret, remember, target })
   }
 
   const kind = status ? LABEL[status.credential] : 'PIN or password'
@@ -99,8 +103,20 @@ export function UnlockDialog({
         ) : (
           status && (
             <form className="space-y-4" onSubmit={submit}>
-              {status.locked === false && (
-                <p className="text-sm text-muted-foreground">The phone is currently unlocked.</p>
+              {screenMode && status.credentialPrompt && (
+                <p className="text-sm text-muted-foreground">
+                  <b className="text-foreground">{status.foreground?.package}</b> is asking for your {kind}.
+                </p>
+              )}
+              {screenMode && !status.credentialPrompt && (
+                <Alert>
+                  <ShieldAlert />
+                  <AlertDescription className="text-xs">
+                    The phone is unlocked. If <b className="text-foreground">{status.foreground?.package ?? 'an app'}</b> is
+                    showing its own PIN prompt (app lock), Mob Mirror can type your {kind} into it. Only do this on a PIN
+                    screen: it types into whatever field has focus.
+                  </AlertDescription>
+                </Alert>
               )}
               {status.saved && (
                 <div className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
@@ -167,13 +183,19 @@ export function UnlockDialog({
               <DialogFooter className="items-center gap-2 sm:justify-between">
                 <p className="text-[11px] text-muted-foreground">Wrong attempts count on the phone. No auto-retry.</p>
                 {useSaved || status.credential === 'NONE' ? (
-                  <Button type="button" disabled={busy} autoFocus onClick={() => void run({})}>
+                  <Button type="button" disabled={busy} autoFocus={!screenMode} onClick={() => void run({ target })}>
                     {busy ? <Loader2 className="animate-spin" /> : useSaved && <Fingerprint />}
-                    {useSaved ? (busy ? 'Waiting for Touch ID…' : 'Unlock with Touch ID') : 'Unlock'}
+                    {busy && useSaved
+                      ? 'Waiting for Touch ID…'
+                      : screenMode
+                        ? `Type ${kind}${useSaved ? ' with Touch ID' : ''}`
+                        : useSaved
+                          ? 'Unlock with Touch ID'
+                          : 'Unlock'}
                   </Button>
                 ) : (
                   <Button type="submit" disabled={busy || !secret}>
-                    {busy && <Loader2 className="animate-spin" />} Unlock
+                    {busy && <Loader2 className="animate-spin" />} {screenMode ? `Type ${kind}` : 'Unlock'}
                   </Button>
                 )}
               </DialogFooter>

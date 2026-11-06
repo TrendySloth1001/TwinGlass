@@ -27,6 +27,8 @@ export interface MirrorState {
   recordingSince: number | null
   /** Lock screen showing on the phone (null = unknown yet). The PIN screen itself is black. */
   locked: boolean | null
+  /** Package whose app-lock PIN prompt is in front (phone unlocked), if recognised. */
+  appPrompt: string | null
   /** While reconnecting: attempt number and why the link dropped. */
   reconnect: { attempt: number; reason: string } | null
 }
@@ -41,6 +43,7 @@ const IDLE: MirrorState = {
   screenOff: false,
   recordingSince: null,
   locked: null,
+  appPrompt: null,
   reconnect: null,
 }
 
@@ -198,7 +201,7 @@ export function useMirror(
           if (data.t === 'video') video.handle(data.ev, data.at)
           else if (data.t === 'audio') audio?.handle(data.ev)
           else if (data.t === 'log') console.debug('[scrcpy]', data.line.trimEnd())
-          else if (data.t === 'lock') patch({ locked: data.locked })
+          else if (data.t === 'lock') patch({ locked: data.locked, appPrompt: data.appPrompt })
           else if (data.t === 'closed') {
             teardown(false)
             if (data.unexpected) reconnectRef.current(t, opts, data.error ?? 'The connection closed')

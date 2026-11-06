@@ -44,9 +44,11 @@ export function App(): ReactNode {
     unlocking.current = true
     try {
       const st = await window.mobMirror.unlockStatus()
-      if (st.locked === false) {
-        await window.mobMirror.unlock({}) // just wakes the screen
-        toast('The phone is already unlocked')
+      // Unlocked and no recognised app-lock prompt: let the user decide (the dialog can type the PIN
+      // into the current screen if an app is asking for it).
+      if (st.locked === false && !st.credentialPrompt) {
+        setUnlockError(null)
+        setUnlockOpen(true)
         return
       }
       if (st.saved && st.touchId && st.credential !== 'PATTERN') {
@@ -137,6 +139,7 @@ export function App(): ReactNode {
           phase={mirror.state.phase}
           recording={mirror.state.recordingSince !== null}
           locked={mirror.state.locked === true}
+          appPrompt={mirror.state.appPrompt}
           onUnlock={() => dispatch('unlock')}
           reconnect={mirror.state.reconnect}
         />

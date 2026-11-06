@@ -7,7 +7,8 @@ import { clipboard, ipcMain, MessageChannelMain, webContents, type WebContents }
 import { scanFile } from '@shared/scrcpy/control'
 import type { Adb } from './adb/adb'
 import { ScrcpySession } from './scrcpy/session'
-import { isLocked } from './unlock-ipc'
+import { isCredentialPrompt } from './adb/lock'
+import { isLocked, topActivity } from './unlock-ipc'
 import type { FileResult, MainToRenderer, RendererToMain, StartSessionRequest } from '../shared/ipc'
 
 const sessions = new Map<number, ScrcpySession>()
@@ -121,19 +122,23 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
 
     // Lock-screen state for the "Phone is locked" banner (the PIN bouncer itself is black in the
     // mirror). `dumpsys window policy` is ~3 KB / ~70 ms, polled every 2.5 s, sent only on change.
-    let lastLocked: boolean | null = null
+    // Also watches for app-lock PIN prompts (secure, so black in the mirror too) while unlocked.
+    let last = ''
     let polling = false
     const lockTimer = setInterval(() => {
       if (polling) return
       polling = true
-      void isLocked(adb, session.serial)
-        .then((locked) => {
-          if (locked !== null && locked !== lastLocked) {
-            lastLocked = locked
-            post({ t: 'lock', locked })
-          }
-        })
-        .finally(() => (polling = false))
+      void (async () => {
+        const locked = await isLocked(adb, session.serial)
+        if (locked === null) return
+        const top = locked ? null : await topActivity(adb, session.serial)
+        const appPrompt = isCredentialPrompt(top) ? top!.package : null
+        const key = `${locked}|${appPrompt}`
+        if (key !== last) {
+          last = key
+          post({ t: 'lock', locked, appPrompt })
+        }
+      })().finally(() => (polling = false))
     }, 2500)
 
     const stopWatchdog = startWatchdog(adb, session)

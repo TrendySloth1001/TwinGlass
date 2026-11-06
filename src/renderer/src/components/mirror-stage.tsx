@@ -16,6 +16,8 @@ interface MirrorStageProps {
   recording: boolean
   /** Phone's lock screen is showing (its PIN screen is black in the mirror). */
   locked: boolean
+  /** Package of an app-lock PIN prompt in front of the unlocked phone, if recognised. */
+  appPrompt: string | null
   onUnlock: () => void
   reconnect: { attempt: number; reason: string } | null
 }
@@ -38,6 +40,7 @@ export function MirrorStage({
   phase,
   recording,
   locked,
+  appPrompt,
   onUnlock,
   reconnect,
 }: MirrorStageProps): ReactNode {
@@ -136,10 +139,14 @@ export function MirrorStage({
         </div>
       )}
 
-      {live && locked && (
+      {live && (locked || appPrompt) && (
         <div className="absolute top-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-neutral-900/85 py-1.5 pr-1.5 pl-4 text-sm text-white shadow-lg backdrop-blur">
           <LockKeyhole className="size-4 text-warning" />
-          <span>Phone is locked. The PIN screen is hidden from capture.</span>
+          <span>
+            {locked
+              ? 'Phone is locked. The PIN screen is hidden from capture.'
+              : `${appPrompt} is asking for your PIN (hidden from capture).`}
+          </span>
           <Button size="sm" variant="secondary" className="rounded-full" onClick={onUnlock}>
             Unlock <Kbd className="ml-1">⌘L</Kbd>
           </Button>
