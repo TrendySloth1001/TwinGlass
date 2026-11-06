@@ -7,6 +7,8 @@ import { CompactTitleBar } from '@/components/compact-title-bar'
 import { ConnectPanel } from '@/components/connect-panel'
 import { ControlRail } from '@/components/control-rail'
 import { MirrorStage } from '@/components/mirror-stage'
+import { SettingsDialog } from '@/components/settings-dialog'
+import { applyTheme } from '@/hooks/use-theme'
 import { MirrorToolbar } from '@/components/mirror-toolbar'
 import { Sidebar } from '@/components/sidebar'
 import { StatusBar } from '@/components/status-bar'
@@ -35,6 +37,7 @@ export function App(): ReactNode {
   const mirror = useMirror(canvasRef, overlayRef)
   const [settings, updateSettings] = useSettings()
   const [helpOpen, setHelpOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [unlockOpen, setUnlockOpen] = useState(false)
   const { connect, runAction } = mirror
   const live = mirror.state.phase === 'live'
@@ -162,12 +165,15 @@ export function App(): ReactNode {
     () =>
       window.mobMirror.onUiCommand((cmd) => {
         const s = settingsRef.current
-        if (cmd === 'toggle-view') updateSettings({ viewMode: s.viewMode === 'compact' ? 'full' : 'compact' })
+        if (cmd === 'open-settings') setSettingsOpen(true)
+        else if (cmd === 'toggle-view') updateSettings({ viewMode: s.viewMode === 'compact' ? 'full' : 'compact' })
         else if (cmd === 'toggle-sidebar') updateSettings({ sidebarOpen: !s.sidebarOpen })
         else updateSettings({ sidebarLayout: s.sidebarLayout === 'floating' ? 'docked' : 'floating', sidebarOpen: true })
       }),
     [updateSettings],
   )
+  useEffect(() => applyTheme(settings.theme), [settings.theme])
+
   // Compact mirror (default while a phone is mirrored): phone-shaped window + control rail. The full
   // view (devices, settings, toolbar) is one click away and is used when nothing is mirrored.
   const compact = settings.viewMode === 'compact' && (mirror.state.phase === 'live' || mirror.state.phase === 'reconnecting')
@@ -213,6 +219,7 @@ export function App(): ReactNode {
           mirror={mirror}
           onAction={dispatch}
           onShowHelp={() => setHelpOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
           ownsCorner={toolbarOwnsCorner}
           sidebarOpen={settings.sidebarOpen}
           onToggleSidebar={() => updateSettings({ sidebarOpen: !settings.sidebarOpen })}
@@ -251,10 +258,20 @@ export function App(): ReactNode {
           mirror={mirror}
           onAction={dispatch}
           onShowHelp={() => setHelpOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
           onFullView={() => updateSettings({ viewMode: 'full' })}
         />
       )}
       <ControlsHelp open={helpOpen} onOpenChange={setHelpOpen} />
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        settings={settings}
+        onSettingsChange={onSettingsChange}
+        adb={devices.adb}
+        refreshDevices={devices.refresh}
+        live={live}
+      />
       <UnlockDialog open={unlockOpen} onOpenChange={setUnlockOpen} initialError={unlockError} />
     </div>
   )

@@ -54,6 +54,13 @@ The dates are when each item was asked for (2026-11-06 unless noted).
 - ✅ **Light theme is consistent** (2026-11-06). The stage follows the theme (light grey or near-black), and the empty status strip is hidden when idle. Only the compact phone block is always dark.
 - ✅ **The rail shows more controls when there's room** (window height ≥ 680 px): notifications panel, quick settings, screen off, shortcuts. They also stay in the ⋯ menu.
 - ✅ **Development without restarts:** `npm run dev` watches everything. React Fast Refresh updates the renderer in place, and edits to main or preload relaunch Electron automatically. Use `npm run dev:debug` for CDP on port 9333.
+- ✅ **App settings screen** (⌘, and the gear on the toolbar, plus Settings… in the strip menu) (2026-11-06).
+  - General: theme System/Light/Dark, which also sets native UI; the view while mirroring; sidebar style; auto-connect.
+  - Display, Audio.
+  - Unlock: lock type, saved PIN with Forget, Touch ID.
+  - Agents; About: adb versions and Restart adb.
+  - Adapts to narrow windows (icon nav; controls wrap).
+- ✅ **No duplicates on the compact strip:** the ⋯ menu lists only what the strip doesn't show. The strip is dark, matching the phone block.
 - **No feature may require restarting the app.**
   - Settings apply live and are queued.
   - adb is re-detected if it was missing.

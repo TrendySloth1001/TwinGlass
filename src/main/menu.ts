@@ -20,7 +20,26 @@ function deviceItems(): MenuItemConstructorOptions[] {
 
 export function installMenu(): void {
   const template: MenuItemConstructorOptions[] = [
-    { role: 'appMenu' },
+    {
+      role: 'appMenu',
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        {
+          label: 'Settings…',
+          accelerator: 'CommandOrControl+,',
+          click: () => BrowserWindow.getFocusedWindow()?.webContents.send('ui:command', 'open-settings'),
+        },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
+    },
     // Standard edit roles: dialog text fields need them, and on the mirror canvas ⌘V/⌘C/⌘X arrive
     // as paste/copy/cut events, which the input controller bridges to the phone clipboard.
     { role: 'editMenu' },

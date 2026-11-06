@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, nativeTheme } from 'electron'
 import { Adb, findAdb } from './adb/adb'
 import { registerDevicesIpc, stopDeviceTracking } from './devices-ipc'
 import { closeAllRecordings, registerMediaIpc } from './media-ipc'
@@ -71,6 +71,10 @@ registerUnlockIpc(getAdb, getSession)
 void app.whenReady().then(() => registerAgentIpc(getAdb)) // needs app paths (userData)
 registerMediaIpc()
 registerWindowLayoutIpc()
+// Appearance from the app's settings (System / Light / Dark): native parts follow it too.
+ipcMain.handle('app:theme', (_e, t: unknown) => {
+  nativeTheme.themeSource = t === 'light' || t === 'dark' ? t : 'system'
+})
 
 void app.whenReady().then(() => {
   getAdb()

@@ -13,6 +13,7 @@ import {
   PanelLeftOpen,
   Power,
   RotateCw,
+  Settings,
   Settings2,
   Square,
   SquareStack,
@@ -81,13 +82,14 @@ interface ControlRailProps {
   onShowHelp: () => void
   /** Leave compact mode: the full view with devices, settings and the toolbar. */
   onFullView: () => void
+  onOpenSettings: () => void
 }
 
 /**
  * Vertical controls on the right of the compact mirror window. Primary actions are always
  * visible; the rest sit in a menu. When the window is short, the middle section scrolls.
  */
-export function ControlRail({ mirror, onAction, onShowHelp, onFullView }: ControlRailProps): ReactNode {
+export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSettings }: ControlRailProps): ReactNode {
   const { state } = mirror
   const live = state.phase === 'live'
   const recording = state.recordingSince !== null
@@ -109,7 +111,7 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView }: Contro
     <nav
       ref={navRef}
       aria-label="Phone controls"
-      className="flex w-12 shrink-0 flex-col items-center rounded-2xl border border-sidebar-border bg-sidebar py-1.5 [-webkit-app-region:no-drag]"
+      className="dark flex w-12 shrink-0 flex-col items-center rounded-2xl border border-sidebar-border bg-sidebar py-1.5 text-foreground [-webkit-app-region:no-drag]"
     >
       <div className={cn('flex min-h-0 flex-1 flex-col items-center gap-0.5 overflow-y-auto', !live && 'pointer-events-none opacity-40')}>
         <RailButton label="Back" shortcut={`${sc('back')} · right-click`} onClick={run('back')}>
@@ -192,26 +194,31 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView }: Contro
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="left" align="end" className="w-60">
-            <DropdownMenuItem disabled={!live} onSelect={run('notifications')}>
-              <BellDot /> Notifications panel
-              <DropdownMenuShortcut>{sc('notifications')}</DropdownMenuShortcut>
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={!live} onSelect={run('quickSettings')}>
-              <Settings2 /> Quick settings
-              <DropdownMenuShortcut>{sc('quickSettings')}</DropdownMenuShortcut>
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={!live} onSelect={run('screenOff')}>
-              {state.screenOff ? <Monitor /> : <MonitorOff />}
-              {state.screenOff ? 'Turn phone screen on' : 'Turn phone screen off'}
-              <DropdownMenuShortcut>{sc('screenOff')}</DropdownMenuShortcut>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={onShowHelp}>
-              <Keyboard /> Controls & shortcuts
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={onFullView}>
-              <PanelLeftOpen /> Full view (devices & settings)
-              <DropdownMenuShortcut>⇧⌘M</DropdownMenuShortcut>
+            {/* Only what the strip doesn't already show: no duplicates. */}
+            {!roomy && (
+              <>
+                <DropdownMenuItem disabled={!live} onSelect={run('notifications')}>
+                  <BellDot /> Notifications panel
+                  <DropdownMenuShortcut>{sc('notifications')}</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={!live} onSelect={run('quickSettings')}>
+                  <Settings2 /> Quick settings
+                  <DropdownMenuShortcut>{sc('quickSettings')}</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={!live} onSelect={run('screenOff')}>
+                  {state.screenOff ? <Monitor /> : <MonitorOff />}
+                  {state.screenOff ? 'Turn phone screen on' : 'Turn phone screen off'}
+                  <DropdownMenuShortcut>{sc('screenOff')}</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={onShowHelp}>
+                  <Keyboard /> Controls & shortcuts
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem onSelect={onOpenSettings}>
+              <Settings /> Settings…
+              <DropdownMenuShortcut>⌘,</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" disabled={state.phase === 'idle'} onSelect={run('disconnect')}>

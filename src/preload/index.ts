@@ -27,6 +27,7 @@ const api: MobMirrorApi = {
   adbStatus: () => ipcRenderer.invoke('adb:status'),
   restartAdbServer: () => ipcRenderer.invoke('adb:restart-server'),
   rotateDevice: () => ipcRenderer.invoke('device:rotate'),
+  setTheme: (t: 'system' | 'light' | 'dark') => ipcRenderer.invoke('app:theme', t),
   listDevices: () => ipcRenderer.invoke('devices:list'),
   onDevicesChanged: (cb) => subscribe('devices:changed', cb),
   startSession: (req) => ipcRenderer.invoke('session:start', req),

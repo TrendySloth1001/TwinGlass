@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { AudioMode } from '@shared/ipc'
+import type { ThemePref } from '@/hooks/use-theme'
 import type { CodecPreference, Quality } from '@shared/quality'
 
 const KEY = 'mob-mirror:settings'
@@ -21,6 +22,8 @@ export interface Settings {
   lastDevice: string | null
   /** Start mirroring by itself when the last phone (or the only phone) shows up. */
   autoConnect: boolean
+  /** Appearance: follow macOS, or force light / dark. */
+  theme: ThemePref
 }
 
 const DEFAULTS: Settings = {
@@ -34,6 +37,7 @@ const DEFAULTS: Settings = {
   viewMode: 'compact',
   lastDevice: null,
   autoConnect: true,
+  theme: 'system',
 }
 
 function load(): Settings {

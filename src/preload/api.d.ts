@@ -68,6 +68,8 @@ export interface MobMirrorApi {
   restartAdbServer(): Promise<AdbStatusInfo>
   /** Toggles portrait ↔ landscape on the mirrored phone (auto-rotate is restored afterwards). */
   rotateDevice(): Promise<{ rotation: number; autoRotate: boolean } | null>
+  /** Appearance preference for native UI (traffic lights, menus, dialogs). */
+  setTheme(theme: 'system' | 'light' | 'dark'): Promise<void>
   /** Current list; also starts live tracking (see onDevicesChanged). */
   listDevices(): Promise<DeviceListInfo>
   onDevicesChanged(cb: (list: DeviceListInfo) => void): () => void
@@ -88,7 +90,7 @@ export interface MobMirrorApi {
   /** Device menu items / their shortcuts (⌘B back, ⇧⌘H home…), sent to the focused window. */
   onDeviceAction(cb: (action: DeviceAction) => void): () => void
   /** View menu commands (toggle sidebar ⌘\, float/dock ⌥⌘\). */
-  onUiCommand(cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view') => void): () => void
+  onUiCommand(cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view' | 'open-settings') => void): () => void
   /** compact: phone-shaped window locked to `aspect` (video width / height); full: restore. */
   setWindowLayout(layout: 'compact' | 'full', aspect?: number): Promise<void>
   /** Lock type/state of the mirrored phone and whether a secret is saved for it. */
