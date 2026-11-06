@@ -109,7 +109,7 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView }: Contro
     <nav
       ref={navRef}
       aria-label="Phone controls"
-      className="flex w-12 shrink-0 flex-col items-center rounded-2xl border border-sidebar-border bg-sidebar/90 py-1.5 [-webkit-app-region:no-drag]"
+      className="flex w-12 shrink-0 flex-col items-center rounded-2xl border border-sidebar-border bg-sidebar py-1.5 [-webkit-app-region:no-drag]"
     >
       <div className={cn('flex min-h-0 flex-1 flex-col items-center gap-0.5 overflow-y-auto', !live && 'pointer-events-none opacity-40')}>
         <RailButton label="Back" shortcut={`${sc('back')} · right-click`} onClick={run('back')}>
