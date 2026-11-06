@@ -61,7 +61,14 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - Compact shadcn-styled toasts on one line with an ellipsis.
   - Clicking a toast opens the notification center with that notice expanded.
   - Warnings (such as the adb version mismatch) appear as in-app notifications with an action.
-- ✅ **Home screen (nothing mirrored): keep the existing design, only enhance it** (the user said "the current home screen is best", 2026-11-06).
+- ✅ **Home screen rebuilt for better UX** (2026-11-06, the user asked for a rebuild).
+  - One card per phone:
+    - a phone picture in the chosen frame finish
+    - name, maker, Android version, battery and charging (refreshed every 30 s), USB / Wi-Fi, and a "Last used" tag
+    - actions: **Mirror**, **Mac screen on phone**, **Second display**, and ⋯ (mirror over a specific link, new window, also connect over Wi-Fi)
+  - A shortcut strip: ⌘K Open an app, ⇧⌘V Clipboard, ⌘, Settings, Add a phone over Wi-Fi.
+  - Guidance cards for no phone, a phone waiting for "Allow", and missing adb. The ripple is softened behind the cards. Responsive down to 520 px.
+- (Earlier:) **Home screen: keep the existing design, only enhance it** (the user said "the current home screen is best", 2026-11-06).
   - One-click "Mirror <phone> · USB/Wi-Fi" buttons, with the last-used phone listed first.
   - A "Tap Allow" state for unauthorized phones and a missing-adb install hint.
   - With no phone: USB-debugging help and Pair over Wi-Fi; the list updates live.

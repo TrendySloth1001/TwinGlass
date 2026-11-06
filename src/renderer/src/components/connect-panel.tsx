@@ -1,9 +1,40 @@
-import { Check, CircleHelp, Copy, Loader2, Play, QrCode, RefreshCw, Smartphone, Usb, Wifi } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
-import type { AdbStatusInfo, DeviceListInfo, TransportInfo } from '../../../preload/api'
+import {
+  AppWindow,
+  BatteryCharging,
+  BatteryFull,
+  BatteryLow,
+  BatteryMedium,
+  Cable,
+  Check,
+  ClipboardList,
+  Copy,
+  Ellipsis,
+  Loader2,
+  MonitorSmartphone,
+  MonitorUp,
+  Play,
+  QrCode,
+  RefreshCw,
+  Search,
+  Settings,
+  ShieldQuestion,
+  Usb,
+  Wifi,
+} from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
+import type { AdbStatusInfo, DeviceInfo, DeviceListInfo, TransportInfo } from '../../../preload/api'
 import { AddDeviceDialog } from '@/components/add-device-dialog'
+import { MiniPhone } from '@/components/mini-phone'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Card } from '@/components/ui/card'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Kbd } from '@/components/ui/kbd'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import type { FrameColor, FrameStyle } from '@/lib/phone-frames'
+
+type Details = Awaited<ReturnType<typeof window.mobMirror.deviceDetails>>
 
 interface ConnectPanelProps {
   list: DeviceListInfo | null
@@ -14,55 +45,191 @@ interface ConnectPanelProps {
   /** Hardware id of the phone mirrored last time (listed first). */
   lastDevice: string | null
   onMirror: (t: TransportInfo, deviceId: string) => void
+  /** Mac → phone: show the Mac screen, or use the phone as a second display. */
+  onMacScreen: (mode: 'mirror' | 'extend') => void
+  onOpenPalette: () => void
+  onOpenClipboard: () => void
+  onOpenSettings: () => void
+  frame: FrameStyle
+  frameColor: FrameColor
 }
 
 const INSTALL = 'brew install android-platform-tools'
 
-/** Pulsing dot: the app is watching for the phone by itself (no Refresh needed). */
+function BatteryIcon({ level, charging }: { level: number; charging: boolean }): ReactNode {
+  if (charging) return <BatteryCharging className="size-3.5 text-success" />
+  if (level <= 20) return <BatteryLow className="size-3.5 text-destructive" />
+  if (level <= 60) return <BatteryMedium className="size-3.5" />
+  return <BatteryFull className="size-3.5" />
+}
+
+/** One phone: picture, details, and everything you can do with it. */
+function PhoneCard({
+  device,
+  last,
+  connecting,
+  onMirror,
+  onMacScreen,
+  frame,
+  frameColor,
+}: {
+  device: DeviceInfo
+  last: boolean
+  connecting: boolean
+  onMirror: ConnectPanelProps['onMirror']
+  onMacScreen: ConnectPanelProps['onMacScreen']
+  frame: FrameStyle
+  frameColor: FrameColor
+}): ReactNode {
+  const best = device.transports[0] // ranked by main: USB first
+  const [d, setD] = useState<Details>(null)
+  useEffect(() => {
+    if (!best) return
+    let alive = true
+    const load = (): void => void window.mobMirror.deviceDetails(best.serial).then((x) => alive && setD(x), () => {})
+    load()
+    const t = setInterval(load, 30_000) // battery stays current while the card is shown
+    return () => {
+      alive = false
+      clearInterval(t)
+    }
+  }, [best?.serial])
+  if (!best) return null
+  const usb = device.transports.find((t) => t.kind === 'usb')
+  const hasWifi = device.transports.some((t) => t.kind === 'wifi')
+  const sub = [d?.manufacturer, d?.android && `Android ${d.android}`].filter(Boolean).join(' · ')
+
+  return (
+    <Card className="flex-row items-center gap-5 p-5 shadow-sm">
+      <div className="shrink-0 [--mp-h:112px] [--mp-w:54px]">
+        <MiniPhone style={frame === 'none' ? 'modern' : frame} color={frameColor} />
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="truncate text-lg font-semibold">{device.model}</span>
+            {last && (
+              <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                Last used
+              </Badge>
+            )}
+          </div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            {sub && <span>{sub}</span>}
+            {d?.battery !== null && d?.battery !== undefined && (
+              <span className="flex items-center gap-1">
+                <BatteryIcon level={d.battery} charging={d.charging} />
+                {d.battery}%{d.charging ? ' · charging' : ''}
+              </span>
+            )}
+            {device.transports.map((t) => (
+              <span key={t.serial} className="flex items-center gap-1">
+                {t.kind === 'usb' ? <Usb className="size-3.5" /> : <Wifi className="size-3.5" />}
+                {t.kind === 'usb' ? 'USB' : 'Wi-Fi'}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button disabled={connecting} onClick={() => onMirror(best, device.id)} className="pr-4">
+            {connecting ? <Loader2 className="animate-spin" /> : <Play />}
+            Mirror
+            <span className="ml-1 text-xs opacity-60">{best.kind === 'usb' ? 'USB' : 'Wi-Fi'}</span>
+          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" onClick={() => onMacScreen('mirror')}>
+                <MonitorUp /> Mac screen on phone
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="flex items-center gap-2">
+              Show your Mac screen on the phone <Kbd>⌥⌘P</Kbd>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" onClick={() => onMacScreen('extend')}>
+                <MonitorSmartphone /> Second display
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="flex items-center gap-2">
+              Use the phone as an extra Mac display <Kbd>⇧⌥⌘P</Kbd>
+            </TooltipContent>
+          </Tooltip>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label={`More for ${device.model}`}>
+                <Ellipsis />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {device.transports.map((t) => (
+                <DropdownMenuItem key={t.serial} disabled={connecting} onSelect={() => onMirror(t, device.id)}>
+                  {t.kind === 'usb' ? <Usb /> : <Wifi />} Mirror over {t.kind === 'usb' ? 'USB' : 'Wi-Fi'}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem onSelect={() => void window.mobMirror.openDeviceWindow(best.serial, best.kind)}>
+                <AppWindow /> Mirror in a new window
+              </DropdownMenuItem>
+              {usb && !hasWifi && (
+                <DropdownMenuItem
+                  onSelect={() =>
+                    void window.mobMirror.enableTcpip(usb.serial).then(
+                      (r) => (r.ok ? toast.success('Switched to Wi-Fi', { description: r.message }) : toast.error(r.message)),
+                      (e: unknown) => toast.error(String(e)),
+                    )
+                  }
+                >
+                  <Wifi /> Also connect over Wi-Fi
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+function Step({ n, children }: { n: number; children: ReactNode }): ReactNode {
+  return (
+    <li className="flex gap-2.5">
+      <span className="grid size-5 shrink-0 place-items-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground">{n}</span>
+      <span className="pt-0.5">{children}</span>
+    </li>
+  )
+}
+
+/** A pulsing dot: the app is watching for phones by itself (no Refresh needed). */
 function Waiting({ children }: { children: ReactNode }): ReactNode {
   return (
-    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-      <span className="relative flex size-1.5">
-        <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand opacity-70" />
-        <span className="relative inline-flex size-1.5 rounded-full bg-brand" />
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <span className="relative flex size-2">
+        <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand opacity-60" />
+        <span className="relative inline-flex size-2 rounded-full bg-brand" />
       </span>
       {children}
     </div>
   )
 }
 
-function UsbHelp(): ReactNode {
+function Shortcut({ icon, label, keys, onClick }: { icon: ReactNode; label: string; keys: string; onClick: () => void }): ReactNode {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs text-muted-foreground">
-          <CircleHelp /> Turn on USB debugging
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent side="bottom" className="w-72 text-xs">
-        <ol className="flex list-decimal flex-col gap-1.5 pl-4 text-muted-foreground">
-          <li>
-            <b className="text-foreground">Settings → About phone</b>: tap <b className="text-foreground">Build number</b> 7 times.
-          </li>
-          <li>
-            <b className="text-foreground">Developer options → USB debugging</b>: on.
-          </li>
-          <li>
-            Plug the phone in and tap <b className="text-foreground">Allow</b> (tick “Always allow”).
-          </li>
-          <li>
-            For Wi-Fi: <b className="text-foreground">Wireless debugging</b> on, then pair once (Android 11+).
-          </li>
-        </ol>
-      </PopoverContent>
-    </Popover>
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&_svg]:size-3.5"
+    >
+      {icon}
+      {label}
+      <Kbd>{keys}</Kbd>
+    </button>
   )
 }
 
 /**
- * The home screen with nothing mirrored: the familiar phone tile and title, plus what to do next.
- * Ready phones get a one-click Mirror button, phones waiting for "Allow" say so, and with no phone
- * there is help for USB and Wi-Fi. The device list is live, so this updates by itself.
+ * The home screen with nothing mirrored: your phones with what you can do with each, or how to
+ * connect one. The device list is live (adb track-devices), so it updates by itself.
  */
 export function ConnectPanel(p: ConnectPanelProps): ReactNode {
   const [pairing, setPairing] = useState(false)
@@ -70,43 +237,30 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
   const devices = [...(p.list?.devices ?? [])].sort((a, b) => Number(b.id === p.lastDevice) - Number(a.id === p.lastDevice))
   const pending = p.list?.other ?? []
   const adbMissing = p.adb !== null && !p.adb.adbPath
-  const unauthorized = pending.some((t) => t.state === 'unauthorized')
-
-  const title = adbMissing
-    ? 'One-time setup'
-    : devices.length
-      ? 'Ready to mirror'
-      : pending.length
-        ? unauthorized
-          ? 'Check your phone'
-          : 'Phone not ready'
-        : 'No device mirrored'
-  const hint = adbMissing
-    ? 'Mob Mirror needs Android’s adb tool. Install it in Terminal:'
-    : devices.length
-      ? 'Click and drag to touch, scroll to scroll, type to type.'
-      : pending.length
-        ? unauthorized
-          ? 'Tap Allow on “Allow USB debugging?”. Tick “Always allow” to skip this next time.'
-          : 'Unlock the phone, or unplug it and plug it back in.'
-        : 'Plug in your phone with a USB cable, or pair it over Wi-Fi.'
+  const nothing = devices.length === 0 && pending.length === 0
 
   return (
-    <div className="relative z-10 flex flex-col items-center gap-3 px-4 text-center text-muted-foreground">
-      <div className="grid size-14 place-items-center rounded-2xl border border-border bg-background/60 backdrop-blur">
-        {p.connecting ? <Loader2 className="size-7 animate-spin" /> : <Smartphone className="size-7" />}
+    <div className="relative z-10 flex w-full max-w-[720px] flex-col gap-5 px-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {adbMissing ? 'One-time setup' : devices.length ? (devices.length > 1 ? 'Your phones' : 'Your phone') : 'Connect a phone'}
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {adbMissing
+            ? 'Mob Mirror talks to Android phones through adb. Install it once:'
+            : devices.length
+              ? 'Mirror and control it, or bring your Mac to it.'
+              : 'Use a USB cable for the lowest latency, or Wi-Fi to go wireless.'}
+        </p>
       </div>
-      <div className="text-base font-medium text-foreground">{title}</div>
-      <div className="max-w-80 text-xs text-balance text-muted-foreground">{hint}</div>
 
       {adbMissing && (
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex items-center gap-1 rounded-full border border-border bg-background/60 py-0.5 pr-0.5 pl-3 font-mono text-[11px] text-foreground">
-            {INSTALL}
+        <Card className="gap-3 p-5 shadow-sm">
+          <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 font-mono text-sm">
+            <span className="flex-1 truncate">{INSTALL}</span>
             <Button
               size="icon-xs"
               variant="ghost"
-              className="rounded-full"
               aria-label="Copy command"
               onClick={() =>
                 void navigator.clipboard.writeText(INSTALL).then(() => {
@@ -118,52 +272,101 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
               {copied ? <Check /> : <Copy />}
             </Button>
           </div>
-          <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs text-muted-foreground" onClick={p.refresh}>
-            <RefreshCw /> Check again
+          <Button size="sm" variant="outline" className="self-start" onClick={p.refresh}>
+            <RefreshCw /> I’ve installed it
           </Button>
-        </div>
+        </Card>
       )}
 
-      {devices.length > 0 && (
-        <div className="mt-1 flex flex-col items-center gap-2">
-          {devices.slice(0, 4).map((d) => {
-            const best = d.transports[0] // ranked by main: USB first
-            if (!best) return null
-            return (
-              <Button
-                key={d.id}
-                size="sm"
-                variant={d === devices[0] ? 'default' : 'secondary'}
-                className="rounded-full pr-3.5"
-                disabled={p.connecting}
-                onClick={() => p.onMirror(best, d.id)}
-              >
-                <Play /> Mirror {d.model}
-                <span className="flex items-center gap-1 opacity-60">
-                  · {best.kind === 'usb' ? <Usb /> : <Wifi />}
-                  {best.kind === 'usb' ? 'USB' : 'Wi-Fi'}
-                </span>
-              </Button>
-            )
-          })}
-        </div>
-      )}
+      {devices.map((d) => (
+        <PhoneCard
+          key={d.id}
+          device={d}
+          last={d.id === p.lastDevice}
+          connecting={p.connecting}
+          onMirror={p.onMirror}
+          onMacScreen={p.onMacScreen}
+          frame={p.frame}
+          frameColor={p.frameColor}
+        />
+      ))}
 
-      {pending.length > 0 && devices.length === 0 && <Waiting>Waiting for your phone…</Waiting>}
+      {pending.map((t) => (
+        <Card key={t.serial} className="flex-row items-center gap-4 border-dashed p-5 shadow-none">
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-muted">
+            <ShieldQuestion className="size-5 text-warning" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-medium">{t.state === 'unauthorized' ? 'Check your phone' : 'Phone not ready'}</div>
+            <div className="text-xs text-muted-foreground">
+              {t.state === 'unauthorized'
+                ? 'Tap Allow on “Allow USB debugging?”. Tick “Always allow” to skip this next time.'
+                : t.state === 'offline'
+                  ? 'Unlock the phone, or unplug it and plug it back in.'
+                  : `adb reports “${t.state}”.`}
+            </div>
+          </div>
+          <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
+        </Card>
+      ))}
 
-      {!adbMissing && devices.length === 0 && pending.length === 0 && (
-        <>
-          <div className="mt-1 flex flex-wrap items-center justify-center gap-1">
-            <UsbHelp />
-            <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs text-muted-foreground" onClick={() => setPairing(true)}>
+      {nothing && !adbMissing && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Card className="gap-3 p-5 shadow-sm">
+            <div className="flex items-center gap-2 font-medium">
+              <Cable className="size-4" /> USB cable
+              <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-[10px]">
+                Recommended
+              </Badge>
+            </div>
+            <ol className="flex flex-col gap-2 text-xs text-muted-foreground">
+              <Step n={1}>
+                On the phone: <b className="text-foreground">Settings → About phone</b>, tap <b className="text-foreground">Build number</b> 7 times.
+              </Step>
+              <Step n={2}>
+                <b className="text-foreground">Developer options → USB debugging</b>: on.
+              </Step>
+              <Step n={3}>
+                Plug it in and tap <b className="text-foreground">Allow</b>.
+              </Step>
+            </ol>
+            <Waiting>Looking for phones…</Waiting>
+          </Card>
+          <Card className="gap-3 p-5 shadow-sm">
+            <div className="flex items-center gap-2 font-medium">
+              <Wifi className="size-4" /> Wi-Fi
+            </div>
+            <ol className="flex flex-col gap-2 text-xs text-muted-foreground">
+              <Step n={1}>Phone and Mac on the same Wi-Fi.</Step>
+              <Step n={2}>
+                <b className="text-foreground">Developer options → Wireless debugging</b>: on (Android 11+).
+              </Step>
+              <Step n={3}>Pair once with a QR code.</Step>
+            </ol>
+            <Button size="sm" variant="outline" className="mt-auto self-start" onClick={() => setPairing(true)}>
               <QrCode /> Pair over Wi-Fi
             </Button>
-          </div>
-          <Waiting>Looking for phones…</Waiting>
-        </>
+          </Card>
+        </div>
       )}
 
-      {p.error && !adbMissing && <div className="max-w-72 text-[11px] text-destructive">{p.error}</div>}
+      {p.error && !adbMissing && <p className="text-xs text-destructive">{p.error}</p>}
+
+      {/* Everything else you can do, discoverable without reading docs. */}
+      <div className="flex flex-wrap items-center gap-1 border-t pt-3">
+        {devices.length > 0 && <Shortcut icon={<Search />} label="Open an app" keys="⌘K" onClick={p.onOpenPalette} />}
+        <Shortcut icon={<ClipboardList />} label="Clipboard" keys="⇧⌘V" onClick={p.onOpenClipboard} />
+        <Shortcut icon={<Settings />} label="Settings" keys="⌘," onClick={p.onOpenSettings} />
+        {!nothing && (
+          <button
+            type="button"
+            onClick={() => setPairing(true)}
+            className="ml-auto flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&_svg]:size-3.5"
+          >
+            <QrCode /> Add a phone over Wi-Fi
+          </button>
+        )}
+      </div>
 
       <AddDeviceDialog open={pairing} onOpenChange={setPairing} />
     </div>

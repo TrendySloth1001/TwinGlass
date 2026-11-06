@@ -3,6 +3,7 @@ import QRCode from 'qrcode'
 import { BrowserWindow, ipcMain } from 'electron'
 import type { Adb, DeviceList, DeviceTracker, QrPairingSession } from './adb/adb'
 import { isPairingCode, normalizeHostPort } from './adb/wireless'
+import { parseBattery } from './adb/parse'
 
 let tracker: DeviceTracker | null = null
 let latest: DeviceList | null = null
@@ -47,6 +48,27 @@ export function registerDevicesIpc(getAdb: () => Adb | null): void {
   })
 
   ipcMain.handle('devices:list', async () => trackDevices(need()))
+
+  // Home screen card: battery, maker, Android version, screen size (one batched shell round trip).
+  ipcMain.handle('devices:details', async (_e, serial: unknown) => {
+    if (typeof serial !== 'string') return null
+    const adb = need()
+    const [bat = '', make = '', release = '', size = ''] = await adb.shellBatch(serial, [
+      'dumpsys battery',
+      'getprop ro.product.manufacturer',
+      'getprop ro.build.version.release',
+      'wm size',
+    ])
+    const b = parseBattery(bat)
+    const m = /(?:Override|Physical) size:\s*(\d+)x(\d+)/.exec(size)
+    return {
+      battery: b?.level ?? null,
+      charging: b?.charging ?? false,
+      manufacturer: make.trim() || null,
+      android: release.trim() || null,
+      screen: m ? { width: Number(m[1]), height: Number(m[2]) } : null,
+    }
+  })
 
   ipcMain.handle('wireless:pair', async (_e, hostPort: string, code: string) => {
     const hp = normalizeHostPort(hostPort)

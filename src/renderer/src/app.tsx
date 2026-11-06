@@ -347,6 +347,12 @@ export function App(): ReactNode {
               connecting={mirror.state.phase === 'connecting'}
               lastDevice={settings.lastDevice}
               onMirror={onMirror}
+              onMacScreen={(m) => macScreen.toggle(m)}
+              onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
+              onOpenClipboard={() => setPalette({ open: true, mode: 'clipboard' })}
+              onOpenSettings={() => setSettingsOpen(true)}
+              frame={settings.frame}
+              frameColor={settings.frameColor}
             />
           }
         />

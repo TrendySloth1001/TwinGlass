@@ -258,7 +258,7 @@ export function MirrorStage({
 
       {phase === 'idle' && (
         <div className="absolute inset-0 overflow-y-auto">
-          <Ripple mainCircleSize={180} numCircles={6} className="opacity-60" />
+          <Ripple mainCircleSize={220} numCircles={6} className="opacity-35" />
           {/* min-h-full + place-items-center: centred when it fits, scrolls when the window is short. */}
           <div className="grid min-h-full place-items-center py-8">{idleContent}</div>
         </div>

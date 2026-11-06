@@ -125,6 +125,14 @@ export interface MobMirrorApi {
   companionStatus(): Promise<{ port: number; phones: { id: string; model: string; serial: string; installed: boolean; version: string | null; linked: boolean }[] }>
   companionRelink(): Promise<boolean>
   companionInstall(serial: string): Promise<boolean>
+  /** Battery, maker, Android version and screen size of one phone (home screen card). */
+  deviceDetails(serial: string): Promise<{
+    battery: number | null
+    charging: boolean
+    manufacturer: string | null
+    android: string | null
+    screen: { width: number; height: number } | null
+  } | null>
   setTrayVisible(on: boolean): Promise<void>
   /** Launch at login; without an argument just reads it. */
   setLoginItem(on?: boolean): Promise<boolean>

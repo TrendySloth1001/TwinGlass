@@ -62,6 +62,7 @@ const api: MobMirrorApi = {
   companionStatus: () => ipcRenderer.invoke('companion:status'),
   companionRelink: () => ipcRenderer.invoke('companion:relink'),
   companionInstall: (serial: string) => ipcRenderer.invoke('companion:install', serial),
+  deviceDetails: (serial: string) => ipcRenderer.invoke('devices:details', serial),
   setTrayVisible: (on: boolean) => ipcRenderer.invoke('app:set-tray', on),
   setLoginItem: (on?: boolean) => ipcRenderer.invoke('app:login-item', on),
   setRequireTouchId: (on: boolean) => ipcRenderer.invoke('unlock:set-require-touch-id', on),
