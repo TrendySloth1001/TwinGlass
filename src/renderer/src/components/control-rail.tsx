@@ -23,7 +23,8 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { RAIL_WIDTH } from '@shared/compact-layout'
 import { shortcutFor, type DeviceAction } from '@shared/shortcuts'
 import { NotificationCenter } from '@/components/notification-center'
 import { Button } from '@/components/ui/button'
@@ -84,15 +85,16 @@ interface ControlRailProps {
   /** Leave compact mode: the full view with devices, settings and the toolbar. */
   onFullView: () => void
   onOpenSettings: () => void
-  /** Extra classes (e.g. margins that align the strip with a framed phone). */
+  /** Extra classes / style (e.g. margins that align the strip with a framed phone). */
   className?: string
+  style?: CSSProperties
 }
 
 /**
  * Vertical controls on the right of the compact mirror window. Primary actions are always
  * visible; the rest sit in a menu. When the window is short, the middle section scrolls.
  */
-export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSettings, className }: ControlRailProps): ReactNode {
+export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSettings, className, style }: ControlRailProps): ReactNode {
   const { state } = mirror
   const live = state.phase === 'live'
   const recording = state.recordingSince !== null
@@ -113,9 +115,10 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSe
   return (
     <nav
       ref={navRef}
+      style={{ width: RAIL_WIDTH, ...style }}
       aria-label="Phone controls"
       className={cn(
-        'dark flex w-12 shrink-0 flex-col items-center rounded-2xl border border-sidebar-border bg-sidebar py-1.5 text-foreground [-webkit-app-region:no-drag]',
+        'dark flex shrink-0 flex-col items-center rounded-2xl border border-sidebar-border bg-sidebar py-1.5 text-foreground [-webkit-app-region:no-drag]',
         className,
       )}
     >

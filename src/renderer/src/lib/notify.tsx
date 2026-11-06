@@ -54,7 +54,9 @@ export function setPopups(p: PopupPref): void {
 /** Shows a compact toast and records the notice in the notification center (newest first, max 50). */
 export function notify(level: NoticeLevel, title: string, opts: { description?: string; action?: NoticeAction } = {}): number {
   const n: Notice = { id: nextId++, level, title, ...opts, at: Date.now(), read: false }
-  set({ notices: [n, ...state.notices].slice(0, 50) })
+  // Same notice again (e.g. a check that re-runs after a reload): refresh it, don't stack copies.
+  const same = (m: Notice): boolean => m.level === level && m.title === title && m.description === opts.description
+  set({ notices: [n, ...state.notices.filter((m) => !same(m))].slice(0, 50) })
   if (popups === 'off' || (popups === 'errors' && level !== 'error')) return n.id
   const toastId = `notice-${n.id}`
   const show = level === 'info' ? toast : toast[level]

@@ -6,9 +6,10 @@ import { ControlsHelp } from '@/components/controls-help'
 import { CompactTitleBar } from '@/components/compact-title-bar'
 import { ConnectPanel } from '@/components/connect-panel'
 import { ControlRail } from '@/components/control-rail'
-import { MirrorStage } from '@/components/mirror-stage'
+import { MirrorStage, type PhoneRect } from '@/components/mirror-stage'
 import { NAV_BAR_HEIGHT, NavBar } from '@/components/nav-bar'
 import { frameExtra, frameSpec } from '@/lib/phone-frames'
+import { FRAMED_TITLE, GAP, NAV, RAIL_WIDTH, TITLE } from '@shared/compact-layout'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { applyTheme } from '@/hooks/use-theme'
 import { setPopups } from '@/lib/notify'
@@ -41,6 +42,14 @@ export function App(): ReactNode {
   const [settings, updateSettings] = useSettings()
   const [helpOpen, setHelpOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  /** Framed phone body (viewport px): the compact strip and nav dock attach to it. */
+  const [phoneRect, setPhoneRect] = useState<PhoneRect | null>(null)
+  const [viewportW, setViewportW] = useState(window.innerWidth)
+  useEffect(() => {
+    const on = (): void => setViewportW(window.innerWidth)
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
   const [unlockOpen, setUnlockOpen] = useState(false)
   const { connect, runAction } = mirror
   const live = mirror.state.phase === 'live'
@@ -207,13 +216,19 @@ export function App(): ReactNode {
   // Compact mirror (default while a phone is mirrored): phone-shaped window + control rail. The full
   // view (devices, settings, toolbar) is one click away and is used when nothing is mirrored.
   const compact = settings.viewMode === 'compact' && (mirror.state.phase === 'live' || mirror.state.phase === 'reconnecting')
+  const framed = compact && settings.frame !== 'none'
+  const frameButtons = frameSpec(settings.frame)?.buttons ?? 0
   const vw = mirror.state.stats?.width ?? 0
   const vh = mirror.state.stats?.height ?? 0
   const aspect = vw && vh ? Math.round((vw / vh) * 1000) / 1000 : 0 // rounded: only re-fit on real changes (rotation)
   useEffect(() => {
     const fx = frameExtra(frameSpec(settings.frame))
+    const titleExtra = settings.frame !== 'none' ? FRAMED_TITLE - TITLE : 0
     if (compact && aspect)
-      void window.mobMirror.setWindowLayout('compact', aspect, { width: fx.width, height: fx.height + (settings.navBar ? NAV_BAR_HEIGHT : 0) })
+      void window.mobMirror.setWindowLayout('compact', aspect, {
+        width: fx.width,
+        height: fx.height + titleExtra + (settings.navBar ? NAV_BAR_HEIGHT : 0),
+      })
     else if (!compact) void window.mobMirror.setWindowLayout('full')
   }, [compact, aspect, settings.navBar, settings.frame])
 
@@ -244,7 +259,12 @@ export function App(): ReactNode {
       {/* Compact: the phone is one rounded dark block; the rail floats beside it (see-through gap). */}
       <main className={cn('flex min-w-0 flex-1 flex-col', compact && (settings.frame === 'none' ? 'dark overflow-hidden rounded-xl bg-stage' : 'dark'))}>
         {compact ? (
-          <CompactTitleBar name={mirror.state.deviceName} transport={mirror.state.transport?.kind ?? null} floating={settings.frame !== 'none'} />
+          <CompactTitleBar
+            name={mirror.state.deviceName}
+            transport={mirror.state.transport?.kind ?? null}
+            floating={settings.frame !== 'none'}
+            inset={frameSpec(settings.frame)?.buttons ?? 0}
+          />
         ) : (
         <MirrorToolbar
           onCompact={live ? () => updateSettings({ viewMode: 'compact' }) : undefined}
@@ -273,6 +293,7 @@ export function App(): ReactNode {
           aspect={vw && vh ? vw / vh : 0}
           fit={compact}
           onAction={dispatch}
+          onFrameRect={setPhoneRect}
           reconnect={mirror.state.reconnect}
           idleContent={
             <ConnectPanel
@@ -287,22 +308,41 @@ export function App(): ReactNode {
           }
         />
         </div>
-        {compact && settings.navBar && <NavBar onAction={dispatch} disabled={!live} floating={settings.frame !== 'none'} />}
+        {compact && settings.navBar && !framed && <NavBar onAction={dispatch} disabled={!live} />}
+        {/* Framed: the dock attaches right under the phone body (absolute), this keeps its room. */}
+        {compact && settings.navBar && framed && <div aria-hidden className="shrink-0" style={{ height: NAV }} />}
         {!compact && settings.showStatusBar && <StatusBar state={mirror.state} />}
       </main>
       {/* The see-through strip between phone and rail: also a handle to move the window. */}
-      {compact && <div aria-hidden className="w-2 shrink-0 [-webkit-app-region:drag]" />}
+      {compact && <div aria-hidden className="shrink-0 [-webkit-app-region:drag]" style={{ width: GAP }} />}
       {compact && (
         <ControlRail
           // With a phone frame, line the strip up with the phone body (below the title pills,
           // above the nav dock) so the pieces read as one layout.
-          className={settings.frame !== 'none' ? cn('mt-7', settings.navBar && 'mb-10') : undefined}
+          // Framed: exactly as tall as the phone body, GAP after its side buttons.
+          className={framed && phoneRect ? 'self-start' : undefined}
+          style={
+            framed && phoneRect
+              ? {
+                  marginTop: phoneRect.y,
+                  height: phoneRect.height,
+                  transform: `translateX(${phoneRect.x + phoneRect.width + frameButtons + GAP - (viewportW - RAIL_WIDTH)}px)`,
+                }
+              : framed
+                ? { marginTop: FRAMED_TITLE, marginBottom: settings.navBar ? NAV : 0 }
+                : undefined
+          }
           mirror={mirror}
           onAction={dispatch}
           onShowHelp={() => setHelpOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
           onFullView={() => updateSettings({ viewMode: 'full' })}
         />
+      )}
+      {framed && settings.navBar && phoneRect && (
+        <div className="dark absolute" style={{ top: phoneRect.y + phoneRect.height, left: phoneRect.x, width: phoneRect.width }}>
+          <NavBar onAction={dispatch} disabled={!live} floating />
+        </div>
       )}
       <ControlsHelp open={helpOpen} onOpenChange={setHelpOpen} />
       <SettingsDialog

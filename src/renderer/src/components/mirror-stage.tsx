@@ -1,7 +1,7 @@
 import { Bot, FileUp, Loader2, LockKeyhole } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
-import { useEffect, useState, type DragEvent, type ReactNode, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type ReactNode, type RefObject } from 'react'
 import { toast } from 'sonner'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { Ripple } from '@/components/ui/ripple'
@@ -35,6 +35,15 @@ interface MirrorStageProps {
   fit: boolean
   /** Side buttons / home button on the frame. */
   onAction: (a: DeviceAction) => void
+  /** The framed phone body's rect (viewport px) whenever it moves or resizes; null without a frame. */
+  onFrameRect?: (r: PhoneRect | null) => void
+}
+
+export interface PhoneRect {
+  x: number
+  y: number
+  width: number
+  height: number
 }
 
 /** A physical button on the frame: works like the real one. */
@@ -89,12 +98,45 @@ export function MirrorStage({
   aspect,
   fit,
   onAction,
+  onFrameRect,
 }: MirrorStageProps): ReactNode {
   const [dragging, setDragging] = useState(false)
   const live = phase === 'live'
   // A frame needs the video's shape; while connecting/idle the plain stage is shown.
   const frame = frameProp && aspect > 0 && (live || phase === 'reconnecting') ? frameProp : null
   const color = FRAME_COLORS[frameColor]
+
+  // Report where the phone body actually is, so the strip and nav dock can attach to it exactly
+  // (at any window shape: live resize, minimum size, full screen), not to the window edges.
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const lastRect = useRef('')
+  useLayoutEffect(() => {
+    const el = bodyRef.current
+    if (!onFrameRect) return
+    if (!el || !frame) {
+      if (lastRect.current !== 'none') {
+        lastRect.current = 'none'
+        onFrameRect(null)
+      }
+      return
+    }
+    const report = (): void => {
+      const r = el.getBoundingClientRect()
+      const key = `${r.x.toFixed(1)},${r.y.toFixed(1)},${r.width.toFixed(1)},${r.height.toFixed(1)}`
+      if (key === lastRect.current) return
+      lastRect.current = key
+      onFrameRect({ x: r.x, y: r.y, width: r.width, height: r.height })
+    }
+    report()
+    const ro = new ResizeObserver(report)
+    ro.observe(el)
+    if (el.parentElement) ro.observe(el.parentElement)
+    window.addEventListener('resize', report)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', report)
+    }
+  }, [frame, aspect, fit, onFrameRect])
 
   // What an agent (via MCP) just did: shown for a few seconds so the user always knows.
   const [agent, setAgent] = useState<{ summary: string; at: number } | null>(null)
@@ -135,6 +177,9 @@ export function MirrorStage({
       {/* The tree body > glass > screen > canvas never changes (the decoder is bound to the
           canvas); without a frame the wrappers simply fill the stage. */}
       <div
+        ref={bodyRef}
+        // Centred in the stage. In the compact window the aspect lock makes it fill the stage
+        // exactly; the strip and nav dock follow its measured rect either way (onFrameRect).
         className={cn(frame ? 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2' : 'absolute inset-0')}
         style={
           frame

@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Kbd } from '@/components/ui/kbd'
 
-/** Height must match NAV_BAR_HEIGHT used for the compact window size (h-10). */
-export const NAV_BAR_HEIGHT = 40
+import { GAP, NAV, NAV_DOCK } from '@shared/compact-layout'
+
+/** Height the bar adds to the compact window (shared with main via compact-layout.ts). */
+export const NAV_BAR_HEIGHT = NAV
 
 const KEYS: { action: DeviceAction; label: string; icon: ReactNode }[] = [
   { action: 'back', label: 'Back', icon: <ArrowLeft /> },
@@ -20,19 +22,23 @@ export function NavBar({
   onAction,
   disabled,
   floating,
+  inset = 0,
 }: {
   onAction: (a: DeviceAction) => void
   disabled: boolean
   /** Under a phone frame: a dock-style bar (same surface as the control strip). */
   floating?: boolean
+  /** Right inset so the dock is exactly as wide as the phone body (side-button nubs excluded). */
+  inset?: number
 }): ReactNode {
   return (
     <div
       className={
         floating
-          ? 'mt-1.5 flex h-[34px] shrink-0 items-center gap-1 rounded-2xl border border-sidebar-border bg-sidebar px-1.5 text-foreground shadow-sm'
-          : 'flex h-10 shrink-0 items-center gap-1 px-3 text-foreground'
+          ? 'flex shrink-0 items-center gap-1 rounded-2xl border border-sidebar-border bg-sidebar px-1.5 text-foreground shadow-sm'
+          : 'flex shrink-0 items-center gap-1 px-3 text-foreground'
       }
+      style={floating ? { height: NAV_DOCK, marginTop: GAP, marginRight: inset } : { height: NAV }}
     >
       {KEYS.map((k) => (
         <Tooltip key={k.action}>

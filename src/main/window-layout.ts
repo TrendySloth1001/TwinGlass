@@ -5,9 +5,11 @@
 //             phone's (follows rotation), so resizing never letterboxes.
 import { BrowserWindow, ipcMain, screen, type Rectangle } from 'electron'
 
-/** Must match the renderer's compact chrome (h-7 title strip; w-12 rail + gap-2). */
-export const COMPACT_TITLE = 28
-export const COMPACT_RAIL = 56
+import { RAIL, TITLE } from '@shared/compact-layout'
+
+/** Shared with the renderer (src/shared/compact-layout.ts) so CSS and window size always agree. */
+export const COMPACT_TITLE = TITLE
+export const COMPACT_RAIL = RAIL
 
 const fullBounds = new Map<number, Rectangle>()
 const mode = new Map<number, 'full' | 'compact'>()

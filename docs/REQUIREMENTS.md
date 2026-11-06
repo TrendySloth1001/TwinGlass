@@ -52,6 +52,9 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - The compact window takes the exact phone shape (transparent around it); in the full view the phone is centred with a shadow.
   - The designs are generic, not copies of a brand's phone.
   - The pieces around a framed phone match the control strip: dock-style pills behind the traffic lights and the name, a navigation dock under the phone, and the strip aligned with the phone body (2026-11-06).
+  - **Precise layout** (2026-11-06). One spacing unit (6 px) everywhere, and all sizes shared between main and the renderer (src/shared/compact-layout.ts).
+    - The strip and nav dock attach to the phone's measured position (ResizeObserver), not to the window edges.
+    - Verified by measurement at 441×900, 300×640 and 600×700: strip = phone top and height, dock = phone bottom + 6, name pill centred on the phone.
 - ✅ Sidebar: docked or floating, collapsible, with sections. The floating panel stays inside the stage.
 - ✅ Responsive layout down to 480 px. The toolbar overflows into a menu and the sidebar floats automatically when narrow.
 - ✅ Notifications:
