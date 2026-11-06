@@ -4,19 +4,11 @@ import type { UnlockStatusInfo } from '../../../preload/api'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 type Result = { kind: 'idle' } | { kind: 'busy' } | { kind: 'ok'; text: string } | { kind: 'error'; text: string }
-
-const LABEL: Record<UnlockStatusInfo['credential'], string> = {
-  PIN: 'PIN',
-  PASSWORD: 'password',
-  PATTERN: 'pattern',
-  NONE: 'no lock',
-  UNKNOWN: 'PIN or password',
-}
 
 export function UnlockDialog({
   open,
@@ -71,145 +63,120 @@ export function UnlockDialog({
     if (secret) void run({ secret, remember, target })
   }
 
-  const kind = status ? LABEL[status.credential] : 'PIN or password'
   const isPin = status?.credential === 'PIN'
   const busy = result.kind === 'busy'
   /** Saved secret usable now (with Touch ID only when the user asked for it). */
   const canUseSaved = !!status?.saved && (!requireTouchId || status.touchId)
   const touch = requireTouchId && canUseSaved
 
+  // Friendly name for the app asking (com.whatsapp -> WhatsApp); null when none is recognised.
+  const app = screenMode && status?.credentialPrompt ? appName(status.promptOwner ?? status.foreground?.package ?? null) : null
+  const title = !status ? 'Unlock' : screenMode ? (app ? `Unlock ${app}` : 'Enter PIN') : 'Unlock phone'
+  const word = isPin ? 'PIN' : 'password'
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <LockKeyhole className="size-4" /> Unlock phone
-          </DialogTitle>
-          <DialogDescription>
-            Android hides the {kind} screen from screen capture, so it stays black in the mirror. Mob Mirror wakes the
-            phone and types your {kind} for you.
-          </DialogDescription>
+      <DialogContent className="gap-5 sm:max-w-[340px]">
+        <DialogHeader className="items-center text-center">
+          <div className="mb-1 grid size-11 place-items-center rounded-full bg-muted">
+            <LockKeyhole className="size-5" />
+          </div>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>We’ll type it on your phone for you.</DialogDescription>
         </DialogHeader>
 
         {!status && result.kind !== 'error' && (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Checking the lock screen…
+          <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Checking the phone…
           </p>
         )}
 
         {status?.credential === 'PATTERN' ? (
           <Alert variant="destructive">
             <ShieldAlert />
-            <AlertDescription>
-              This phone uses a pattern, which can’t be typed. Switch it to a PIN or password to unlock from the Mac.
-            </AlertDescription>
+            <AlertDescription>Pattern locks can’t be typed. Switch the phone to a PIN or password to unlock from the Mac.</AlertDescription>
           </Alert>
         ) : (
           status && (
-            <form className="space-y-4" onSubmit={submit}>
-              {screenMode && status.credentialPrompt && (
-                <p className="text-sm text-muted-foreground">
-                  <b className="text-foreground">{status.promptOwner ?? status.foreground?.package}</b> is asking for your {kind}.
-                </p>
-              )}
-              {screenMode && !status.credentialPrompt && (
-                <Alert>
-                  <ShieldAlert />
-                  <AlertDescription className="text-xs">
-                    The phone is unlocked. If <b className="text-foreground">{status.foreground?.package ?? 'an app'}</b> is
-                    showing its own PIN prompt (app lock), Mob Mirror can type your {kind} into it. Only do this on a PIN
-                    screen: it types into whatever field has focus.
-                  </AlertDescription>
-                </Alert>
-              )}
-              {canUseSaved && (
-                <div className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
-                  <span className="flex min-w-0 items-center gap-2">
-                    {touch ? <Fingerprint className="size-4 shrink-0 text-brand" /> : <KeyRound className="size-4 shrink-0 text-muted-foreground" />}
-                    <span className="truncate">Saved {kind}{touch ? ' · Touch ID' : ''}</span>
-                  </span>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => void window.mobMirror.forgetUnlockSecret().then(() => window.mobMirror.unlockStatus().then(setStatus))}
-                    >
-                      Forget
-                    </Button>
-                    <Button type="button" size="sm" disabled={busy} onClick={() => void run({ target })}>
-                      {busy && !secret ? <Loader2 className="animate-spin" /> : touch && <Fingerprint />}
-                      {screenMode ? 'Type it' : 'Unlock'}
-                    </Button>
-                  </div>
-                </div>
-              )}
+            <form className="flex flex-col gap-3" onSubmit={submit}>
               {status.credential !== 'NONE' && (
-                <>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="unlock-secret">
-                      {canUseSaved ? `Or type a ${isPin ? 'PIN' : 'PIN or password'}` : isPin ? 'PIN' : 'PIN or password'}
-                    </Label>
-                    <Input
-                      id="unlock-secret"
-                      type="password"
-                      autoFocus
-                      autoComplete="off"
-                      inputMode={isPin ? 'numeric' : 'text'}
-                      placeholder={screenMode ? 'The PIN this app asks for' : undefined}
-                      value={secret}
-                      onChange={(e) => setSecret(e.target.value)}
-                      disabled={busy}
-                    />
-                    {screenMode && (
-                      <p className="text-[11px] text-muted-foreground">
-                        Some app locks use their own PIN instead of the phone’s: type that one here.
-                      </p>
-                    )}
-                  </div>
-                  {/* Only the phone's own lock PIN can be saved: an app-lock PIN saved as the phone PIN
-                      would later waste the phone's limited attempts. */}
-                  {status.canSave && !status.saved && !screenMode && (
-                    <div className="flex items-start gap-2">
-                      <Checkbox id="unlock-remember" checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
-                      <Label htmlFor="unlock-remember" className="text-xs leading-snug font-normal text-muted-foreground">
-                        Remember on this Mac (encrypted in the macOS Keychain). Next time ⌘L types it for you.
-                      </Label>
-                    </div>
-                  )}
-                </>
+                <Input
+                  id="unlock-secret"
+                  aria-label={word}
+                  type="password"
+                  autoFocus
+                  autoComplete="off"
+                  inputMode={isPin ? 'numeric' : 'text'}
+                  placeholder={isPin ? '••••' : 'Password'}
+                  className="h-11 text-center text-lg tracking-[0.4em] placeholder:tracking-[0.4em]"
+                  value={secret}
+                  onChange={(e) => setSecret(e.target.value)}
+                  disabled={busy}
+                />
               )}
 
               {result.kind === 'ok' && (
-                <Alert>
-                  <CheckCircle2 className="text-success" />
-                  <AlertDescription>{result.text}</AlertDescription>
-                </Alert>
+                <p className="flex items-center justify-center gap-1.5 text-sm text-success">
+                  <CheckCircle2 className="size-4" /> {result.text}
+                </p>
               )}
               {result.kind === 'error' && (
-                <Alert variant="destructive">
-                  <XCircle />
-                  <AlertDescription>{result.text}</AlertDescription>
-                </Alert>
+                <p className="flex items-start justify-center gap-1.5 text-center text-xs text-destructive">
+                  <XCircle className="mt-px size-3.5 shrink-0" /> {result.text}
+                </p>
               )}
 
-              <DialogFooter className="items-center gap-2 sm:justify-between">
-                <p className="text-[11px] text-muted-foreground">Wrong attempts count on the phone. No auto-retry.</p>
-                {status.credential === 'NONE' ? (
-                  <Button type="button" disabled={busy} onClick={() => void run({ target })}>
-                    {busy && <Loader2 className="animate-spin" />} Unlock
-                  </Button>
-                ) : (
-                  <Button type="submit" variant={canUseSaved ? 'outline' : 'default'} disabled={busy || !secret}>
-                    {busy && secret && <Loader2 className="animate-spin" />} {screenMode ? `Type this ${kind}` : 'Unlock with this PIN'}
-                  </Button>
-                )}
-              </DialogFooter>
+              {status.credential === 'NONE' ? (
+                <Button type="button" className="h-10" disabled={busy} onClick={() => void run({ target })}>
+                  {busy && <Loader2 className="animate-spin" />} Unlock
+                </Button>
+              ) : (
+                <Button type="submit" className="h-10" disabled={busy || !secret}>
+                  {busy && secret && <Loader2 className="animate-spin" />} Unlock
+                </Button>
+              )}
+
+              {canUseSaved && (
+                <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" disabled={busy} onClick={() => void run({ target })}>
+                  {busy && !secret ? <Loader2 className="animate-spin" /> : touch ? <Fingerprint /> : <KeyRound />}
+                  Use saved {word}
+                </Button>
+              )}
+
+              {/* Only the phone's own lock PIN can be saved: an app-lock PIN saved as the phone PIN
+                  would later waste the phone's limited attempts. */}
+              {status.canSave && !status.saved && !screenMode && status.credential !== 'NONE' && (
+                <div className="flex items-center justify-center gap-2">
+                  <Checkbox id="unlock-remember" checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
+                  <Label htmlFor="unlock-remember" className="text-xs font-normal text-muted-foreground">
+                    Remember on this Mac
+                  </Label>
+                </div>
+              )}
+              {screenMode && !app && (
+                <p className="text-center text-[11px] text-muted-foreground">Open the PIN screen on the phone first.</p>
+              )}
             </form>
           )
         )}
       </DialogContent>
     </Dialog>
   )
+}
+
+/** com.whatsapp -> WhatsApp, com.nothing.applocker -> App lock, else the last name segment. */
+function appName(pkg: string | null): string | null {
+  if (!pkg) return null
+  const known: Record<string, string> = {
+    'com.whatsapp': 'WhatsApp',
+    'com.whatsapp.w4b': 'WhatsApp Business',
+    'com.nothing.applocker': 'app',
+    'org.telegram.messenger': 'Telegram',
+    'com.instagram.android': 'Instagram',
+    'com.google.android.apps.nbu.paisa.user': 'GPay',
+    'com.phonepe.app': 'PhonePe',
+  }
+  if (known[pkg]) return known[pkg]!
+  const last = pkg.split('.').pop() ?? pkg
+  return last.charAt(0).toUpperCase() + last.slice(1)
 }
