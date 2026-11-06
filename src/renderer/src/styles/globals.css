@@ -128,14 +128,17 @@
     @apply select-text;
   }
 }
-/* ---- Home screen backdrop (components/stage-backdrop.tsx) ---- */
-@keyframes mm-wave {
-  0% { transform: translate(-50%, -50%) scale(0.06); opacity: 0; }
-  15% { opacity: 0.8; }
-  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+/* ---- Home screen (components/connect-panel.tsx, stage-backdrop.tsx) ---- */
+.font-display {
+  font-family: 'Fraunces Variable', ui-serif, Georgia, serif;
+  font-optical-sizing: auto;
+  font-variation-settings: 'SOFT' 50;
 }
-.mm-wave { animation: mm-wave linear infinite; will-change: transform, opacity; }
+@keyframes mm-float {
+  0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+  50% { transform: translateY(-6px) rotate(calc(var(--r, 0deg) + 4deg)); }
+}
+.mm-float { animation: mm-float 7s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .mm-wave { animation: none; }
-  .mm-wave { transform: translate(-50%, -50%) scale(calc(0.25 + var(--i, 0) * 0.12)); opacity: 0.35; }
+  .mm-float { animation: none; transform: rotate(var(--r, 0deg)); }
 }

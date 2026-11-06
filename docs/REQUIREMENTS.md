@@ -61,7 +61,13 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - Compact shadcn-styled toasts on one line with an ellipsis.
   - Clicking a toast opens the notification center with that notice expanded.
   - Warnings (such as the adb version mismatch) appear as in-app notifications with an action.
-- ✅ **Home screen rebuilt for better UX** (2026-11-06, the user asked for a rebuild).
+- **Home screen, editorial layout** (2026-11-06, from the user's reference image).
+  - A large serif headline (Fraunces, bundled for offline use) written as a sentence with **live widgets inline**: the phone chip (name and battery; click = mirror), mouse, keyboard, ⌘L.
+  - Each state gets its own sentence: phones ready, waiting for "Allow", no phone (USB cable / Wi-Fi pair chip), adb missing.
+  - Below it: pill buttons (Mirror, Over USB / Wi-Fi, New window, Connect over Wi-Fi) and quiet text links (Open an app ⌘K, Clipboard history, Pair over Wi-Fi, Settings).
+  - **An original hand-drawn illustration** on the right: a laptop mirroring the phone beside it, a cable, a pink cursor tapping. Ink follows the theme.
+  - A plain background with faint floating doodles. Stacks on narrow windows.
+- (Previous version:) ✅ **Home screen rebuilt for better UX** (2026-11-06).
   - One card per phone:
     - a phone picture in the chosen frame finish
     - name, maker, Android version, battery and charging (refreshed every 30 s), USB / Wi-Fi, and a "Last used" tag

@@ -336,8 +336,6 @@ export function App(): ReactNode {
               onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
               onOpenClipboard={() => setPalette({ open: true, mode: 'clipboard' })}
               onOpenSettings={() => setSettingsOpen(true)}
-              frame={settings.frame}
-              frameColor={settings.frameColor}
             />
           }
         />
