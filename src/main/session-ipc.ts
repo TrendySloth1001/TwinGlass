@@ -7,8 +7,8 @@ import { clipboard, ipcMain, MessageChannelMain, webContents, type WebContents }
 import { scanFile } from '@shared/scrcpy/control'
 import type { Adb } from './adb/adb'
 import { ScrcpySession } from './scrcpy/session'
-import { isCredentialPrompt } from './adb/lock'
-import { isLocked, topActivity } from './unlock-ipc'
+import { isCredentialPrompt, promptOwner } from './adb/lock'
+import { focusedWindow, isLocked, topActivity } from './unlock-ipc'
 import type { FileResult, MainToRenderer, RendererToMain, StartSessionRequest } from '../shared/ipc'
 
 const sessions = new Map<number, ScrcpySession>()
@@ -131,7 +131,9 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
         const locked = await isLocked(adb, session.serial)
         if (locked === null) return
         const top = locked ? null : await topActivity(adb, session.serial)
-        const appPrompt = isCredentialPrompt(top) ? top!.package : null
+        const focus = locked ? null : await focusedWindow(adb, session.serial)
+        // App lockers (e.g. com.nothing.applocker) draw an overlay window: check focus too.
+        const appPrompt = isCredentialPrompt(top, focus) ? promptOwner(top, focus) : null
         const key = `${locked}|${appPrompt}`
         if (key !== last) {
           last = key

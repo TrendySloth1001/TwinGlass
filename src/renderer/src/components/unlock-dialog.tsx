@@ -105,7 +105,7 @@ export function UnlockDialog({
             <form className="space-y-4" onSubmit={submit}>
               {screenMode && status.credentialPrompt && (
                 <p className="text-sm text-muted-foreground">
-                  <b className="text-foreground">{status.foreground?.package}</b> is asking for your {kind}.
+                  <b className="text-foreground">{status.promptOwner ?? status.foreground?.package}</b> is asking for your {kind}.
                 </p>
               )}
               {screenMode && !status.credentialPrompt && (

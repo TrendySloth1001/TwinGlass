@@ -14,6 +14,7 @@ export function useDevices(): {
   const [adb, setAdb] = useState<AdbStatusInfo | null>(null)
 
   const refresh = useCallback(() => {
+    void window.mobMirror.adbStatus().then(setAdb) // picks up an adb installed while the app was open
     window.mobMirror.listDevices().then(
       (l) => {
         setList(l)

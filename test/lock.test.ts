@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   isCredentialPrompt,
+  parseFocusedWindow,
+  promptOwner,
   parseTopActivity,
   isTypeableSecret,
   parseAwake,
@@ -60,6 +62,19 @@ describe('lock state parsing', () => {
     expect(p('com.whatsapp', 'com.whatsapp.Main')).toBe(false)
     expect(p('com.nothing.launcher', 'com.android.searchlauncher.SearchLauncher')).toBe(false)
     expect(isCredentialPrompt(null)).toBe(false)
+  })
+
+  it('recognises app-locker overlays from the focused window (Nothing applocker)', () => {
+    const launcher = { package: 'com.whatsapp', activity: 'com.whatsapp.Main' }
+    expect(parseFocusedWindow('  mCurrentFocus=Window{5b0e53 u0 com.nothing.launcher/com.android.searchlauncher.SearchLauncher}')).toBe(
+      'com.nothing.launcher/com.android.searchlauncher.SearchLauncher',
+    )
+    expect(parseFocusedWindow('  mCurrentFocus=Window{1a2b u0 com.nothing.applocker}')).toBe('com.nothing.applocker')
+    expect(parseFocusedWindow('  mCurrentFocus=null')).toBeNull()
+    // Locked app stays resumed underneath; the overlay has focus.
+    expect(isCredentialPrompt(launcher, 'com.nothing.applocker')).toBe(true)
+    expect(promptOwner(launcher, 'com.nothing.applocker')).toBe('com.nothing.applocker')
+    expect(isCredentialPrompt(launcher, 'com.whatsapp/com.whatsapp.Main')).toBe(false)
   })
 
   it('only accepts secrets that text injection can type reliably', () => {

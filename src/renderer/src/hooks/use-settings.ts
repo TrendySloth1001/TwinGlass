@@ -15,6 +15,8 @@ export interface Settings {
   sidebarOpen: boolean
   /** Collapsed sidebar sections. */
   closedSections: string[]
+  /** compact: phone-shaped mirror window with a control rail (default); full: manager layout. */
+  viewMode: 'compact' | 'full'
 }
 
 const DEFAULTS: Settings = {
@@ -25,6 +27,7 @@ const DEFAULTS: Settings = {
   sidebarLayout: 'docked',
   sidebarOpen: true,
   closedSections: ['agents'],
+  viewMode: 'compact',
 }
 
 function load(): Settings {

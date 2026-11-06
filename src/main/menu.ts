@@ -29,6 +29,11 @@ export function installMenu(): void {
       label: 'View',
       submenu: [
         {
+          label: 'Compact Mirror / Full View',
+          accelerator: 'CommandOrControl+Shift+M',
+          click: () => BrowserWindow.getFocusedWindow()?.webContents.send('ui:command', 'toggle-view'),
+        },
+        {
           label: 'Toggle Sidebar',
           accelerator: 'CommandOrControl+\\',
           click: () => BrowserWindow.getFocusedWindow()?.webContents.send('ui:command', 'toggle-sidebar'),

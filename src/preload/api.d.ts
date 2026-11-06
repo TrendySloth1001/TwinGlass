@@ -50,8 +50,10 @@ export interface UnlockStatusInfo {
   /** Touch ID can be prompted now; required to use the saved secret. */
   touchId: boolean
   foreground: { package: string; activity: string } | null
+  focusedWindow: string | null
   /** A recognised app-lock / confirm-PIN screen is in front of the unlocked phone. */
   credentialPrompt: boolean
+  promptOwner: string | null
 }
 
 export type QrState =
@@ -84,7 +86,9 @@ export interface MobMirrorApi {
   /** Device menu items / their shortcuts (⌘B back, ⇧⌘H home…), sent to the focused window. */
   onDeviceAction(cb: (action: DeviceAction) => void): () => void
   /** View menu commands (toggle sidebar ⌘\, float/dock ⌥⌘\). */
-  onUiCommand(cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout') => void): () => void
+  onUiCommand(cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view') => void): () => void
+  /** compact: phone-shaped window locked to `aspect` (video width / height); full: restore. */
+  setWindowLayout(layout: 'compact' | 'full', aspect?: number): Promise<void>
   /** Lock type/state of the mirrored phone and whether a secret is saved for it. */
   unlockStatus(): Promise<UnlockStatusInfo>
   /** Wakes the phone, shows the bouncer and types the secret (omit `secret` to use the saved one). */

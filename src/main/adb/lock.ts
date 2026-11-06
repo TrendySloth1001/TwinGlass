@@ -77,15 +77,35 @@ export function parseTopActivity(line: string): TopActivity | null {
 }
 
 /**
- * Screens that ask for the device PIN/password over an app (app locks, "confirm your PIN" prompts).
- * Deliberately narrow: typing the PIN into anything else (e.g. a chat field) would leak it, so
- * other screens need the user's explicit confirmation instead.
+ * Focused window: app lockers such as Nothing's `com.nothing.applocker` hold SYSTEM_ALERT_WINDOW /
+ * INTERNAL_SYSTEM_WINDOW and draw their PIN prompt as an OVERLAY window on top of the locked app,
+ * so the resumed activity stays the locked app. The focused window names the overlay.
  */
-export function isCredentialPrompt(a: TopActivity | null): boolean {
-  if (!a) return false
-  return /ConfirmDeviceCredential|ConfirmLock(Password|Pin)|ConfirmCredential|AppLock|Applock|app_?lock|LockedApp|PrivacyLock|PrivateSpaceAuth|BiometricPrompt|UnlockActivity/i.test(
-    `${a.package}/${a.activity}`,
-  )
+export const FOCUS_DUMP = ['shell', 'dumpsys window | grep -m1 "mCurrentFocus=Window"']
+
+/** "  mCurrentFocus=Window{5b0e53 u0 com.nothing.launcher/com.android.searchlauncher.SearchLauncher}" */
+export function parseFocusedWindow(line: string): string | null {
+  return /mCurrentFocus=Window\{\w+ u\d+ ([^}]+)\}/.exec(line)?.[1]?.trim() ?? null
+}
+
+const CREDENTIAL_RE =
+  /ConfirmDeviceCredential|ConfirmLock(Password|Pin)|ConfirmCredential|AppLock|applocker|app_?lock|LockedApp|PrivacyLock|PrivateSpaceAuth|BiometricPrompt|UnlockActivity/i
+
+/**
+ * Screens that ask for the device PIN/password over an app (app locks, "confirm your PIN" prompts),
+ * judged from the resumed activity and the focused window. Deliberately narrow: typing the PIN into
+ * anything else (e.g. a chat field) would leak it, so other screens need explicit confirmation.
+ */
+export function isCredentialPrompt(a: TopActivity | null, focusedWindow: string | null = null): boolean {
+  if (a && CREDENTIAL_RE.test(`${a.package}/${a.activity}`)) return true
+  return focusedWindow !== null && CREDENTIAL_RE.test(focusedWindow)
+}
+
+/** Package (or window title) that owns a recognised prompt, for messages. */
+export function promptOwner(a: TopActivity | null, focusedWindow: string | null): string | null {
+  if (focusedWindow && CREDENTIAL_RE.test(focusedWindow)) return focusedWindow.split('/')[0]!
+  if (a && CREDENTIAL_RE.test(`${a.package}/${a.activity}`)) return a.package
+  return null
 }
 
 /** Only printable ASCII can be typed reliably through scrcpy text injection (docs/FACTS.md). */

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import type { TransportInfo } from '../../preload/api'
 import { ControlsHelp } from '@/components/controls-help'
+import { CompactTitleBar } from '@/components/compact-title-bar'
+import { ControlRail } from '@/components/control-rail'
 import { MirrorStage } from '@/components/mirror-stage'
 import { MirrorToolbar } from '@/components/mirror-toolbar'
 import { Sidebar } from '@/components/sidebar'
@@ -135,11 +137,23 @@ export function App(): ReactNode {
     () =>
       window.mobMirror.onUiCommand((cmd) => {
         const s = settingsRef.current
-        if (cmd === 'toggle-sidebar') updateSettings({ sidebarOpen: !s.sidebarOpen })
+        if (cmd === 'toggle-view') updateSettings({ viewMode: s.viewMode === 'compact' ? 'full' : 'compact' })
+        else if (cmd === 'toggle-sidebar') updateSettings({ sidebarOpen: !s.sidebarOpen })
         else updateSettings({ sidebarLayout: s.sidebarLayout === 'floating' ? 'docked' : 'floating', sidebarOpen: true })
       }),
     [updateSettings],
   )
+  // Compact mirror (default while a phone is mirrored): phone-shaped window + control rail. The full
+  // view (devices, settings, toolbar) is one click away and is used when nothing is mirrored.
+  const compact = settings.viewMode === 'compact' && (mirror.state.phase === 'live' || mirror.state.phase === 'reconnecting')
+  const vw = mirror.state.stats?.width ?? 0
+  const vh = mirror.state.stats?.height ?? 0
+  const aspect = vw && vh ? Math.round((vw / vh) * 1000) / 1000 : 0 // rounded: only re-fit on real changes (rotation)
+  useEffect(() => {
+    if (compact && aspect) void window.mobMirror.setWindowLayout('compact', aspect)
+    else if (!compact) void window.mobMirror.setWindowLayout('full')
+  }, [compact, aspect])
+
   /** The toolbar owns the window's top-left corner (traffic lights) unless a docked sidebar is shown. */
   // Narrow windows: a docked sidebar would squash the mirror, so it floats over it instead.
   const narrow = useMediaQuery('(max-width: 899px)')
@@ -149,6 +163,7 @@ export function App(): ReactNode {
 
   return (
     <div className="relative flex h-full">
+      {!compact && (
       <Sidebar
         list={devices.list}
         error={devices.error}
@@ -162,8 +177,13 @@ export function App(): ReactNode {
         layoutLocked={narrow}
         onSettingsChange={onSettingsChange}
       />
+      )}
       <main className="flex min-w-0 flex-1 flex-col">
+        {compact ? (
+          <CompactTitleBar name={mirror.state.deviceName} transport={mirror.state.transport?.kind ?? null} />
+        ) : (
         <MirrorToolbar
+          onCompact={live ? () => updateSettings({ viewMode: 'compact' }) : undefined}
           mirror={mirror}
           onAction={dispatch}
           onShowHelp={() => setHelpOpen(true)}
@@ -171,6 +191,9 @@ export function App(): ReactNode {
           sidebarOpen={settings.sidebarOpen}
           onToggleSidebar={() => updateSettings({ sidebarOpen: !settings.sidebarOpen })}
         />
+        )}
+        {/* Same tree position in both views: the decoder is bound to this canvas. */}
+        <div className="flex min-h-0 flex-1">
         <MirrorStage
           canvasRef={canvasRef}
           overlayRef={overlayRef}
@@ -181,7 +204,16 @@ export function App(): ReactNode {
           onUnlock={() => dispatch('unlock')}
           reconnect={mirror.state.reconnect}
         />
-        <StatusBar state={mirror.state} />
+          {compact && (
+            <ControlRail
+              mirror={mirror}
+              onAction={dispatch}
+              onShowHelp={() => setHelpOpen(true)}
+              onFullView={() => updateSettings({ viewMode: 'full' })}
+            />
+          )}
+        </div>
+        {!compact && <StatusBar state={mirror.state} />}
       </main>
       <ControlsHelp open={helpOpen} onOpenChange={setHelpOpen} />
       <UnlockDialog open={unlockOpen} onOpenChange={setUnlockOpen} initialError={unlockError} />

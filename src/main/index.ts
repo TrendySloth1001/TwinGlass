@@ -4,6 +4,7 @@ import { Adb, findAdb } from './adb/adb'
 import { registerDevicesIpc, stopDeviceTracking } from './devices-ipc'
 import { closeAllRecordings, registerMediaIpc } from './media-ipc'
 import { installMenu } from './menu'
+import { registerWindowLayoutIpc } from './window-layout'
 import { getSession, registerSessionIpc, stopAllSessions } from './session-ipc'
 import { registerUnlockIpc } from './unlock-ipc'
 import { registerAgentIpc, stopAgentServer } from './agent-ipc'
@@ -15,6 +16,18 @@ export function serverPath(): string {
 }
 
 let adb: Adb | null = null
+
+/**
+ * adb is looked up lazily and again whenever it was missing, so installing platform-tools while the
+ * app is open works without restarting the app.
+ */
+function getAdb(): Adb | null {
+  if (!adb) {
+    const path = findAdb()
+    if (path) adb = new Adb(path)
+  }
+  return adb
+}
 
 /** @param autoConnect transport serial to start mirroring as soon as the window loads */
 function createWindow(autoConnect?: { serial: string; kind: string }): BrowserWindow {
@@ -49,15 +62,15 @@ ipcMain.handle('window:open-device', (_e, serial: string, kind: string) => {
   createWindow({ serial, kind })
 })
 
-registerDevicesIpc(() => adb)
-registerSessionIpc(() => adb, serverPath)
-registerUnlockIpc(() => adb, getSession)
-void app.whenReady().then(() => registerAgentIpc(() => adb)) // needs app paths (userData)
+registerDevicesIpc(getAdb)
+registerSessionIpc(getAdb, serverPath)
+registerUnlockIpc(getAdb, getSession)
+void app.whenReady().then(() => registerAgentIpc(getAdb)) // needs app paths (userData)
 registerMediaIpc()
+registerWindowLayoutIpc()
 
 void app.whenReady().then(() => {
-  const path = findAdb()
-  adb = path ? new Adb(path) : null
+  getAdb()
   installMenu()
   createWindow()
   app.on('activate', () => {

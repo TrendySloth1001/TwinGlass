@@ -15,6 +15,7 @@ import {
   Power,
   RotateCw,
   Settings2,
+  Smartphone,
   Square,
   SquareStack,
   Unplug,
@@ -85,9 +86,11 @@ interface ToolbarProps {
   ownsCorner: boolean
   sidebarOpen: boolean
   onToggleSidebar: () => void
+  /** Switch to the compact phone-shaped mirror (only while mirroring). */
+  onCompact?: () => void
 }
 
-export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sidebarOpen, onToggleSidebar }: ToolbarProps): ReactNode {
+export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sidebarOpen, onToggleSidebar, onCompact }: ToolbarProps): ReactNode {
   const { state } = mirror
   const live = state.phase === 'live'
   const recording = state.recordingSince !== null
@@ -221,6 +224,11 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sideba
         </div>
 
         <NotificationCenter />
+        {onCompact && (
+          <IconButton label="Compact mirror" shortcut="⇧⌘M" onClick={onCompact}>
+            <Smartphone />
+          </IconButton>
+        )}
         {/* Narrow toolbars: everything folded away is one click away here. */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

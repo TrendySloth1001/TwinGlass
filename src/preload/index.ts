@@ -42,6 +42,7 @@ const api: MobMirrorApi = {
   openDeviceWindow: (serial, kind) => ipcRenderer.invoke('window:open-device', serial, kind),
   onDeviceAction: (cb) => subscribe('device:action', cb),
   onUiCommand: (cb) => subscribe('ui:command', cb),
+  setWindowLayout: (layout, aspect) => ipcRenderer.invoke('window:layout', layout, aspect),
   unlockStatus: () => ipcRenderer.invoke('unlock:status'),
   unlock: (req) => ipcRenderer.invoke('unlock:run', req),
   forgetUnlockSecret: () => ipcRenderer.invoke('unlock:forget'),

@@ -27,6 +27,9 @@ import {
   isCredentialPrompt,
   parseTopActivity,
   TOP_ACTIVITY_DUMP,
+  FOCUS_DUMP,
+  parseFocusedWindow,
+  promptOwner,
   type CredentialType,
   type LockCounters,
   type TopActivity,
@@ -46,8 +49,12 @@ export interface UnlockStatus {
   touchId: boolean
   /** Foreground app/activity (e.g. an app lock asking for the PIN while the phone is unlocked). */
   foreground: TopActivity | null
+  /** Focused window title (app-lock overlays live here). */
+  focusedWindow: string | null
   /** The foreground screen is a recognised PIN prompt (app lock / confirm credential). */
   credentialPrompt: boolean
+  /** Package that owns the recognised prompt (e.g. com.nothing.applocker). */
+  promptOwner: string | null
 }
 
 export interface UnlockRequest {
@@ -63,6 +70,11 @@ export interface UnlockRequest {
 
 export async function topActivity(adb: Adb, serial: string): Promise<TopActivity | null> {
   return parseTopActivity(await adb.runLoose(TOP_ACTIVITY_DUMP, serial))
+}
+
+/** Focused window (app-lock overlays such as com.nothing.applocker show up here, not as activities). */
+export async function focusedWindow(adb: Adb, serial: string): Promise<string | null> {
+  return parseFocusedWindow(await adb.runLoose(FOCUS_DUMP, serial))
 }
 
 // ---- encrypted per-device store ----
@@ -117,11 +129,12 @@ export async function isLocked(adb: Adb, serial: string): Promise<boolean | null
 }
 
 async function status(adb: Adb, serial: string): Promise<UnlockStatus> {
-  const [locked, creds, id, foreground] = await Promise.all([
+  const [locked, creds, id, foreground, focus] = await Promise.all([
     isLocked(adb, serial),
     adb.runLoose(CREDENTIAL_DUMP, serial),
     deviceId(adb, serial),
     topActivity(adb, serial),
+    focusedWindow(adb, serial),
   ])
   return {
     credential: parseCredentialType(creds),
@@ -130,7 +143,9 @@ async function status(adb: Adb, serial: string): Promise<UnlockStatus> {
     canSave: safeStorage.isEncryptionAvailable(),
     touchId: canTouchId(),
     foreground,
-    credentialPrompt: locked === false && isCredentialPrompt(foreground),
+    focusedWindow: focus,
+    credentialPrompt: locked === false && isCredentialPrompt(foreground, focus),
+    promptOwner: locked === false ? promptOwner(foreground, focus) : null,
   }
 }
 
@@ -193,16 +208,31 @@ async function typeIntoPrompt(
   onSuccess: () => void,
 ): Promise<{ ok: boolean; message: string }> {
   const serial = session.serial
+  const focusBefore = await focusedWindow(adb, serial)
+  const recognised = isCredentialPrompt(prompt, focusBefore)
+  const screenKey = async (): Promise<string> => {
+    const a = await topActivity(adb, serial)
+    return `${a ? `${a.package}/${a.activity}` : ''}|${(await focusedWindow(adb, serial)) ?? ''}`
+  }
+  const keyBefore = await screenKey()
   press(session, AndroidKey.WAKEUP)
   press(session, KEYCODE_DEL, Math.min(secret.length + 4, 24))
   session.sendControl(injectText(secret))
   await sleep(120)
   press(session, AndroidKey.ENTER)
-  const key = (a: TopActivity | null): string => (a ? `${a.package}/${a.activity}` : '')
-  const gone = await waitFor(async () => key(await topActivity(adb, serial)) !== key(prompt), 3500, 250)
+  // Recognised prompt: done when no credential prompt (activity or overlay) is in front any more.
+  // Unrecognised screen the user confirmed: done when the screen changed at all.
+  const gone = await waitFor(
+    async () =>
+      recognised
+        ? !isCredentialPrompt(await topActivity(adb, serial), await focusedWindow(adb, serial))
+        : (await screenKey()) !== keyBefore,
+    3500,
+    250,
+  )
   if (gone) {
     onSuccess()
-    return { ok: true, message: `Unlocked ${prompt?.package ?? 'the app'}.` }
+    return { ok: true, message: `Unlocked ${promptOwner(prompt, focusBefore) ?? prompt?.package ?? 'the app'}.` }
   }
   const after = await counters(adb, serial)
   if (before.failures !== null && after.failures !== null && after.failures > before.failures) {
