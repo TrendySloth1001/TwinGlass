@@ -1,6 +1,6 @@
 # macOS packaging. Local builds are unsigned; see docs/RELEASE.md for signing + notarization.
-appId: org.mobmirror.app
-productName: Mob Mirror
+appId: app.twinglass.mac
+productName: Twinglass
 copyright: Copyright © 2026
 directories:
   output: dist
@@ -24,4 +24,4 @@ mac:
   hardenedRuntime: true
   minimumSystemVersion: '13.0'
 dmg:
-  title: Mob Mirror
+  title: Twinglass

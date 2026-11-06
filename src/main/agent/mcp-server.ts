@@ -67,7 +67,7 @@ function buildServer(ctl: DeviceController): McpServer {
 
   s.registerTool(
     'list_devices',
-    { description: 'List Android phones connected to Mob Mirror (USB or Wi-Fi), with model, Android SDK and transports.', inputSchema: z.object({}) },
+    { description: 'List Android phones connected to Twinglass (USB or Wi-Fi), with model, Android SDK and transports.', inputSchema: z.object({}) },
     async () => text(JSON.stringify(await ctl.listDevices(), null, 1)),
   )
 
@@ -192,7 +192,7 @@ function buildServer(ctl: DeviceController): McpServer {
     'unlock_phone',
     {
       description:
-        'Unlock the phone’s lock screen with the PIN the user saved in Mob Mirror. The user must approve with Touch ID on the Mac; the PIN is never exposed to the agent. Fails if no PIN is saved or the user declines.',
+        'Unlock the phone’s lock screen with the PIN the user saved in Twinglass. The user must approve with Touch ID on the Mac; the PIN is never exposed to the agent. Fails if no PIN is saved or the user declines.',
       inputSchema: z.object({ device: deviceArg }),
     },
     async ({ device }) => text(await ctl.unlock(device)),

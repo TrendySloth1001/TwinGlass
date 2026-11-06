@@ -27,7 +27,7 @@ export function AgentAccess(): ReactNode {
   const copy = async (): Promise<void> => {
     await window.mobMirror.copyAgentSetup()
     toast.success('Setup command copied', {
-      description: 'Paste it in a terminal to add Mob Mirror to Claude Code (contains your access token).',
+      description: 'Paste it in a terminal to add Twinglass to Claude Code (contains your access token).',
     })
   }
 

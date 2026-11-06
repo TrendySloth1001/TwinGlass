@@ -59,7 +59,7 @@ function build(deps: TrayDeps): void {
     items.push({ type: 'separator' })
   }
   items.push(
-    { label: 'Show Mob Mirror', click: deps.showApp },
+    { label: 'Show Twinglass', click: deps.showApp },
     { label: 'Tile Mirror Windows', click: tileWindows, enabled: BrowserWindow.getAllWindows().length > 1 },
     { type: 'separator' },
     {
@@ -68,11 +68,11 @@ function build(deps: TrayDeps): void {
       checked: app.getLoginItemSettings().openAtLogin,
       click: (mi) => app.setLoginItemSettings({ openAtLogin: mi.checked }),
     },
-    { label: 'Quit Mob Mirror', role: 'quit' },
+    { label: 'Quit Twinglass', role: 'quit' },
   )
   tray.setContextMenu(Menu.buildFromTemplate(items))
   const first = list[0] && battery.get(list[0].id)
-  tray.setToolTip(list.length ? `Mob Mirror: ${list.map((d) => d.model).join(', ')}` : 'Mob Mirror: no phone')
+  tray.setToolTip(list.length ? `Twinglass: ${list.map((d) => d.model).join(', ')}` : 'Twinglass: no phone')
   tray.setTitle(first ? ` ${first.level}%` : '') // battery next to the icon, like the Mac's own
 }
 

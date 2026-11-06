@@ -115,7 +115,7 @@ interface SettingsDialogProps {
   onReset: () => void
 }
 
-/** Everything about how Mob Mirror looks and behaves. Changes apply immediately. */
+/** Everything about how Twinglass looks and behaves. Changes apply immediately. */
 export function SettingsDialog(p: SettingsDialogProps): ReactNode {
   const [page, setPage] = useState<Page>('general')
   const s = p.settings
@@ -161,7 +161,7 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
       <DialogContent className="@container flex h-[min(600px,calc(100vh-48px))] w-[min(800px,calc(100vw-32px))] max-w-none gap-0 overflow-hidden p-0 sm:max-w-none">
         <nav className="flex w-12 shrink-0 flex-col gap-0.5 border-r bg-sidebar p-2 pt-4 @2xl:w-48">
           <DialogTitle className="sr-only px-2 pb-3 text-sm @2xl:not-sr-only">Settings</DialogTitle>
-          <DialogDescription className="sr-only">Mob Mirror preferences</DialogDescription>
+          <DialogDescription className="sr-only">Twinglass preferences</DialogDescription>
           {PAGES.map((pg) => (
             <button
               key={pg.id}
@@ -206,7 +206,7 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
                 <Row label="Menu bar icon" hint="Your phones with battery and connection, and one-click mirroring.">
                   <Toggle value={s.showTray} onChange={(v) => set({ showTray: v })} />
                 </Row>
-                <Row label="Launch at login" hint="Start Mob Mirror when you log in to your Mac.">
+                <Row label="Launch at login" hint="Start Twinglass when you log in to your Mac.">
                   <Switch
                     checked={loginItem === true}
                     disabled={loginItem === null}
@@ -432,7 +432,7 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
           {page === 'unlock' &&
             (p.live ? (
               <Group title="Mirrored phone">
-                <Row label="Lock type" hint="The PIN screen is hidden from capture, so Mob Mirror types the PIN for you.">
+                <Row label="Lock type" hint="The PIN screen is hidden from capture, so Twinglass types the PIN for you.">
                   <span className="text-xs text-muted-foreground">{unlock?.credential ?? '…'}</span>
                 </Row>
                 <Row
@@ -468,8 +468,8 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
           {page === 'companion' && (
             <>
               <p className="mb-4 text-xs text-muted-foreground">
-                The Mob Mirror app on your phone gives faster, sharper Mac screen sharing, touch control of the Mac, and lets
-                you start sharing from the phone (“connect back to my Mac”). It pairs by itself over USB.
+                The Twinglass app on your phone pairs with this Mac by itself over USB. It’s the base for upcoming
+                phone features (like notifications on the Mac). Mirroring itself doesn’t need it.
               </p>
               <Group title="Phones">
                 {companion === null && <div className="py-3 text-xs text-muted-foreground">Checking phones…</div>}
@@ -501,7 +501,7 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
                           window.mobMirror
                             .companionInstall(ph.serial)
                             .then(
-                              () => toast.success(`Mob Mirror app ${ph.installed ? 'updated' : 'installed'} on ${ph.model}`),
+                              () => toast.success(`Twinglass app ${ph.installed ? 'updated' : 'installed'} on ${ph.model}`),
                               (e: unknown) => toast.error('Couldn’t install the app', { description: e instanceof Error ? e.message : String(e) }),
                             )
                             .finally(() => {
@@ -531,12 +531,12 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
           {page === 'advanced' && (
             <>
               <Group title="Files">
-                <Row label="Screenshots" hint="~/Pictures/Mob Mirror">
+                <Row label="Screenshots" hint="~/Pictures/Twinglass">
                   <Button size="sm" variant="outline" onClick={() => void window.mobMirror.openMediaFolder('pictures')}>
                     <FolderOpen /> Open
                   </Button>
                 </Row>
-                <Row label="Recordings" hint="~/Movies/Mob Mirror">
+                <Row label="Recordings" hint="~/Movies/Twinglass">
                   <Button size="sm" variant="outline" onClick={() => void window.mobMirror.openMediaFolder('videos')}>
                     <FolderOpen /> Open
                   </Button>
@@ -564,7 +564,7 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
               </Group>
               <Group title="Updates">
                 <Row
-                  label={`Mob Mirror ${update?.current ?? ''}`}
+                  label={`Twinglass ${update?.current ?? ''}`}
                   hint={
                     !update
                       ? 'Check for a newer version.'

@@ -176,7 +176,7 @@ async function confirmWithTouchId(): Promise<{ ok: true } | { ok: false; message
     return { ok: false, message: 'Touch ID isn’t available right now (e.g. lid closed). Type the PIN instead.' }
   }
   try {
-    // macOS shows: “Mob Mirror” is trying to unlock your Android phone.
+    // macOS shows: “Twinglass” is trying to unlock your Android phone.
     await systemPreferences.promptTouchID('unlock your Android phone')
     return { ok: true }
   } catch (e) {
@@ -264,7 +264,7 @@ async function typeIntoPrompt(
   }
   const after = await counters(adb, serial)
   if (before.failures !== null && after.failures !== null && after.failures > before.failures) {
-    return { ok: false, message: 'The app’s PIN prompt rejected the PIN. Mob Mirror never retries a wrong PIN.' }
+    return { ok: false, message: 'The app’s PIN prompt rejected the PIN. Twinglass never retries a wrong PIN.' }
   }
   return {
     ok: false,
@@ -446,7 +446,7 @@ async function unlockOnce(
       ok: false,
       message:
         (fromStore ? 'The saved PIN was rejected (it may have changed) and has been forgotten. ' : 'The phone rejected the PIN. ') +
-        'Android limits failed attempts, so Mob Mirror never retries a wrong PIN.',
+        'Android limits failed attempts, so Twinglass never retries a wrong PIN.',
     }
   }
   return {
@@ -463,7 +463,7 @@ export async function unlockForAgent(adb: Adb, session: ScrcpySession): Promise<
   const id = await deviceId(adb, session.serial)
   if ((await isLocked(adb, session.serial)) === false) return { ok: true, message: 'The phone is already unlocked.' }
   if (!(id in readStore())) {
-    return { ok: false, message: 'No PIN is saved for this phone. Ask the user to unlock it once in Mob Mirror (⌘L) with "Remember".' }
+    return { ok: false, message: 'No PIN is saved for this phone. Ask the user to unlock it once in Twinglass (⌘L) with "Remember".' }
   }
   return unlock(adb, session, {}, true) // agents: always Touch ID, whatever the setting
 }

@@ -13,7 +13,6 @@ import {
   RefreshCw,
   Search,
   ShieldAlert,
-  Smartphone,
   Usb,
   Wifi,
 } from 'lucide-react'
@@ -28,6 +27,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import type { FrameColor, FrameStyle } from '@/lib/phone-frames'
 import { cn } from '@/lib/utils'
+import appIcon from '@/assets/twinglass-icon.png'
 
 type Details = Awaited<ReturnType<typeof window.mobMirror.deviceDetails>>
 
@@ -176,7 +176,7 @@ const GUIDES: { id: GuideId; title: string; icon: ReactNode; steps: ReactNode[] 
     steps: [
       <>Phone and Mac on the same Wi-Fi.</>,
       <>{b('Developer options → Wireless debugging')}: on (Android 11+).</>,
-      <>{b('Pair with QR code')} on the phone, then scan Mob Mirror’s code.</>,
+      <>{b('Pair with QR code')} on the phone, then scan Twinglass’s code.</>,
     ],
   },
   {
@@ -234,11 +234,9 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
     <div className="relative z-10 w-full max-w-[1040px] px-10 py-4">
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <span className="grid size-10 place-items-center rounded-xl bg-foreground text-background">
-            <Smartphone className="size-5" />
-          </span>
+          <img src={appIcon} alt="" className="size-11 drop-shadow-sm" draggable={false} />
           <div>
-            <div className="text-xl font-semibold tracking-tight">Mob Mirror</div>
+            <div className="text-xl font-semibold tracking-tight">Twinglass</div>
             <div className="text-[13px] text-muted-foreground">Your Android phone, right on your Mac.</div>
           </div>
         </div>
@@ -272,7 +270,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
               {adbMissing && (
                 <div className="rounded-xl border bg-card p-5">
                   <div className="mb-1 font-medium">Install Android’s adb tool once</div>
-                  <div className="mb-3 text-xs text-muted-foreground">Mob Mirror talks to your phone through it. Run this in Terminal:</div>
+                  <div className="mb-3 text-xs text-muted-foreground">Twinglass talks to your phone through it. Run this in Terminal:</div>
                   <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 font-mono text-sm">
                     <span className="flex-1 truncate">{INSTALL}</span>
                     <Button

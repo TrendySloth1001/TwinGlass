@@ -38,7 +38,7 @@ object Link {
         return URL("http://localhost:$port$path?k=$key$query")
     }
 
-    /** null = the Mac isn't reachable (Mob Mirror closed, or no USB / wireless adb link). */
+    /** null = the Mac isn't reachable (Twinglass closed, or no USB / wireless adb link). */
     fun status(ctx: Context): Status? = runCatching {
         val c = url(ctx, "/link/status").openConnection() as HttpURLConnection
         c.connectTimeout = 1500; c.readTimeout = 2000

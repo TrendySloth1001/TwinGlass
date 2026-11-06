@@ -1,5 +1,10 @@
 # Product requirements: everything agreed with the user
 
+> **The product is called Twinglass** (renamed from "Mob Mirror" on 2026-11-06).
+> - Checks: no app or software found with the name; twinglass.io unregistered; .com registered, maybe parked; GitHub has one unrelated repo.
+> - Icon A, "glass panes" (build/icon.svg): a frosted phone pane in front of an outlined screen pane on an indigo-violet squircle. Used for the app icon, a matching menu bar template icon and the companion launcher icon.
+> - Internal ids are unchanged (see CLAUDE.md → Naming).
+
 This is a living checklist. **Re-read it before starting new work, and keep it updated**: when the user asks for something, add it here, and mark items ✅ only once they're verified on the device or on screen.
 The dates are when each item was asked for (2026-11-06 unless noted).
 

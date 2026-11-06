@@ -99,7 +99,7 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
     const adb = this.deps.adb()
     if (!adb) throw new Error('adb not found on this Mac (brew install android-platform-tools)')
     const devices = (await adb.devices()).devices
-    if (!devices.length) throw new Error('No phone connected. Connect one by USB or Wi-Fi in Mob Mirror.')
+    if (!devices.length) throw new Error('No phone connected. Connect one by USB or Wi-Fi in Twinglass.')
     let d: Device | undefined
     if (device) {
       const q = device.toLowerCase()
@@ -369,7 +369,7 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
 
   async unlock(device?: string): Promise<string> {
     const t = await this.target(device)
-    if (!t.session) throw new Error('Unlocking needs an open mirror session for this phone in Mob Mirror.')
+    if (!t.session) throw new Error('Unlocking needs an open mirror session for this phone in Twinglass.')
     this.log('asked to unlock: waiting for Touch ID on the Mac')
     const r = await this.deps.unlock(t.adb, t.session)
     if (!r.ok) throw new Error(r.message)

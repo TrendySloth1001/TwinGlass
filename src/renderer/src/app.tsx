@@ -221,7 +221,7 @@ export function App(): ReactNode {
   useEffect(
     () =>
       window.mobMirror.onUpdateAvailable((u) =>
-        notify('info', `Mob Mirror ${u.latest} is available`, {
+        notify('info', `Twinglass ${u.latest} is available`, {
           description: `You have ${u.current}. Download it and drag it into Applications (automatic install needs a signed app).`,
           action: u.url ? { label: 'Download', run: () => void window.mobMirror.downloadUpdate(u.url!) } : undefined,
         }),

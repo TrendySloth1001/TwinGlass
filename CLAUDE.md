@@ -1,6 +1,10 @@
-# Mob Mirror
+# Twinglass (repo: mob-mirror)
 
-An Electron desktop app (macOS first) that mirrors **and controls** Android phones over USB or Wi-Fi. It pushes the official scrcpy-server through adb and speaks the scrcpy protocol itself.
+**Twinglass** (formerly Mob Mirror) is an Electron desktop app (macOS first) that mirrors **and controls** Android phones over USB or Wi-Fi. It pushes the official scrcpy-server through adb and speaks the scrcpy protocol itself.
+
+## Naming
+- **The product name is Twinglass** (user-visible strings, the window, `productName`/`appId` in electron-builder.yml, the companion app label). The icon source is `build/icon.svg`, with `icon.icns` and `icon.png` generated from it.
+- **Internal identifiers stay `mob-mirror`**, so nothing saved is lost: the npm package name (it sets the dev userData dir), the `window.mobMirror` preload API, the `mob-mirror:settings` storage key, and the companion package `com.mobmirror.companion`.
 
 ## Read first
 - [docs/FACTS.md](docs/FACTS.md): verified protocol, version and platform facts. This is the source of truth for every byte layout. Don't work from memory.

@@ -135,7 +135,7 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sideba
           </IconButton>
         )}
         <span className="truncate font-semibold">
-          {state.deviceName || (state.phase === 'connecting' ? 'Connecting…' : 'Mob Mirror')}
+          {state.deviceName || (state.phase === 'connecting' ? 'Connecting…' : 'Twinglass')}
         </span>
         {state.transport && (
           <Badge variant="outline" className="hidden gap-1 @xl:inline-flex">

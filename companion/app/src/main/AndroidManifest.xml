@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Talks to Mob Mirror on the Mac through `adb reverse` (localhost). -->
+    <!-- Talks to Twinglass on the Mac through `adb reverse` (localhost). -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:label="Mob Mirror"
+        android:label="Twinglass"
         android:icon="@drawable/ic_launcher"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
         android:usesCleartextTraffic="true">
@@ -19,7 +19,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Mob Mirror (Mac) hands over its link key here, through an adb "am broadcast" with
+        <!-- Twinglass (Mac) hands over its link key here, through an adb "am broadcast" with
              string extras key and mac, and an int extra port (see src/main/companion-link.ts).
              android.permission.DUMP: the adb shell has it, ordinary apps can't, so no other app can
              plant a key. -->

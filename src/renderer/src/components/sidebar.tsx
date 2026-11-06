@@ -133,7 +133,7 @@ export function Sidebar(p: SidebarProps): ReactNode {
             floating ? 'h-11 pl-4' : 'h-12 pl-20 [-webkit-app-region:drag]', // pl-20: macOS traffic lights
           )}
         >
-          <span className="mr-auto text-sm font-semibold tracking-tight">Mob Mirror</span>
+          <span className="mr-auto text-sm font-semibold tracking-tight">Twinglass</span>
           <IconButton label="Refresh devices" onClick={p.refresh}>
             <RefreshCw />
           </IconButton>

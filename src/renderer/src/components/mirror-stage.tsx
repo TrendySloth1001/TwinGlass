@@ -301,7 +301,7 @@ export function MirrorStage({
         <div
           title={
             locked
-              ? 'The PIN screen is hidden from capture (it shows black), so Mob Mirror types your PIN for you.'
+              ? 'The PIN screen is hidden from capture (it shows black), so Twinglass types your PIN for you.'
               : `${appPrompt} is asking for your PIN. The prompt is hidden from capture.`
           }
           className="absolute top-3 left-1/2 z-10 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-neutral-900/90 py-1 pr-1 pl-3 text-xs whitespace-nowrap text-white shadow-lg backdrop-blur"

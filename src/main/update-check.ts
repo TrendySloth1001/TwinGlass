@@ -1,5 +1,5 @@
 // Notify-only updates. macOS auto-install (Squirrel.Mac / electron-updater) requires a signed app,
-// so until Mob Mirror is signed it checks a release feed and offers "Download" (the user installs).
+// so until Twinglass is signed it checks a release feed and offers "Download" (the user installs).
 // Feed: package.json "mobMirror.updateRepo" = "owner/repo" (GitHub Releases), or "mobMirror.updateFeed"
 // = a URL returning { "version": "1.2.3", "url": "https://…", "notes": "…" }. Unset = no checks.
 import { readFileSync } from 'node:fs'

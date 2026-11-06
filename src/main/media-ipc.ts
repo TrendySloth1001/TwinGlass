@@ -1,4 +1,4 @@
-// Screenshots and recordings, saved to ~/Pictures/Mob Mirror (screenshots) and ~/Movies/Mob Mirror (videos).
+// Screenshots and recordings, saved to ~/Pictures/Twinglass (screenshots) and ~/Movies/Twinglass (videos).
 import { closeSync, mkdirSync, openSync, writeSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { app, ipcMain, shell, type WebContents } from 'electron'
@@ -23,7 +23,7 @@ export function mediaBaseName(deviceName: string, date = new Date()): string {
 }
 
 function dir(kind: 'pictures' | 'videos'): string {
-  const d = join(app.getPath(kind), 'Mob Mirror')
+  const d = join(app.getPath(kind), 'Twinglass')
   mkdirSync(d, { recursive: true })
   return d
 }
@@ -110,7 +110,7 @@ export function registerMediaIpc(): void {
   // Only reveal files we saved ourselves.
   // Settings → Advanced: open where screenshots / recordings are saved.
   ipcMain.handle('media:open-folder', (_e, kind: unknown) => {
-    const d = join(app.getPath(kind === 'videos' ? 'videos' : 'pictures'), 'Mob Mirror')
+    const d = join(app.getPath(kind === 'videos' ? 'videos' : 'pictures'), 'Twinglass')
     mkdirSync(d, { recursive: true })
     return shell.openPath(d)
   })
@@ -118,7 +118,7 @@ export function registerMediaIpc(): void {
     if (typeof path !== 'string') return
     const target = resolve(path)
     const inside = (folder: string): boolean => {
-      const rel = relative(join(app.getPath(folder === 'p' ? 'pictures' : 'videos'), 'Mob Mirror'), target)
+      const rel = relative(join(app.getPath(folder === 'p' ? 'pictures' : 'videos'), 'Twinglass'), target)
       return rel !== '' && !rel.startsWith('..') && !rel.startsWith('/')
     }
     if (inside('p') || inside('v')) shell.showItemInFolder(target)

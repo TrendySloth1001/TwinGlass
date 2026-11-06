@@ -34,7 +34,7 @@ export function CompactTitleBar({
           // Centred on the phone body; never under the traffic-light pill (75 px on each side).
           style={{ left: `calc(50% - ${inset / 2}px)`, maxWidth: `calc(100% - ${150 + inset}px)` }}
         >
-          <span className="truncate">{name || 'Mob Mirror'}</span>
+          <span className="truncate">{name || 'Twinglass'}</span>
           {transport === 'usb' && <Usb className="size-3 shrink-0" />}
           {transport === 'wifi' && <Wifi className="size-3 shrink-0" />}
         </span>
@@ -47,7 +47,7 @@ export function CompactTitleBar({
       style={{ height: TITLE }}
     >
       <span className="contents">
-        <span className="truncate">{name || 'Mob Mirror'}</span>
+        <span className="truncate">{name || 'Twinglass'}</span>
         {transport === 'usb' && <Usb className="size-3 shrink-0" />}
         {transport === 'wifi' && <Wifi className="size-3 shrink-0" />}
       </span>

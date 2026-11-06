@@ -158,7 +158,7 @@ export interface MobMirrorApi {
   /** extra: chrome around the video besides the title strip and rail (nav bar, phone frame). */
   setWindowLayout(layout: 'compact' | 'full', aspect?: number, extra?: { width: number; height: number }): Promise<void>
   setAlwaysOnTop(on: boolean): Promise<void>
-  /** Opens ~/Pictures/Mob Mirror (screenshots) or ~/Movies/Mob Mirror (recordings) in Finder. */
+  /** Opens ~/Pictures/Twinglass (screenshots) or ~/Movies/Twinglass (recordings) in Finder. */
   openMediaFolder(kind: 'pictures' | 'videos'): Promise<string>
   /** Lock type/state of the mirrored phone and whether a secret is saved for it. */
   unlockStatus(): Promise<UnlockStatusInfo>
@@ -178,9 +178,9 @@ export interface MobMirrorApi {
   setFrameCapture(fn: (() => Promise<Uint8Array | null>) | null): void
   /** APKs are installed; other files are copied to /sdcard/Download on the mirrored device. */
   dropFiles(files: File[]): Promise<FileResult[]>
-  /** Returns the saved path (~/Pictures/Mob Mirror). */
+  /** Returns the saved path (~/Pictures/Twinglass). */
   saveScreenshot(png: Uint8Array, deviceName: string): Promise<string>
-  /** Returns a recording id; chunks are appended to ~/Movies/Mob Mirror/<name>.<ext>. */
+  /** Returns a recording id; chunks are appended to ~/Movies/Twinglass/<name>.<ext>. */
   startRecording(deviceName: string, ext: 'mp4' | 'webm'): Promise<number>
   writeRecording(id: number, chunk: Uint8Array): Promise<void>
   stopRecording(id: number): Promise<string | null>

@@ -42,7 +42,7 @@ function createWindow(autoConnect?: { serial: string; kind: string }): BrowserWi
     // The layout adapts down to this (toolbar overflow menu, floating sidebar, compact status bar).
     minWidth: 480,
     minHeight: 420,
-    title: 'Mob Mirror',
+    title: 'Twinglass',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 16 },
     // Transparent so the compact view can float the control rail beside the phone with a
@@ -108,6 +108,8 @@ ipcMain.handle('app:theme', (_e, t: unknown) => {
 })
 
 void app.whenReady().then(() => {
+  // Packaged builds get build/icon.icns from electron-builder; in development show it in the Dock too.
+  if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))
   getAdb()
   installMenu()
   createWindow()
