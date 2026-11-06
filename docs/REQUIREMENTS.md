@@ -77,7 +77,7 @@ The dates are when each item was asked for (2026-11-06 unless noted).
     - An auto-connect switch.
   - Plain background; the editorial serif font, illustration and doodles were removed.
   - **Simplified cards** (user: "make the cards more simple"): one muted facts line instead of chips, plain-row quick actions, flat lists, no shadows or tinted icon boxes, plain status text.
-  - The phone section has **no card** (user: "remove card, not required"). **Mirror button:** a gradient pill in the icon's colours, a white play circle, "Mirror <phone>", a link badge, and a lift/press glow.
+  - The phone section has **no card** (user: "remove card, not required"). **Mirror button:** a simple solid button (play icon, "Mirror", link), per the user.
 - (Previous:) **Home screen, editorial layout** (2026-11-06, from the user's reference image).
   - A large serif headline (Fraunces, bundled for offline use) written as a sentence with **live widgets inline**: the phone chip (name and battery; click = mirror), mouse, keyboard, ⌘L.
   - Each state gets its own sentence: phones ready, waiting for "Allow", no phone (USB cable / Wi-Fi pair chip), adb missing.

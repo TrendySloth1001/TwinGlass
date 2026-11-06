@@ -105,20 +105,11 @@ function PhoneHero(props: {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* The one main action: brand gradient (same as the app icon), play icon in its own circle,
-              the link as a small badge. Lifts on hover, presses on click. */}
-          <button
-            type="button"
-            disabled={connecting}
-            onClick={() => onMirror(best, device.id)}
-            className="group inline-flex h-11 items-center gap-3 rounded-full bg-gradient-to-r from-[#5B6CFF] to-[#7A2FF0] py-1 pr-2 pl-1 text-[14px] font-medium text-white shadow-[0_8px_24px_-8px_rgb(108_70_255/0.65)] transition-all hover:-translate-y-px hover:shadow-[0_12px_30px_-8px_rgb(108_70_255/0.8)] hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[#7A2FF0]/50 focus-visible:outline-none active:translate-y-0 active:scale-[0.98] disabled:opacity-70"
-          >
-            <span className="grid size-9 place-items-center rounded-full bg-white text-[#6A40F5] transition-transform group-hover:scale-105">
-              {connecting ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 translate-x-px fill-current" />}
-            </span>
-            {connecting ? 'Connecting…' : `Mirror ${device.model}`}
-            <span className="rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-semibold tracking-wide">{linkName(best)}</span>
-          </button>
+          <Button size="lg" disabled={connecting} onClick={() => onMirror(best, device.id)}>
+            {connecting ? <Loader2 className="animate-spin" /> : <Play />}
+            Mirror
+            <span className="text-xs opacity-60">{linkName(best)}</span>
+          </Button>
           {device.transports
             .filter((t) => t !== best)
             .map((t) => (
