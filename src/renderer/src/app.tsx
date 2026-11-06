@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import type { TransportInfo } from '../../preload/api'
 import { ControlsHelp } from '@/components/controls-help'
+import { Button } from '@/components/ui/button'
 import { CompactTitleBar } from '@/components/compact-title-bar'
 import { ConnectPanel } from '@/components/connect-panel'
 import { ControlRail } from '@/components/control-rail'
@@ -21,6 +22,7 @@ import { UnlockDialog } from '@/components/unlock-dialog'
 import type { DeviceAction } from '@shared/shortcuts'
 import { useDevices } from '@/hooks/use-devices'
 import { useMirror } from '@/hooks/use-mirror'
+import { useMacScreen } from '@/hooks/use-mac-screen'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { DEFAULT_SETTINGS, STREAM_KEYS, useSettings } from '@/hooks/use-settings'
 
@@ -43,6 +45,9 @@ export function App(): ReactNode {
   const [settings, updateSettings] = useSettings()
   const [helpOpen, setHelpOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const macScreen = useMacScreen()
+  const macScreenToggle = useRef(macScreen.toggle)
+  macScreenToggle.current = macScreen.toggle
   const [palette, setPalette] = useState<{ open: boolean; mode: PaletteMode }>({ open: false, mode: 'all' })
   /** Framed phone body (viewport px): the compact strip and nav dock attach to it. */
   const [phoneRect, setPhoneRect] = useState<PhoneRect | null>(null)
@@ -192,6 +197,7 @@ export function App(): ReactNode {
       window.mobMirror.onUiCommand((cmd) => {
         const s = settingsRef.current
         if (cmd === 'open-settings') setSettingsOpen(true)
+        else if (cmd === 'toggle-mac-screen') macScreenToggle.current()
         else if (cmd === 'open-palette') setPalette({ open: true, mode: 'all' })
         else if (cmd === 'open-clipboard') setPalette({ open: true, mode: 'clipboard' })
         else if (cmd === 'send-clipboard') {
@@ -214,6 +220,16 @@ export function App(): ReactNode {
   useEffect(() => void window.mobMirror.setClipboardHistoryEnabled(settings.clipboardHistory).catch(() => {}), [settings.clipboardHistory])
   // The menu bar icon asked this window to mirror a phone.
   useEffect(() => window.mobMirror.onConnectRequest((t) => onMirror({ ...t, state: 'device' })), [onMirror])
+  useEffect(
+    () =>
+      window.mobMirror.onUpdateAvailable((u) =>
+        notify('info', `Mob Mirror ${u.latest} is available`, {
+          description: `You have ${u.current}. Download it and drag it into Applications (automatic install needs a signed app).`,
+          action: u.url ? { label: 'Download', run: () => void window.mobMirror.downloadUpdate(u.url!) } : undefined,
+        }),
+      ),
+    [],
+  )
   useEffect(() => window.mobMirror.onAppError((m) => notify('error', 'Something went wrong in the background', { description: m })), [])
   useEffect(() => void window.mobMirror.setRequireTouchId(settings.requireTouchId).catch(() => {}), [settings.requireTouchId])
   const { setInputOptions, setAutoReconnect } = mirror
@@ -365,12 +381,29 @@ export function App(): ReactNode {
         </div>
       )}
       <ControlsHelp open={helpOpen} onOpenChange={setHelpOpen} />
+      {(macScreen.state.running || macScreen.state.starting) && (
+        // Always visible while the Mac screen is shared: what's happening, and one-click stop.
+        <div className="fixed bottom-3 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border bg-popover py-1 pr-1 pl-3 text-xs text-popover-foreground shadow-lg">
+          <span className="relative flex size-2">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-destructive opacity-60" />
+            <span className="relative inline-flex size-2 rounded-full bg-destructive" />
+          </span>
+          {macScreen.state.starting
+            ? 'Starting Mac screen on phone…'
+            : `Mac screen on phone · ${macScreen.state.viewers ? `${macScreen.state.viewers} watching` : 'waiting for the phone'}`}
+          <Button size="xs" variant="secondary" className="rounded-full" onClick={macScreen.stop}>
+            Stop
+          </Button>
+        </div>
+      )}
       <CommandPalette
         open={palette.open}
         mode={palette.mode}
         onOpenChange={(open) => setPalette((p) => ({ ...p, open }))}
         live={live}
         onAction={dispatch}
+        onToggleMacScreen={macScreen.toggle}
+        macScreenRunning={macScreen.state.running}
       />
       <SettingsDialog
         open={settingsOpen}

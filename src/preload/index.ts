@@ -23,6 +23,8 @@ function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
   return () => ipcRenderer.off(channel, listener)
 }
 
+type UpdateInfoT = Parameters<Parameters<MobMirrorApi['onUpdateAvailable']>[0]>[0]
+
 const api: MobMirrorApi = {
   adbStatus: () => ipcRenderer.invoke('adb:status'),
   restartAdbServer: () => ipcRenderer.invoke('adb:restart-server'),
@@ -38,6 +40,23 @@ const api: MobMirrorApi = {
   onClipboardHistoryChanged: (cb: () => void) => subscribe('clipboard:history-changed', cb),
   onConnectRequest: (cb: (t: { serial: string; kind: 'usb' | 'wifi' }) => void) => subscribe('ui:connect', cb),
   onAppError: (cb: (message: string) => void) => subscribe('app:error', cb),
+  macScreenStatus: () => ipcRenderer.invoke('macscreen:status'),
+  macScreenStart: () => ipcRenderer.invoke('macscreen:start'),
+  macScreenStop: () => ipcRenderer.invoke('macscreen:stop'),
+  macScreenOpenPrivacy: () => ipcRenderer.invoke('macscreen:open-privacy'),
+  macScreenConfig: (json: string) => ipcRenderer.send('macscreen:config', json),
+  macScreenChunk: (type: 1 | 2, ts: number, data: Uint8Array) => ipcRenderer.send('macscreen:chunk', type, ts, data),
+  onMacScreen: (cb: (ev: { t: 'keyframe' } | { t: 'stop' } | { t: 'viewers'; n: number }) => void) => {
+    const offs = [
+      subscribe('macscreen:keyframe', () => cb({ t: 'keyframe' })),
+      subscribe('macscreen:stop', () => cb({ t: 'stop' })),
+      subscribe('macscreen:viewers', (n: number) => cb({ t: 'viewers', n })),
+    ]
+    return () => offs.forEach((o) => o())
+  },
+  checkForUpdate: () => ipcRenderer.invoke('update:check'),
+  downloadUpdate: (url: string) => ipcRenderer.invoke('update:download', url),
+  onUpdateAvailable: (cb: (u: UpdateInfoT) => void) => subscribe('update:available', cb),
   setTrayVisible: (on: boolean) => ipcRenderer.invoke('app:set-tray', on),
   setLoginItem: (on?: boolean) => ipcRenderer.invoke('app:login-item', on),
   setRequireTouchId: (on: boolean) => ipcRenderer.invoke('unlock:set-require-touch-id', on),

@@ -10,6 +10,9 @@ import { registerUnlockIpc } from './unlock-ipc'
 import { registerPhoneAppsIpc } from './phone-apps'
 import { registerClipboardHistoryIpc, startClipboardHistory } from './clipboard-history'
 import { setTrayVisible, startTrayUpdates } from './tray'
+import { registerMacScreenIpc, stopMacScreen } from './mac-screen'
+import { registerUpdateIpc } from './update-check'
+import { trackDevices } from './devices-ipc'
 import { registerAgentIpc, stopAgentServer } from './agent-ipc'
 
 export function serverPath(): string {
@@ -76,6 +79,15 @@ registerMediaIpc()
 registerWindowLayoutIpc()
 registerPhoneAppsIpc(getAdb, serverPath, getSession)
 registerClipboardHistoryIpc()
+void app.whenReady().then(registerUpdateIpc)
+// Mac screen on the phone: the window's mirrored phone, else the first connected one.
+registerMacScreenIpc(getAdb, async (wcId) => {
+  const s = getSession(wcId)
+  if (s) return s.serial
+  const adb = getAdb()
+  const list = adb ? await trackDevices(adb).catch(() => null) : null
+  return list?.devices[0]?.transports[0]?.serial ?? null
+})
 
 /** Menu bar icon actions: mirror in an idle window (or a new one), show the app. */
 const trayDeps = {
@@ -126,6 +138,7 @@ process.on('uncaughtException', reportMainError('uncaught exception'))
 process.on('unhandledRejection', reportMainError('unhandled rejection'))
 
 app.on('before-quit', () => {
+  stopMacScreen(getAdb())
   stopAllSessions()
   stopDeviceTracking()
   closeAllRecordings()

@@ -34,6 +34,17 @@ export interface ClipItemInfo {
   source: 'mac' | 'phone'
 }
 
+export interface UpdateInfo {
+  current: string
+  latest: string | null
+  url: string | null
+  notes: string | null
+  available: boolean
+  /** A release feed is set in package.json ("mobMirror.updateRepo" / "updateFeed"). */
+  configured: boolean
+  error?: string
+}
+
 export interface OpResult {
   ok: boolean
   message: string
@@ -97,6 +108,18 @@ export interface MobMirrorApi {
   onConnectRequest(cb: (t: { serial: string; kind: 'usb' | 'wifi' }) => void): () => void
   /** A background error in the main process (logged; shown as a notification). */
   onAppError(cb: (message: string) => void): () => void
+  /** Mac screen on the phone (see main/mac-screen.ts). */
+  macScreenStatus(): Promise<{ running: boolean; viewers: number; permission: string }>
+  macScreenStart(): Promise<{ url: string }>
+  macScreenStop(): Promise<void>
+  macScreenOpenPrivacy(): Promise<void>
+  macScreenConfig(json: string): void
+  macScreenChunk(type: 1 | 2, timestampUs: number, data: Uint8Array): void
+  onMacScreen(cb: (ev: { t: 'keyframe' } | { t: 'stop' } | { t: 'viewers'; n: number }) => void): () => void
+  /** Notify-only updates (see main/update-check.ts). */
+  checkForUpdate(): Promise<UpdateInfo>
+  downloadUpdate(url: string): Promise<void>
+  onUpdateAvailable(cb: (u: UpdateInfo) => void): () => void
   setTrayVisible(on: boolean): Promise<void>
   /** Launch at login; without an argument just reads it. */
   setLoginItem(on?: boolean): Promise<boolean>
@@ -125,7 +148,7 @@ export interface MobMirrorApi {
   onDeviceAction(cb: (action: DeviceAction) => void): () => void
   /** View menu commands (toggle sidebar ⌘\, float/dock ⌥⌘\). */
   onUiCommand(
-    cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view' | 'open-settings' | 'open-palette' | 'open-clipboard' | 'send-clipboard') => void,
+    cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view' | 'open-settings' | 'open-palette' | 'open-clipboard' | 'send-clipboard' | 'toggle-mac-screen') => void,
   ): () => void
   /** compact: phone-shaped window locked to `aspect` (video width / height); full: restore. */
   /** extra: chrome around the video besides the title strip and rail (nav bar, phone frame). */

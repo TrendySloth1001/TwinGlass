@@ -79,6 +79,8 @@ export function installMenu(): void {
         { label: 'Open App… / Command Palette', accelerator: 'CommandOrControl+K', click: () => uiCommand('open-palette') },
         { label: 'Clipboard History…', accelerator: 'CommandOrControl+Shift+V', click: () => uiCommand('open-clipboard') },
         { label: 'Send Mac Clipboard to Phone', accelerator: 'CommandOrControl+Shift+O', click: () => uiCommand('send-clipboard') },
+        { type: 'separator' },
+        { label: 'Show Mac Screen on Phone', accelerator: 'CommandOrControl+Alt+P', click: () => uiCommand('toggle-mac-screen') },
       ],
     },
     {

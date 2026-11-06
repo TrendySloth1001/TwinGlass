@@ -11,6 +11,7 @@ import {
   House,
   Laptop,
   LockKeyholeOpen,
+  MonitorUp,
   RefreshCw,
   RotateCw,
   Settings2,
@@ -25,7 +26,6 @@ import type { DeviceAction } from '@shared/shortcuts'
 import { shortcutFor } from '@shared/shortcuts'
 import {
   CommandDialog,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -33,6 +33,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command'
+import { matchScore } from '@/lib/rank'
 
 export type PaletteMode = 'all' | 'clipboard'
 
@@ -72,6 +73,8 @@ interface CommandPaletteProps {
   /** A phone is mirrored (apps / sending need it). */
   live: boolean
   onAction: (a: DeviceAction) => void
+  onToggleMacScreen: () => void
+  macScreenRunning: boolean
 }
 
 /**
@@ -79,7 +82,7 @@ interface CommandPaletteProps {
  * open it on the phone, or any text to put it on the phone's clipboard; pick from the clipboard
  * history; or run a phone action. ⇧⌘V opens it on the clipboard history.
  */
-export function CommandPalette({ open, mode, onOpenChange, live, onAction }: CommandPaletteProps): ReactNode {
+export function CommandPalette({ open, mode, onOpenChange, live, onAction, onToggleMacScreen, macScreenRunning }: CommandPaletteProps): ReactNode {
   const [query, setQuery] = useState('')
   const [apps, setApps] = useState<PhoneAppInfo[] | null>(null)
   const [appsError, setAppsError] = useState<string | null>(null)
@@ -124,54 +127,22 @@ export function CommandPalette({ open, mode, onOpenChange, live, onAction }: Com
     })
 
   const q = query.trim()
-  const clipItems = mode === 'clipboard' ? clips.items : clips.items.slice(0, 6)
-  const userApps = apps?.filter((a) => !a.system) ?? []
-  const systemApps = apps?.filter((a) => a.system) ?? []
 
-  return (
-    <CommandDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title={mode === 'clipboard' ? 'Clipboard history' : 'Command palette'}
-      description="Search apps, send to the phone, clipboard history"
-      className="sm:max-w-lg"
-    >
-      <CommandInput
-        value={query}
-        onValueChange={setQuery}
-        placeholder={mode === 'clipboard' ? 'Search clipboard history…' : live ? 'Open an app, paste a link, search…' : 'Search… (mirror a phone for apps)'}
-      />
-      <CommandList className="max-h-[min(420px,60vh)]">
-        <CommandEmpty>{mode === 'clipboard' && !clips.items.length ? 'Nothing copied yet.' : 'No matches.'}</CommandEmpty>
+  // ---- ranking (our own: cmdk's default keeps groups in place, so a weak app match beat "Home") ----
+  type Row = { key: string; score: number; node: ReactNode }
+  const rows = (list: Row[]): Row[] => list.filter((r) => r.score > 0).sort((a, b) => b.score - a.score)
 
-        {/* Order matters: cmdk selects the first visible item, and forceMount items keep their
-            place. A link opens first; otherwise app matches come before "copy/paste to phone",
-            so ↵ on "calc" opens Calculator. */}
-        {live && q && mode === 'all' && looksLikeLink(q) && (
-          <CommandGroup heading="Open on phone" forceMount>
-            <CommandItem value={`~open ${q}`} forceMount onSelect={() => send(q, 'auto')}>
-              <ExternalLink /> Open <span className="truncate font-medium">{short(q, 48)}</span> on the phone
-              <CommandShortcut>↵</CommandShortcut>
-            </CommandItem>
-          </CommandGroup>
-        )}
-
-        {mode === 'all' && live && (
-          <CommandGroup heading="Apps">
-            {!apps && !appsError && (
-              <CommandItem disabled value="__loading">
-                <RefreshCw className="animate-spin" /> Reading apps from the phone…
-              </CommandItem>
-            )}
-            {appsError && (
-              <CommandItem value="__retry" onSelect={() => loadApps(true)}>
-                <RefreshCw /> {appsError} Retry
-              </CommandItem>
-            )}
-            {[...userApps, ...systemApps].map((a) => (
+  const appRows: Row[] =
+    mode === 'all' && live && apps
+      ? rows(
+          apps.map((a) => ({
+            key: a.pkg,
+            // Labels count fully, package names half; user apps win ties over system apps.
+            score: ((m) => (m > 0 && !a.system ? m + 0.5 : m))(Math.max(matchScore(a.label, q), matchScore(a.pkg, q) * 0.5)),
+            node: (
               <CommandItem
                 key={a.pkg}
-                value={`${a.label} ${a.pkg}`}
+                value={`app:${a.pkg}`}
                 onSelect={() =>
                   run(async () => {
                     await window.mobMirror.launchApp(a.pkg)
@@ -183,65 +154,149 @@ export function CommandPalette({ open, mode, onOpenChange, live, onAction }: Com
                 <span className="truncate">{a.label}</span>
                 <span className="ml-auto truncate pl-2 text-[11px] text-muted-foreground">{a.pkg}</span>
               </CommandItem>
-            ))}
-            {apps && (
-              <CommandItem value="__refresh apps reload" onSelect={() => loadApps(true)}>
-                <RefreshCw /> Refresh app list
+            ),
+          })),
+        )
+      : []
+
+  const macLabel = macScreenRunning ? 'Stop showing Mac screen on phone' : 'Show Mac screen on phone'
+  const actionRows: Row[] =
+    mode === 'all' && live
+      ? rows([
+          {
+            key: 'mac-screen',
+            score: Math.max(matchScore(macLabel, q), matchScore('mac screen display share cast', q)),
+            node: (
+              <CommandItem key="mac-screen" value="action:mac-screen" onSelect={() => run(onToggleMacScreen)}>
+                <MonitorUp /> {macLabel}
+                <CommandShortcut>⌥⌘P</CommandShortcut>
+              </CommandItem>
+            ),
+          },
+          ...ACTIONS.map((a) => ({
+            key: a.action,
+            // +1 on a real match: "home" means the Home button rather than an app called Home.
+            score: ((m) => (m > 0 && q ? m + 1 : m))(matchScore(a.label, q)),
+            node: (
+              <CommandItem key={a.action} value={`action:${a.action}`} onSelect={() => run(() => onAction(a.action))}>
+                {a.icon} {a.label}
+                <CommandShortcut>{shortcutFor(a.action)}</CommandShortcut>
+              </CommandItem>
+            ),
+          })),
+        ])
+      : []
+
+  const clipSource = mode === 'clipboard' ? clips.items : q ? clips.items : clips.items.slice(0, 6)
+  const clipRows: Row[] = clips.enabled
+    ? rows(
+        clipSource.map((it, n) => ({
+          key: `clip-${it.id}`,
+          // Clipboard text ranks a little lower than apps/actions; newest first among equals.
+          score: matchScore(it.text, q) * (mode === 'clipboard' ? 1 : 0.6) - n * 0.001,
+          node: (
+            <CommandItem key={it.id} value={`clip:${it.id}`} onSelect={() => useClip(it)}>
+              {it.source === 'phone' ? <Smartphone /> : <Laptop />}
+              <span className="truncate">{short(it.text)}</span>
+              <span className="ml-auto shrink-0 pl-2 text-[11px] text-muted-foreground">{ago(it.at)}</span>
+            </CommandItem>
+          ),
+        })),
+      )
+    : []
+
+  // Groups ordered by their best match (without a query: apps, clipboard, phone).
+  const groups = [
+    { id: 'apps', heading: 'Apps', rows: appRows, base: 3 },
+    { id: 'clip', heading: mode === 'clipboard' ? `Clipboard history · ${clips.items.length}` : 'Clipboard', rows: clipRows, base: 2 },
+    { id: 'phone', heading: 'Phone', rows: actionRows, base: 1 },
+  ]
+    .filter((g) => g.rows.length)
+    .sort((a, b) => (q ? (b.rows[0]!.score - a.rows[0]!.score) : b.base - a.base))
+  const nothing = !groups.length && !(live && q && mode === 'all')
+
+  return (
+    <CommandDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={mode === 'clipboard' ? 'Clipboard history' : 'Command palette'}
+      description="Search apps, send to the phone, clipboard history"
+      className="sm:max-w-lg"
+      commandProps={{ shouldFilter: false }}
+    >
+      <CommandInput
+        value={query}
+        onValueChange={setQuery}
+        placeholder={mode === 'clipboard' ? 'Search clipboard history…' : live ? 'Open an app, paste a link, search…' : 'Search… (mirror a phone for apps)'}
+      />
+      <CommandList className="max-h-[min(420px,60vh)]">
+        {nothing && (
+          <div className="py-6 text-center text-sm text-muted-foreground">
+            {mode === 'clipboard' && !clips.items.length ? 'Nothing copied yet.' : 'No matches.'}
+          </div>
+        )}
+
+        {/* A link opens first: ↵ on a pasted URL opens it on the phone. */}
+        {live && q && mode === 'all' && looksLikeLink(q) && (
+          <CommandGroup heading="Open on phone">
+            <CommandItem value="open:link" onSelect={() => send(q, 'auto')}>
+              <ExternalLink /> Open <span className="truncate font-medium">{short(q, 48)}</span> on the phone
+              <CommandShortcut>↵</CommandShortcut>
+            </CommandItem>
+          </CommandGroup>
+        )}
+
+        {mode === 'all' && live && !apps && (
+          <CommandGroup heading="Apps">
+            {appsError ? (
+              <CommandItem value="apps:retry" onSelect={() => loadApps(true)}>
+                <RefreshCw /> {appsError} Retry
+              </CommandItem>
+            ) : (
+              <CommandItem disabled value="apps:loading">
+                <RefreshCw className="animate-spin" /> Reading apps from the phone…
               </CommandItem>
             )}
           </CommandGroup>
         )}
 
-        {live && q && mode === 'all' && (
-          <CommandGroup heading="Send to phone" forceMount>
-            <CommandItem value="~send copy" forceMount onSelect={() => send(q, 'copy')}>
-              <Copy /> Copy “{short(q, 40)}” to the phone
-            </CommandItem>
-            <CommandItem value="~send paste" forceMount onSelect={() => send(q, 'paste')}>
-              <ClipboardPaste /> Paste “{short(q, 40)}” into the phone
-            </CommandItem>
-          </CommandGroup>
-        )}
-
-        {clips.enabled && clipItems.length > 0 && (
-          <>
-            {mode === 'all' && <CommandSeparator />}
-            <CommandGroup heading={mode === 'clipboard' ? `Clipboard history · ${clips.items.length}` : 'Recent clipboard'}>
-              {clipItems.map((it) => (
-                <CommandItem key={it.id} value={`clip ${it.id} ${it.text.slice(0, 500)}`} onSelect={() => useClip(it)}>
-                  {it.source === 'phone' ? <Smartphone /> : <Laptop />}
-                  <span className="truncate">{short(it.text)}</span>
-                  <span className="ml-auto shrink-0 pl-2 text-[11px] text-muted-foreground">{ago(it.at)}</span>
+        {groups.map((g, n) => (
+          <div key={g.id}>
+            {n > 0 && <CommandSeparator />}
+            <CommandGroup heading={g.heading}>
+              {(q || mode === 'clipboard' ? g.rows : g.rows.slice(0, g.id === 'apps' ? 200 : 12)).map((r) => r.node)}
+              {g.id === 'apps' && !q && (
+                <CommandItem value="apps:refresh" onSelect={() => loadApps(true)}>
+                  <RefreshCw /> Refresh app list
                 </CommandItem>
-              ))}
-              {mode === 'clipboard' && (
-                <CommandItem value="__clear clipboard history" onSelect={() => run(() => window.mobMirror.clearClipboardHistory())}>
+              )}
+              {g.id === 'clip' && mode === 'clipboard' && (
+                <CommandItem value="clip:clear" onSelect={() => run(() => window.mobMirror.clearClipboardHistory())}>
                   <Trash2 /> Clear clipboard history
                 </CommandItem>
               )}
             </CommandGroup>
-          </>
-        )}
+          </div>
+        ))}
+
         {!clips.enabled && mode === 'clipboard' && (
           <CommandGroup heading="Clipboard history">
-            <CommandItem disabled value="__off">
+            <CommandItem disabled value="clip:off">
               <ClipboardList /> Clipboard history is off (Settings → Mouse & keyboard).
             </CommandItem>
           </CommandGroup>
         )}
 
-        {mode === 'all' && live && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="Phone">
-              {ACTIONS.map((a) => (
-                <CommandItem key={a.action} value={`action ${a.label}`} onSelect={() => run(() => onAction(a.action))}>
-                  {a.icon} {a.label}
-                  <CommandShortcut>{shortcutFor(a.action)}</CommandShortcut>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
+        {/* Catch-all last: only when nothing better matched does ↵ copy the text. */}
+        {live && q && mode === 'all' && (
+          <CommandGroup heading="Send to phone">
+            <CommandItem value="send:copy" onSelect={() => send(q, 'copy')}>
+              <Copy /> Copy “{short(q, 40)}” to the phone
+            </CommandItem>
+            <CommandItem value="send:paste" onSelect={() => send(q, 'paste')}>
+              <ClipboardPaste /> Paste “{short(q, 40)}” into the phone
+            </CommandItem>
+          </CommandGroup>
         )}
       </CommandList>
     </CommandDialog>

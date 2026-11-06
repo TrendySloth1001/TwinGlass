@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
-import type { AdbStatusInfo, UnlockStatusInfo } from '../../../preload/api'
+import type { AdbStatusInfo, UnlockStatusInfo, UpdateInfo } from '../../../preload/api'
 import type { AudioMode } from '@shared/ipc'
 import { QUALITY_LABELS, type CodecPreference, type Quality } from '@shared/quality'
 import { AgentAccess } from '@/components/agent-access'
@@ -167,6 +167,10 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
   const [unlock, setUnlock] = useState<UnlockStatusInfo | null>(null)
   // Launch at login lives in macOS (login items), not in our settings: read it when shown.
   const [loginItem, setLoginItem] = useState<boolean | null>(null)
+  const [update, setUpdate] = useState<UpdateInfo | null>(null)
+  useEffect(() => {
+    if (p.open && page === 'advanced') void window.mobMirror.checkForUpdate().then(setUpdate, () => {})
+  }, [p.open, page])
   useEffect(() => {
     if (p.open && page === 'general') void window.mobMirror.setLoginItem().then(setLoginItem, () => setLoginItem(null))
   }, [p.open, page])
@@ -537,6 +541,32 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
                       <RefreshCw /> Restart
                     </Button>
                   </div>
+                </Row>
+              </Group>
+              <Group title="Updates">
+                <Row
+                  label={`Mob Mirror ${update?.current ?? ''}`}
+                  hint={
+                    !update
+                      ? 'Check for a newer version.'
+                      : !update.configured
+                        ? 'No release feed is set up yet (package.json → mobMirror.updateRepo).'
+                        : update.error
+                          ? `Couldn’t check: ${update.error}`
+                          : update.available
+                            ? `${update.latest} is available. Automatic install needs a signed app, so this opens the download.`
+                            : 'You’re up to date.'
+                  }
+                >
+                  {update?.available && update.url ? (
+                    <Button size="sm" onClick={() => void window.mobMirror.downloadUpdate(update.url!)}>
+                      Download {update.latest}
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => void window.mobMirror.checkForUpdate().then(setUpdate)}>
+                      <RefreshCw /> Check now
+                    </Button>
+                  )}
                 </Row>
               </Group>
               <Group title="Reset">

@@ -109,6 +109,22 @@ The dates are when each item was asked for (2026-11-06 unless noted).
 - ✅ **Launch at login** (Settings → General, and the menu bar icon).
 - ✅ **Tile mirror windows** (Window menu, ⌥⌘T): side by side, equal height, each keeping its shape.
 - ✅ **Background errors** are logged and shown as a notification instead of Electron's blocking error dialog.
+- ✅ **Palette ranking** is our own (exact > prefix > word > substring > tight fuzzy). Verified Enter targets: calc → Calculator, home → Home button, mac screen → share action, a link → open, other text → copy.
+- **Mac screen on the phone (prototype built, 2026-11-06).**
+  - How it works: screen → hardware H.264 (WebCodecs, realtime) → a local server (127.0.0.1 with a random token) → `adb reverse` → the phone's Chrome page (WebCodecs decode, full screen).
+  - Start it with ⌥⌘P, ⌘K → "Mac screen", or the Phone menu. A status pill with Stop shows while it runs.
+  - Verified: the phone opens the page. **Blocked until the user allows Screen Recording** for Electron (System Settings → Privacy & Security → Screen Recording, then reopen); the app now says so, with an Open Settings button.
+- ✅ **Updates: notify-only.**
+  - Verified fact: Squirrel.Mac / electron-updater can't auto-install an unsigned app.
+  - The app checks GitHub Releases (package.json `mobMirror.updateRepo`) or a JSON feed daily, and offers Download. Settings → Advanced → Check now.
+  - Switch to silent updates once the app is signed.
+- **Companion Android app (the user plans to build it).** It unlocks what adb can't:
+  - notification reply and dismiss (NotificationListenerService)
+  - richer file access and resumable transfers
+  - a proper Mac-screen viewer with touch-to-Mac input
+  - phone status (battery, network) pushed live
+
+  Planned link: a socket through `adb forward/reverse` (USB) or the LAN, sharing a versioned message protocol with this app.
 - Next, in order:
   1. Two-way file transfer with progress and **resume**: a custom chunked protocol over `adb exec-in/exec-out` with `dd` offsets, because adb push/pull can't resume.
   2. Phone notifications on the Mac (read via `dumpsys notification`; clicking one opens the app). **Reply/Dismiss need a companion app on the phone.**
