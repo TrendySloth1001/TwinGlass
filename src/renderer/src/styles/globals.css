@@ -131,16 +131,11 @@
 /* ---- Home screen backdrop (components/stage-backdrop.tsx) ---- */
 @keyframes mm-wave {
   0% { transform: translate(-50%, -50%) scale(0.06); opacity: 0; }
-  12% { opacity: 0.9; }
+  15% { opacity: 0.8; }
   100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
 }
-@keyframes mm-drift {
-  0%, 100% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)); }
-  50% { transform: translate(-50%, -50%) translate(calc(var(--dx) * -0.6), calc(var(--dy) * -0.8)) scale(1.1); }
-}
 .mm-wave { animation: mm-wave linear infinite; will-change: transform, opacity; }
-.mm-drift { animation: mm-drift 26s ease-in-out infinite; will-change: transform; }
 @media (prefers-reduced-motion: reduce) {
-  .mm-wave, .mm-drift { animation: none; }
+  .mm-wave { animation: none; }
   .mm-wave { transform: translate(-50%, -50%) scale(calc(0.25 + var(--i, 0) * 0.12)); opacity: 0.35; }
 }

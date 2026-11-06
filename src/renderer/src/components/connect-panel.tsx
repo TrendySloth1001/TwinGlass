@@ -8,7 +8,6 @@ import {
   Check,
   ClipboardList,
   Copy,
-  Ellipsis,
   Loader2,
   Play,
   QrCode,
@@ -27,7 +26,6 @@ import { MiniPhone } from '@/components/mini-phone'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Kbd } from '@/components/ui/kbd'
 import type { FrameColor, FrameStyle } from '@/lib/phone-frames'
 
@@ -123,41 +121,36 @@ function PhoneCard({
             ))}
           </div>
         </div>
+        {/* Every option as a button (no hidden menu). The best link (USB first) is the main one. */}
         <div className="flex flex-wrap items-center gap-2">
           <Button disabled={connecting} onClick={() => onMirror(best, device.id)} className="pr-4">
             {connecting ? <Loader2 className="animate-spin" /> : <Play />}
             Mirror
             <span className="ml-1 text-xs opacity-60">{best.kind === 'usb' ? 'USB' : 'Wi-Fi'}</span>
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label={`More for ${device.model}`}>
-                <Ellipsis />
+          {device.transports
+            .filter((t) => t !== best)
+            .map((t) => (
+              <Button key={t.serial} variant="outline" disabled={connecting} onClick={() => onMirror(t, device.id)}>
+                {t.kind === 'usb' ? <Usb /> : <Wifi />} Mirror over {t.kind === 'usb' ? 'USB' : 'Wi-Fi'}
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              {device.transports.map((t) => (
-                <DropdownMenuItem key={t.serial} disabled={connecting} onSelect={() => onMirror(t, device.id)}>
-                  {t.kind === 'usb' ? <Usb /> : <Wifi />} Mirror over {t.kind === 'usb' ? 'USB' : 'Wi-Fi'}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuItem onSelect={() => void window.mobMirror.openDeviceWindow(best.serial, best.kind)}>
-                <AppWindow /> Mirror in a new window
-              </DropdownMenuItem>
-              {usb && !hasWifi && (
-                <DropdownMenuItem
-                  onSelect={() =>
-                    void window.mobMirror.enableTcpip(usb.serial).then(
-                      (r) => (r.ok ? toast.success('Switched to Wi-Fi', { description: r.message }) : toast.error(r.message)),
-                      (e: unknown) => toast.error(String(e)),
-                    )
-                  }
-                >
-                  <Wifi /> Also connect over Wi-Fi
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            ))}
+          <Button variant="outline" onClick={() => void window.mobMirror.openDeviceWindow(best.serial, best.kind)}>
+            <AppWindow /> New window
+          </Button>
+          {usb && !hasWifi && (
+            <Button
+              variant="outline"
+              onClick={() =>
+                void window.mobMirror.enableTcpip(usb.serial).then(
+                  (r) => (r.ok ? toast.success('Connected over Wi-Fi too', { description: r.message }) : toast.error(r.message)),
+                  (e: unknown) => toast.error(String(e)),
+                )
+              }
+            >
+              <Wifi /> Connect over Wi-Fi
+            </Button>
+          )}
         </div>
       </div>
     </Card>

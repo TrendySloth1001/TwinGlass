@@ -65,10 +65,10 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - One card per phone:
     - a phone picture in the chosen frame finish
     - name, maker, Android version, battery and charging (refreshed every 30 s), USB / Wi-Fi, and a "Last used" tag
-    - actions: **Mirror**, and ⋯ (mirror over a specific link, new window, also connect over Wi-Fi). The Mac-screen buttons were removed with the feature.
+    - actions, all as buttons (no ⋯ menu, per the user): **Mirror** (best link), **Mirror over Wi-Fi / USB** (the other link), **New window**, **Connect over Wi-Fi** (USB-only phones).
   - A shortcut strip: ⌘K Open an app, ⇧⌘V Clipboard, ⌘, Settings, Add a phone over Wi-Fi.
   - Guidance cards for no phone, a phone waiting for "Allow", and missing adb. Responsive down to 520 px.
-  - **Background** (user: "better, expanded and large"): full-window signal waves travelling outward, a slow brand-tinted aurora and a faint dot grid. Theme-aware and still with Reduce motion (components/stage-backdrop.tsx).
+  - **Background**, kept simple at the user's request: a soft centre glow plus four faint rings drifting outward across the window. Theme-aware and still with Reduce motion (components/stage-backdrop.tsx).
 - (Earlier:) **Home screen: keep the existing design, only enhance it** (the user said "the current home screen is best", 2026-11-06).
   - One-click "Mirror <phone> · USB/Wi-Fi" buttons, with the last-used phone listed first.
   - A "Tap Allow" state for unauthorized phones and a missing-adb install hint.
