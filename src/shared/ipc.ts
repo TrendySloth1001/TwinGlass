@@ -26,6 +26,8 @@ export type MainToRenderer =
   | { t: 'audio'; ev: StreamEvent }
   | { t: 'device'; msg: DeviceMessage }
   | { t: 'log'; line: string }
+  /** Lock screen shown / dismissed on the phone (polled by main, sent on change). */
+  | { t: 'lock'; locked: boolean }
   | { t: 'closed'; error?: string }
 
 export type RendererToMain = { t: 'control'; data: Uint8Array } | { t: 'stop' }

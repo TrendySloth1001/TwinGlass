@@ -9,6 +9,9 @@ export const AndroidKey = {
   VOLUME_DOWN: 25,
   MENU: 82,
   APP_SWITCH: 187,
+  ENTER: 66,
+  /** Wakes the screen without toggling it off if it's already on (unlike POWER). */
+  WAKEUP: 224,
 } as const
 
 const map: Record<string, number> = {

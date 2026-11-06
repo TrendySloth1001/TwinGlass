@@ -31,6 +31,9 @@ const api: MobMirrorApi = {
   onQrState: (cb) => subscribe('wireless:qr:state', cb),
   openDeviceWindow: (serial, kind) => ipcRenderer.invoke('window:open-device', serial, kind),
   onDeviceAction: (cb) => subscribe('device:action', cb),
+  unlockStatus: () => ipcRenderer.invoke('unlock:status'),
+  unlock: (req) => ipcRenderer.invoke('unlock:run', req),
+  forgetUnlockSecret: () => ipcRenderer.invoke('unlock:forget'),
   // Only real dropped File objects are accepted: the page can't hand main an arbitrary path string.
   // (Sandboxed renderers have no File.path; webUtils.getPathForFile is the supported replacement.)
   dropFiles: (files) =>

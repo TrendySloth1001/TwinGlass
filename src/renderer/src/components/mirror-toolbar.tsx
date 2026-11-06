@@ -5,6 +5,8 @@ import {
   Circle,
   House,
   Keyboard,
+  LockKeyhole,
+  LockKeyholeOpen,
   Monitor,
   MonitorOff,
   Power,
@@ -64,11 +66,13 @@ function Action({
 
 interface ToolbarProps {
   mirror: Mirror
+  /** App-level dispatcher (some actions, like unlock, open dialogs). */
+  onAction: (a: DeviceAction) => void
   onShowHelp: () => void
 }
 
-export function MirrorToolbar({ mirror, onShowHelp }: ToolbarProps): ReactNode {
-  const { state, runAction } = mirror
+export function MirrorToolbar({ mirror, onAction, onShowHelp }: ToolbarProps): ReactNode {
+  const { state } = mirror
   const live = state.phase === 'live'
   const recording = state.recordingSince !== null
 
@@ -89,40 +93,48 @@ export function MirrorToolbar({ mirror, onShowHelp }: ToolbarProps): ReactNode {
       <div className="ml-auto flex items-center gap-2">
         <div className={cn('flex items-center gap-2', !live && 'pointer-events-none opacity-40')}>
           <Group>
-            <Action run={runAction} action="back" label="Back" hint="right-click">
+            <Action run={onAction} action="back" label="Back" hint="right-click">
               <ArrowLeft />
             </Action>
-            <Action run={runAction} action="home" label="Home" hint="middle-click">
+            <Action run={onAction} action="home" label="Home" hint="middle-click">
               <House />
             </Action>
-            <Action run={runAction} action="recents" label="Recent apps">
+            <Action run={onAction} action="recents" label="Recent apps">
               <SquareStack />
             </Action>
           </Group>
           <Divider />
           <Group>
-            <Action run={runAction} action="notifications" label="Notifications">
+            <Action run={onAction} action="notifications" label="Notifications">
               <BellDot />
             </Action>
-            <Action run={runAction} action="quickSettings" label="Quick settings">
+            <Action run={onAction} action="quickSettings" label="Quick settings">
               <Settings2 />
             </Action>
           </Group>
           <Divider />
           <Group>
-            <Action run={runAction} action="volumeDown" label="Volume down">
+            <Action run={onAction} action="volumeDown" label="Volume down">
               <Volume1 />
             </Action>
-            <Action run={runAction} action="volumeUp" label="Volume up">
+            <Action run={onAction} action="volumeUp" label="Volume up">
               <Volume2 />
             </Action>
-            <Action run={runAction} action="power" label="Power">
+            <Action run={onAction} action="power" label="Power">
               <Power />
             </Action>
-            <Action run={runAction} action="rotate" label="Rotate">
+            <Action
+              run={onAction}
+              action="unlock"
+              label="Unlock phone (types your PIN)"
+              className={cn(state.locked && 'text-warning')}
+            >
+              {state.locked ? <LockKeyhole /> : <LockKeyholeOpen />}
+            </Action>
+            <Action run={onAction} action="rotate" label="Rotate">
               <RotateCw />
             </Action>
-            <Action run={runAction} action="screenOff" label={state.screenOff ? 'Turn phone screen on' : 'Turn phone screen off (keep mirroring)'}>
+            <Action run={onAction} action="screenOff" label={state.screenOff ? 'Turn phone screen on' : 'Turn phone screen off (keep mirroring)'}>
               {state.screenOff ? <Monitor /> : <MonitorOff />}
             </Action>
           </Group>
@@ -133,11 +145,11 @@ export function MirrorToolbar({ mirror, onShowHelp }: ToolbarProps): ReactNode {
                 {state.muted ? <VolumeX /> : <Volume2 />}
               </IconButton>
             )}
-            <Action run={runAction} action="screenshot" label="Screenshot">
+            <Action run={onAction} action="screenshot" label="Screenshot">
               <Camera />
             </Action>
             <Action
-              run={runAction}
+              run={onAction}
               action="record"
               label={recording ? 'Stop recording' : 'Record video'}
               className={cn(recording && 'text-destructive')}
@@ -155,7 +167,7 @@ export function MirrorToolbar({ mirror, onShowHelp }: ToolbarProps): ReactNode {
           size="sm"
           disabled={!live}
           className="text-destructive [-webkit-app-region:no-drag]"
-          onClick={() => runAction('disconnect')}
+          onClick={() => onAction("disconnect")}
         >
           <Unplug /> Disconnect
         </Button>

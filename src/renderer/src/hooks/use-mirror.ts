@@ -23,6 +23,8 @@ export interface MirrorState {
   muted: boolean
   screenOff: boolean
   recordingSince: number | null
+  /** Lock screen showing on the phone (null = unknown yet). The PIN screen itself is black. */
+  locked: boolean | null
 }
 
 const IDLE: MirrorState = {
@@ -34,6 +36,7 @@ const IDLE: MirrorState = {
   muted: false,
   screenOff: false,
   recordingSince: null,
+  locked: null,
 }
 
 interface Engine {
@@ -150,6 +153,7 @@ export function useMirror(
           if (data.t === 'video') video.handle(data.ev, data.at)
           else if (data.t === 'audio') audio?.handle(data.ev)
           else if (data.t === 'log') console.debug('[scrcpy]', data.line.trimEnd())
+          else if (data.t === 'lock') patch({ locked: data.locked })
           else if (data.t === 'closed') {
             teardown(false)
             if (data.error) toast.error('Disconnected', { description: data.error })
@@ -286,6 +290,8 @@ export function useMirror(
           return void a.toggleRecording()
         case 'disconnect':
           return a.disconnect()
+        case 'unlock':
+          return // needs UI (secret entry): handled by the app's unlock dialog
       }
     },
     [send],

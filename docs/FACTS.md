@@ -166,6 +166,20 @@ adb shell CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobi
 - **Precision:** the overlay dot was drawn exactly at the press point, with the CDP press at (856, 538) and the dot at (856, 538). The round trip from video pixel to screen and back is exact (unit test). Video→device quantization is about 2.2 device px over Wi-Fi (576→1260) and 1:1 over USB.
 - **⌘ shortcuts:** Electron's menu handles key equivalents before the page, so ⌘V/⌘C/⌘X reach the canvas as `paste`/`copy`/`cut` events (Edit role). Device shortcuts are menu accelerators (src/shared/shortcuts.ts).
 
+## Unlocking (verified on Android 17, Nothing A024, 2026-11-06)
+- **Lock state:** `dumpsys window policy` (~3 KB, ~70 ms) shows `KeyguardServiceDelegate` / `showing=true|false`. The full `dumpsys window` (67 KB) has `isKeyguardShowing=`.
+- **Lock type:** `dumpsys lock_settings` reports `CredentialType: PIN` (or PASSWORD / PATTERN / NONE). It never shows the credential. `cmd lock_settings get-disabled` returns `false` when a lock screen is set.
+- **`wm dismiss-keyguard` exists:** "Dismiss the keyguard, prompting user for auth if necessary". It brings up the PIN/password bouncer.
+- **The PIN/password bouncer is FLAG_SECURE,** so it shows black in the mirror, but injected key events still reach it.
+- **The unlock flow:**
+  1. KEYCODE_WAKEUP (224)
+  2. `wm dismiss-keyguard`
+  3. INJECT_TEXT of the secret over the control socket (never on a shell command line)
+  4. KEYCODE_ENTER
+  5. Poll the lock state for up to 3.5 s
+- **Not yet verified end to end:** typing a real PIN into a locked phone. The user needs to test this, since it needs their PIN.
+- **Pattern locks can't be typed.** Only ASCII PINs/passwords are supported (that's the INJECT_TEXT limitation).
+
 ## Build and packaging (verified 2026-11-06)
 - **electron-vite 6 does not minify the renderer by default.** With `renderer.build.minify: true`, the JS goes from 1,538 KB to 606 KB. Dropping `motion` brings it to 471 KB.
 - **electron-builder ships everything in `dependencies` inside `app.asar`.** With the renderer libraries listed there, the asar was 56 MB, including 37 MB of lucide-react sources. Moved to devDependencies, it's 2.0 MB, with only `qrcode` and its dependency tree.

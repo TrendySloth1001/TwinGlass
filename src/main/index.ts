@@ -4,7 +4,8 @@ import { Adb, findAdb } from './adb/adb'
 import { registerDevicesIpc, stopDeviceTracking } from './devices-ipc'
 import { closeAllRecordings, registerMediaIpc } from './media-ipc'
 import { installMenu } from './menu'
-import { registerSessionIpc, stopAllSessions } from './session-ipc'
+import { getSession, registerSessionIpc, stopAllSessions } from './session-ipc'
+import { registerUnlockIpc } from './unlock-ipc'
 
 export function serverPath(): string {
   return app.isPackaged
@@ -48,6 +49,7 @@ ipcMain.handle('window:open-device', (_e, serial: string, kind: string) => {
 
 registerDevicesIpc(() => adb)
 registerSessionIpc(() => adb, serverPath)
+registerUnlockIpc(() => adb, getSession)
 registerMediaIpc()
 
 void app.whenReady().then(() => {

@@ -5,6 +5,8 @@ import { MirrorStage } from '@/components/mirror-stage'
 import { MirrorToolbar } from '@/components/mirror-toolbar'
 import { Sidebar } from '@/components/sidebar'
 import { StatusBar } from '@/components/status-bar'
+import { UnlockDialog } from '@/components/unlock-dialog'
+import type { DeviceAction } from '@shared/shortcuts'
 import { useDevices } from '@/hooks/use-devices'
 import { useMirror } from '@/hooks/use-mirror'
 import { useSettings } from '@/hooks/use-settings'
@@ -25,7 +27,19 @@ export function App(): ReactNode {
   const mirror = useMirror(canvasRef, overlayRef)
   const [settings, updateSettings] = useSettings()
   const [helpOpen, setHelpOpen] = useState(false)
+  const [unlockOpen, setUnlockOpen] = useState(false)
   const { connect, runAction } = mirror
+  const live = mirror.state.phase === 'live'
+
+  /** One dispatcher for the Device menu, toolbar and banner: some actions need app-level UI. */
+  const dispatch = useCallback(
+    (action: DeviceAction) => {
+      if (action === 'unlock') {
+        if (live) setUnlockOpen(true)
+      } else runAction(action)
+    },
+    [live, runAction],
+  )
 
   const onMirror = useCallback(
     (t: TransportInfo) => void connect(t, { audio: settings.audio, showTouches: settings.showTouches }),
@@ -33,7 +47,11 @@ export function App(): ReactNode {
   )
 
   // Device menu shortcuts (⌘B back, ⇧⌘H home, …) arrive from main for the focused window.
-  useEffect(() => window.mobMirror.onDeviceAction(runAction), [runAction])
+  useEffect(() => window.mobMirror.onDeviceAction(dispatch), [dispatch])
+  // The session ended: a dialog about the phone makes no sense anymore.
+  useEffect(() => {
+    if (!live) setUnlockOpen(false)
+  }, [live])
 
   const autoConnected = useRef(false)
   useEffect(() => {
@@ -58,16 +76,19 @@ export function App(): ReactNode {
         onSettingsChange={updateSettings}
       />
       <main className="flex min-w-0 flex-1 flex-col">
-        <MirrorToolbar mirror={mirror} onShowHelp={() => setHelpOpen(true)} />
+        <MirrorToolbar mirror={mirror} onAction={dispatch} onShowHelp={() => setHelpOpen(true)} />
         <MirrorStage
           canvasRef={canvasRef}
           overlayRef={overlayRef}
           phase={mirror.state.phase}
           recording={mirror.state.recordingSince !== null}
+          locked={mirror.state.locked === true}
+          onUnlock={() => dispatch('unlock')}
         />
         <StatusBar state={mirror.state} />
       </main>
       <ControlsHelp open={helpOpen} onOpenChange={setHelpOpen} />
+      <UnlockDialog open={unlockOpen} onOpenChange={setUnlockOpen} />
     </div>
   )
 }

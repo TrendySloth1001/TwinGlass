@@ -1,4 +1,6 @@
-import { FileUp, Loader2, Smartphone } from 'lucide-react'
+import { FileUp, Loader2, LockKeyhole, Smartphone } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Kbd } from '@/components/ui/kbd'
 import { useState, type DragEvent, type ReactNode, type RefObject } from 'react'
 import { toast } from 'sonner'
 import { BorderBeam } from '@/components/ui/border-beam'
@@ -12,6 +14,9 @@ interface MirrorStageProps {
   overlayRef: RefObject<HTMLDivElement | null>
   phase: Phase
   recording: boolean
+  /** Phone's lock screen is showing (its PIN screen is black in the mirror). */
+  locked: boolean
+  onUnlock: () => void
 }
 
 async function dropFiles(fileList: FileList): Promise<void> {
@@ -26,7 +31,7 @@ async function dropFiles(fileList: FileList): Promise<void> {
   else toast.success(results.length === 1 ? 'Done' : `${results.length} files done`, { id, description: lines })
 }
 
-export function MirrorStage({ canvasRef, overlayRef, phase, recording }: MirrorStageProps): ReactNode {
+export function MirrorStage({ canvasRef, overlayRef, phase, recording, locked, onUnlock }: MirrorStageProps): ReactNode {
   const [dragging, setDragging] = useState(false)
   const live = phase === 'live'
 
@@ -88,6 +93,16 @@ export function MirrorStage({ canvasRef, overlayRef, phase, recording }: MirrorS
             <div className="font-medium">Drop to send to the phone</div>
             <div className="text-xs text-neutral-300">APKs are installed. Other files go to Downloads.</div>
           </div>
+        </div>
+      )}
+
+      {live && locked && (
+        <div className="absolute top-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-neutral-900/85 py-1.5 pr-1.5 pl-4 text-sm text-white shadow-lg backdrop-blur">
+          <LockKeyhole className="size-4 text-warning" />
+          <span>Phone is locked. The PIN screen is hidden from capture.</span>
+          <Button size="sm" variant="secondary" className="rounded-full" onClick={onUnlock}>
+            Unlock <Kbd className="ml-1">⌘L</Kbd>
+          </Button>
         </div>
       )}
 

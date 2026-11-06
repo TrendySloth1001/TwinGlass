@@ -106,6 +106,10 @@ export class Adb {
     return s
   }
 
+  async getprop(serial: string, name: string): Promise<string> {
+    return (await this.run(['shell', 'getprop', name], serial)).trim()
+  }
+
   async transports(): Promise<AdbTransport[]> {
     return parseDevicesL(await this.run(['devices', '-l']))
   }

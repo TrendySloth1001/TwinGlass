@@ -34,6 +34,13 @@ export interface AdbStatusInfo {
   mdnsBackend?: string
 }
 
+export interface UnlockStatusInfo {
+  credential: 'NONE' | 'PIN' | 'PASSWORD' | 'PATTERN' | 'UNKNOWN'
+  locked: boolean | null
+  saved: boolean
+  canSave: boolean
+}
+
 export type QrState =
   | { state: 'waiting' }
   | { state: 'pairing'; hostPort: string }
@@ -61,6 +68,11 @@ export interface MobMirrorApi {
   openDeviceWindow(serial: string, kind: 'usb' | 'wifi'): Promise<void>
   /** Device menu items / their shortcuts (⌘B back, ⇧⌘H home…), sent to the focused window. */
   onDeviceAction(cb: (action: DeviceAction) => void): () => void
+  /** Lock type/state of the mirrored phone and whether a secret is saved for it. */
+  unlockStatus(): Promise<UnlockStatusInfo>
+  /** Wakes the phone, shows the bouncer and types the secret (omit `secret` to use the saved one). */
+  unlock(req: { secret?: string; remember?: boolean }): Promise<OpResult>
+  forgetUnlockSecret(): Promise<void>
   /** APKs are installed; other files are copied to /sdcard/Download on the mirrored device. */
   dropFiles(files: File[]): Promise<FileResult[]>
   /** Returns the saved path (~/Pictures/Mob Mirror). */

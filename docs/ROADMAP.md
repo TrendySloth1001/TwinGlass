@@ -50,6 +50,12 @@
 - [x] USB mirroring ✅ verified (first wired session)
 - [x] Opt-in input trace: `localStorage['mob-mirror:debug-input']='1'` → `window.__mobMirrorInputLog`
 - [ ] Needs the user: try pinch (⌥-drag, trackpad), typing, ⌘V, and the menu shortcuts on the phone
+- [x] Unlock from the Mac (⌘L / toolbar lock / "Phone is locked" banner)
+  - Wakes the phone, shows the bouncer and types the PIN/password over the control socket, then verifies.
+  - Detects the lock type (pattern → explains it can't be typed).
+  - Optional "Remember on this Mac" (safeStorage / Keychain, per device; a saved PIN that fails is forgotten).
+  - Never auto-retries. ✅ Status and dialog checked on the device.
+- [ ] Needs the user: lock the phone, press ⌘L, type the PIN, then try once with "Remember"
 - [ ] Optional quality presets (e.g. "Low latency" = smaller max_size on Wi-Fi), driven by jitter measurements
 
 ## M4: Polish and packaging (in progress; ✅ marks items verified)

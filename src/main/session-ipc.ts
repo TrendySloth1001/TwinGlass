@@ -7,6 +7,7 @@ import { clipboard, ipcMain, MessageChannelMain, type WebContents } from 'electr
 import { scanFile } from '@shared/scrcpy/control'
 import type { Adb } from './adb/adb'
 import { ScrcpySession } from './scrcpy/session'
+import { isLocked } from './unlock-ipc'
 import type { FileResult, MainToRenderer, RendererToMain, StartSessionRequest } from '../shared/ipc'
 
 const sessions = new Map<number, ScrcpySession>()
@@ -82,7 +83,26 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
       post({ t: 'device', msg })
     })
     session.on('log', (line) => post({ t: 'log', line }))
+
+    // Lock-screen state for the "Phone is locked" banner (the PIN bouncer itself is black in the
+    // mirror). `dumpsys window policy` is ~3 KB / ~70 ms, polled every 2.5 s, sent only on change.
+    let lastLocked: boolean | null = null
+    let polling = false
+    const lockTimer = setInterval(() => {
+      if (polling) return
+      polling = true
+      void isLocked(adb, session.serial)
+        .then((locked) => {
+          if (locked !== null && locked !== lastLocked) {
+            lastLocked = locked
+            post({ t: 'lock', locked })
+          }
+        })
+        .finally(() => (polling = false))
+    }, 2500)
+
     session.once('closed', (err) => {
+      clearInterval(lockTimer)
       post({ t: 'closed', error: err?.message })
       port1.close()
       if (sessions.get(wc.id) === session) sessions.delete(wc.id)
@@ -135,6 +155,10 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
   })
   ipcMain.handle('clipboard:read', () => clipboard.readText())
   ipcMain.handle('clipboard:write', (_e, text: string) => clipboard.writeText(String(text)))
+}
+
+export function getSession(webContentsId: number): ScrcpySession | undefined {
+  return sessions.get(webContentsId)
 }
 
 export function stopAllSessions(): void {
