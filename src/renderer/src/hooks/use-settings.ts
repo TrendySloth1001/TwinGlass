@@ -57,6 +57,8 @@ export interface Settings {
   showTray: boolean
   /** Keep a searchable clipboard history (memory only; skips password-manager copies). */
   clipboardHistory: boolean
+  /** Phones mirrored before, newest first (home screen "Recent"). */
+  recentDevices: { id: string; model: string; at: number }[]
 }
 
 const DEFAULTS: Settings = {
@@ -88,6 +90,7 @@ const DEFAULTS: Settings = {
   frameColor: 'black',
   showTray: true,
   clipboardHistory: true,
+  recentDevices: [],
 }
 
 export const DEFAULT_SETTINGS = DEFAULTS
@@ -123,6 +126,11 @@ export function sanitizeSettings(raw: unknown): Settings {
       if (v === null || typeof v === 'string') out[k] = v
     } else if (k === 'closedSections') {
       if (Array.isArray(v) && v.every((x) => typeof x === 'string')) out[k] = v
+    } else if (k === 'recentDevices') {
+      if (Array.isArray(v))
+        out[k] = v
+          .filter((x): x is { id: string; model: string; at: number } => !!x && typeof x.id === 'string' && typeof x.model === 'string' && typeof x.at === 'number')
+          .slice(0, 8)
     } else if (typeof v === typeof DEFAULTS[k] && (!ALLOWED[k] || ALLOWED[k]!.includes(v))) {
       out[k] = v
     }

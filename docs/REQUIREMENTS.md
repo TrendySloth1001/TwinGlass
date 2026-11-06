@@ -61,7 +61,17 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - Compact shadcn-styled toasts on one line with an ellipsis.
   - Clicking a toast opens the notification center with that notice expanded.
   - Warnings (such as the adb version mismatch) appear as in-app notifications with an action.
-- **Home screen, editorial layout** (2026-11-06, from the user's reference image).
+- **Home screen: its own design, inspired by an editor's welcome page** (2026-11-06; the user: "take the inspiration only, not exactly the same").
+  - Header: app mark, name, tagline, and a live status pill (connected / waiting for Allow / looking / setup needed).
+  - Main column:
+    - **Your phone** hero card: a mini phone in the chosen finish; facts as chips (maker, Android, battery, links); a big Mirror pill plus USB / Wi-Fi / New window / Add Wi-Fi.
+    - **Quick actions** tiles: ⌘K apps, ⇧⌘V clipboard, Pair over Wi-Fi, Shortcuts.
+  - Side column:
+    - **Recent phones** (status dot, one-click reconnect; `recentDevices` setting).
+    - **Guides** accordion (USB, wireless, unlock, mouse & keyboard).
+    - An auto-connect switch.
+  - Plain background; the editorial serif font, illustration and doodles were removed.
+- (Previous:) **Home screen, editorial layout** (2026-11-06, from the user's reference image).
   - A large serif headline (Fraunces, bundled for offline use) written as a sentence with **live widgets inline**: the phone chip (name and battery; click = mirror), mouse, keyboard, ⌘L.
   - Each state gets its own sentence: phones ready, waiting for "Allow", no phone (USB cable / Wi-Fi pair chip), adb missing.
   - Below it: pill buttons (Mirror, Over USB / Wi-Fi, New window, Connect over Wi-Fi) and quiet text links (Open an app ⌘K, Clipboard history, Pair over Wi-Fi, Settings).

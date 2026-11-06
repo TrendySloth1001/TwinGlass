@@ -128,17 +128,3 @@
     @apply select-text;
   }
 }
-/* ---- Home screen (components/connect-panel.tsx, stage-backdrop.tsx) ---- */
-.font-display {
-  font-family: 'Fraunces Variable', ui-serif, Georgia, serif;
-  font-optical-sizing: auto;
-  font-variation-settings: 'SOFT' 50;
-}
-@keyframes mm-float {
-  0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
-  50% { transform: translateY(-6px) rotate(calc(var(--r, 0deg) + 4deg)); }
-}
-.mm-float { animation: mm-float 7s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) {
-  .mm-float { animation: none; transform: rotate(var(--r, 0deg)); }
-}

@@ -5,7 +5,6 @@ import { ErrorBoundary } from '@/components/error-boundary'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { initTheme } from '@/hooks/use-theme'
-import '@fontsource-variable/fraunces' // display serif for the home screen (bundled: works offline)
 import '@/styles/globals.css'
 
 initTheme()

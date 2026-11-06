@@ -116,7 +116,11 @@ export function App(): ReactNode {
     (t: TransportInfo, deviceId?: string) => {
       // A floating sidebar would cover the mirror that is about to start: tuck it away.
       if (sidebarLayoutRef.current === 'floating') updateSettings({ sidebarOpen: false })
-      if (deviceId) updateSettings({ lastDevice: deviceId })
+      if (deviceId) {
+        const model = devices.list?.devices.find((d) => d.id === deviceId)?.model ?? t.model ?? deviceId
+        const recent = [{ id: deviceId, model, at: Date.now() }, ...settings.recentDevices.filter((r) => r.id !== deviceId)].slice(0, 8)
+        updateSettings({ lastDevice: deviceId, recentDevices: recent })
+      }
       void connect(t, {
         audio: settings.audio,
         showTouches: settings.showTouches,
@@ -128,7 +132,7 @@ export function App(): ReactNode {
         deviceId,
       })
     },
-    [connect, settings, updateSettings],
+    [connect, settings, updateSettings, devices.list],
   )
 
   /** Session settings apply immediately: restart a live mirror with the new values. */
@@ -336,6 +340,12 @@ export function App(): ReactNode {
               onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
               onOpenClipboard={() => setPalette({ open: true, mode: 'clipboard' })}
               onOpenSettings={() => setSettingsOpen(true)}
+              onShowHelp={() => setHelpOpen(true)}
+              recentDevices={settings.recentDevices}
+              autoConnect={settings.autoConnect}
+              onAutoConnectChange={(on) => updateSettings({ autoConnect: on })}
+              frame={settings.frame}
+              frameColor={settings.frameColor}
             />
           }
         />

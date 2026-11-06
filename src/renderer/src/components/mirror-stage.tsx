@@ -4,7 +4,6 @@ import { Kbd } from '@/components/ui/kbd'
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type ReactNode, type RefObject } from 'react'
 import { toast } from 'sonner'
 import { BorderBeam } from '@/components/ui/border-beam'
-import { StageBackdrop } from '@/components/stage-backdrop'
 import type { Phase } from '@/hooks/use-mirror'
 import type { DeviceAction } from '@shared/shortcuts'
 import { FRAME_COLORS, type FrameColor, type FrameSpec } from '@/lib/phone-frames'
@@ -258,9 +257,8 @@ export function MirrorStage({
 
       {phase === 'idle' && (
         <div className="absolute inset-0 overflow-y-auto">
-          <StageBackdrop />
           {/* min-h-full + place-items-center: centred when it fits, scrolls when the window is short. */}
-          <div className="grid min-h-full place-items-center py-8">{idleContent}</div>
+          <div className="flex min-h-full justify-center pt-[7vh] pb-8">{idleContent}</div>
         </div>
       )}
 
