@@ -124,6 +124,9 @@ export interface MobMirrorApi {
     android: string | null
     screen: { width: number; height: number } | null
   } | null>
+  /** Newest screenshots / recordings with Quick Look thumbnails (data URLs). */
+  recentCaptures(limit?: number): Promise<{ path: string; name: string; kind: 'image' | 'video'; at: number; thumb: string | null }[]>
+  openCapture(path: string): Promise<string>
   setTrayVisible(on: boolean): Promise<void>
   /** Launch at login; without an argument just reads it. */
   setLoginItem(on?: boolean): Promise<boolean>

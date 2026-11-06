@@ -78,6 +78,8 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - Plain background; the editorial serif font, illustration and doodles were removed.
   - **Simplified cards** (user: "make the cards more simple"): one muted facts line instead of chips, plain-row quick actions, flat lists, no shadows or tinted icon boxes, plain status text.
   - The phone section has **no card** (user: "remove card, not required"). **Mirror button:** a simple solid button (play icon, "Mirror", link), per the user.
+  - **Recent captures** (newest screenshots and recordings with Quick Look thumbnails; click opens, right-click reveals; both the Twinglass and old Mob Mirror folders).
+  - **Only mirroring-relevant content on the home screen** (user: "don't show irrelevant features"). Phone stats (storage, display, IP), the without-mirroring controls and tips were tried and removed, together with their backend.
 - (Previous:) **Home screen, editorial layout** (2026-11-06, from the user's reference image).
   - A large serif headline (Fraunces, bundled for offline use) written as a sentence with **live widgets inline**: the phone chip (name and battery; click = mirror), mouse, keyboard, ⌘L.
   - Each state gets its own sentence: phones ready, waiting for "Allow", no phone (USB cable / Wi-Fi pair chip), adb missing.

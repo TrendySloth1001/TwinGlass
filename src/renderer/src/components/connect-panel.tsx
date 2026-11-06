@@ -5,6 +5,8 @@ import {
   ChevronDown,
   ClipboardList,
   Copy,
+  Film,
+  Image as ImageIcon,
   Keyboard,
   Loader2,
   LockKeyhole,
@@ -138,6 +140,55 @@ function PhoneHero(props: {
     </div>
   )
 }
+
+/** Newest screenshots and recordings (both capture folders), with Quick Look thumbnails. */
+function RecentCaptures(): ReactNode {
+  const [items, setItems] = useState<Awaited<ReturnType<typeof window.mobMirror.recentCaptures>> | null>(null)
+  useEffect(() => {
+    let alive = true
+    const load = (): void => void window.mobMirror.recentCaptures(6).then((x) => alive && setItems(x), () => alive && setItems([]))
+    load()
+    const t = setInterval(load, 15_000) // picks up new screenshots while the page is open
+    return () => {
+      alive = false
+      clearInterval(t)
+    }
+  }, [])
+  if (items === null) return null
+  if (!items.length) return <p className="text-[13px] text-muted-foreground">Screenshots and recordings you take show up here.</p>
+  return (
+    <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+      {items.map((it) => (
+        <button
+          key={it.path}
+          type="button"
+          title={it.name}
+          onClick={() => void window.mobMirror.openCapture(it.path)}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            void window.mobMirror.reveal(it.path)
+          }}
+          className="group relative aspect-[3/4] overflow-hidden rounded-lg border bg-muted"
+        >
+          {it.thumb ? (
+            <img src={it.thumb} alt="" className="size-full object-cover transition-transform group-hover:scale-105" draggable={false} />
+          ) : (
+            <span className="grid size-full place-items-center text-muted-foreground">{it.kind === 'video' ? <Film className="size-5" /> : <ImageIcon className="size-5" />}</span>
+          )}
+          {it.kind === 'video' && (
+            <span className="absolute right-1.5 bottom-1.5 grid size-5 place-items-center rounded-full bg-black/60 text-white">
+              <Play className="size-2.5 fill-current" />
+            </span>
+          )}
+          <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1.5 pt-4 pb-1 text-left text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+            {ago(it.at)}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 
 /** A quick action: icon, label, shortcut. Plain row, highlighted on hover. */
 function Tile({ icon, title, keys, onClick, disabled }: { icon: ReactNode; title: string; keys?: string; onClick: () => void; disabled?: boolean }): ReactNode {
@@ -324,6 +375,16 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
               <Tile icon={<QrCode />} title="Pair a phone over Wi-Fi" onClick={() => setPairing(true)} />
               <Tile icon={<Keyboard />} title="Shortcuts & gestures" onClick={p.onShowHelp} />
             </div>
+          </section>
+
+          <section>
+            <div className="mb-3 flex items-center justify-between">
+              <SectionTitle>Recent captures</SectionTitle>
+              <button type="button" onClick={() => void window.mobMirror.openMediaFolder('pictures')} className="-mt-3 text-[11px] text-muted-foreground hover:text-foreground">
+                Open folder
+              </button>
+            </div>
+            <RecentCaptures />
           </section>
         </div>
 

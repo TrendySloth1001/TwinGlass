@@ -1,7 +1,7 @@
 // Screenshots and recordings, saved to ~/Pictures/Twinglass (screenshots) and ~/Movies/Twinglass (videos).
-import { closeSync, mkdirSync, openSync, writeSync } from 'node:fs'
+import { closeSync, mkdirSync, openSync, readdirSync, statSync, writeSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { app, ipcMain, shell, type WebContents } from 'electron'
+import { app, ipcMain, nativeImage, shell, type WebContents } from 'electron'
 
 interface Recording {
   fd: number
@@ -76,16 +76,71 @@ function owned(id: unknown, senderId: number): Recording | null {
   return r && r.senderId === senderId ? r : null
 }
 
-export function registerMediaIpc(): void {
-  ipcMain.handle('media:screenshot', (_e, png: Uint8Array, deviceName: string) => {
-    const { fd, path } = openUnique(dir('pictures'), mediaBaseName(String(deviceName)), 'png')
-    try {
-      writeSync(fd, png)
-    } finally {
-      closeSync(fd)
-    }
-    return path
+/** Our capture folders, including the ones from before the rename (older captures stay there). */
+function captureFolders(): { path: string; kind: 'image' | 'video' }[] {
+  return [
+    { path: join(app.getPath('pictures'), 'Twinglass'), kind: 'image' },
+    { path: join(app.getPath('videos'), 'Twinglass'), kind: 'video' },
+    { path: join(app.getPath('pictures'), 'Mob Mirror'), kind: 'image' },
+    { path: join(app.getPath('videos'), 'Mob Mirror'), kind: 'video' },
+  ]
+}
+
+/** Only files inside our capture folders may be opened or revealed from the renderer. */
+function isCapture(target: string): boolean {
+  return captureFolders().some(({ path }) => {
+    const rel = relative(path, target)
+    return rel !== '' && !rel.startsWith('..') && !rel.startsWith('/')
   })
+}
+
+/** Saves a PNG to ~/Pictures/Twinglass with a unique name; returns the path. */
+export function saveScreenshotPng(png: Uint8Array, deviceName: string): string {
+  const { fd, path } = openUnique(dir('pictures'), mediaBaseName(deviceName), 'png')
+  try {
+    writeSync(fd, png)
+  } finally {
+    closeSync(fd)
+  }
+  return path
+}
+
+export function registerMediaIpc(): void {
+  // Home screen "Recent captures": newest screenshots and recordings with Quick Look thumbnails.
+  ipcMain.handle('media:recent', async (_e, limit: unknown) => {
+    const n = typeof limit === 'number' ? Math.min(Math.max(limit, 1), 24) : 6
+    const files: { path: string; name: string; kind: 'image' | 'video'; at: number }[] = []
+    for (const f of captureFolders()) {
+      let names: string[] = []
+      try {
+        names = readdirSync(f.path)
+      } catch {
+        continue
+      }
+      for (const name of names) {
+        if (!/\.(png|jpe?g|webm|mp4|mov)$/i.test(name)) continue
+        const path = join(f.path, name)
+        try {
+          files.push({ path, name, kind: f.kind, at: statSync(path).mtimeMs })
+        } catch {
+          // vanished
+        }
+      }
+    }
+    files.sort((a, b) => b.at - a.at)
+    return Promise.all(
+      files.slice(0, n).map(async (f) => {
+        const thumb = await nativeImage.createThumbnailFromPath(f.path, { width: 360, height: 360 }).catch(() => null)
+        return { ...f, thumb: thumb && !thumb.isEmpty() ? thumb.toDataURL() : null }
+      }),
+    )
+  })
+  ipcMain.handle('media:open', (_e, path: unknown) => {
+    if (typeof path === 'string' && isCapture(resolve(path))) return shell.openPath(resolve(path))
+    return 'not a capture'
+  })
+
+  ipcMain.handle('media:screenshot', (_e, png: Uint8Array, deviceName: string) => saveScreenshotPng(png, String(deviceName)))
 
   ipcMain.handle('media:record:start', (e, deviceName: string, ext: string) => {
     watch(e.sender)
@@ -117,11 +172,7 @@ export function registerMediaIpc(): void {
   ipcMain.handle('media:reveal', (_e, path: unknown) => {
     if (typeof path !== 'string') return
     const target = resolve(path)
-    const inside = (folder: string): boolean => {
-      const rel = relative(join(app.getPath(folder === 'p' ? 'pictures' : 'videos'), 'Twinglass'), target)
-      return rel !== '' && !rel.startsWith('..') && !rel.startsWith('/')
-    }
-    if (inside('p') || inside('v')) shell.showItemInFolder(target)
+    if (isCapture(target)) shell.showItemInFolder(target)
   })
 }
 
