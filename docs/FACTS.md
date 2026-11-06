@@ -241,3 +241,8 @@ adb shell CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobi
 - `session.setDisplayMediaRequestHandler` must be registered after `app.whenReady()`. Before that it silently fails and getDisplayMedia rejects with "Not supported".
 - Without macOS Screen Recording permission, `desktopCapturer.getSources` returns no screens, and the handler callback throws "Video was requested, but no video stream was provided". `getMediaAccessStatus('screen')` reports "denied" even for an app that was never asked.
 - The dev build needs `node_modules/electron/dist/Electron.app` added under Screen Recording, followed by an app restart (a macOS rule).
+
+## Packaging: "can't be opened" on other Macs (verified 2026-11-07)
+- With `identity: null`, electron-builder edits Electron's pre-signed bundle and leaves it with a **broken** signature. `codesign --verify --deep --strict` reports "code has no resources but signature indicates they must be present". On Apple Silicon, macOS refuses to open such an app on other Macs ("damaged / can't be opened").
+- Fix: `identity: '-'` (ad-hoc signature over the whole bundle) and `hardenedRuntime: false` (hardened runtime is only for notarized Developer ID builds). After that `codesign --verify` is valid. Gatekeeper (`spctl`) still rejects it as not notarized, so the first open needs right-click → Open, or Privacy & Security → Open Anyway.
+- Running a packaged app from a VS Code terminal: unset `ELECTRON_RUN_AS_NODE`, or it exits silently.

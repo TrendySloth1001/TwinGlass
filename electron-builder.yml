@@ -17,11 +17,14 @@ mac:
   category: public.app-category.utilities
   target:
     - target: dmg
-      arch: [arm64]
-  # null = skip code signing (local/dev builds). For releases set CSC_LINK / CSC_KEY_PASSWORD
-  # (Developer ID Application certificate) and remove this line.
-  identity: null
-  hardenedRuntime: true
+      arch: [arm64] # Apple Silicon
+  # "-" = ad-hoc signature over the whole bundle. Without it the bundle's signature is broken
+  # (electron-builder modifies Electron's pre-signed files), and on other Macs macOS refuses to open
+  # it ("damaged / can't be opened"). Ad-hoc still shows the unidentified-developer warning: open
+  # with right-click → Open once. For real releases: a Developer ID certificate (CSC_LINK /
+  # CSC_KEY_PASSWORD), hardenedRuntime: true, and notarization (docs/RELEASE.md).
+  identity: '-'
+  hardenedRuntime: false
   minimumSystemVersion: '13.0'
 dmg:
   title: Twinglass
