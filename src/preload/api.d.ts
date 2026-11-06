@@ -66,6 +66,8 @@ export interface MobMirrorApi {
   adbStatus(): Promise<AdbStatusInfo>
   /** kill-server + start-server with this app's adb (fixes a version mismatch). */
   restartAdbServer(): Promise<AdbStatusInfo>
+  /** Toggles portrait ↔ landscape on the mirrored phone (auto-rotate is restored afterwards). */
+  rotateDevice(): Promise<{ rotation: number; autoRotate: boolean } | null>
   /** Current list; also starts live tracking (see onDevicesChanged). */
   listDevices(): Promise<DeviceListInfo>
   onDevicesChanged(cb: (list: DeviceListInfo) => void): () => void

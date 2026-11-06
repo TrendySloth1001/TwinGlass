@@ -217,3 +217,9 @@ adb shell CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobi
 - **FLAG_SECURE windows** (banking apps, DRM) are captured black. This is by design.
 - **Android OS updates have broken scrcpy before** (14, 15 and 16 all needed fixes). Keep the server version current.
 - **Wi-Fi bitrate:** use about 2–4 Mbps with `max_size` 800–1024 (based on older scrcpy guidance), versus 8 Mbps over USB.
+
+
+## Rotation (verified on the A024, Android 17, 2026-11-06)
+- With auto-rotate on, scrcpy's ROTATE_DEVICE (`freezeRotation` followed by `thawRotation`) gets undone at once by the sensor. `mUserRotation` changes but the display stays at 0.
+- What works: `cmd window user-rotation -d 0 lock <0-3>` and `free`.
+- To read the state, look at the `Display: mDisplayId=0` block of `dumpsys window displays` (`mRotation=`, `mUserRotationMode=`). Scrcpy's virtual display is listed first.

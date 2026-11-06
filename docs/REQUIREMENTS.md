@@ -14,6 +14,7 @@ The dates are when each item was asked for (2026-11-06 unless noted).
 - ✅ Precise cursor control: taps, drags, long-press, scroll, keyboard, and clipboard (⌘V/⌘C).
 - ✅ Multi-touch: ⌥-drag pinch/rotate, trackpad pinch.
 - ✅ Shortcuts in the Device menu, shown consistently in tooltips.
+- ✅ **Rotate works with auto-rotate on** (2026-11-06). It goes through `cmd window user-rotation`, since scrcpy's ROTATE_DEVICE gets undone by the sensor. Auto-rotate is given back when you rotate back to portrait or disconnect. The compact window reshapes and remembers its size in each orientation.
 - ✅ Touch indicator. "Show touches" controls the app's own dots and applies instantly.
 
 ## Latency and quality

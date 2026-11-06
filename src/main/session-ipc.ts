@@ -9,6 +9,7 @@ import type { Adb } from './adb/adb'
 import { ScrcpySession } from './scrcpy/session'
 import { isCredentialPrompt, promptOwner } from './adb/lock'
 import { focusedWindow, isLocked, topActivity } from './unlock-ipc'
+import { restoreAutoRotate, toggleRotation } from './adb/rotation'
 import type { FileResult, MainToRenderer, RendererToMain, StartSessionRequest } from '../shared/ipc'
 
 const sessions = new Map<number, ScrcpySession>()
@@ -146,6 +147,8 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
     session.once('closed', (err) => {
       clearInterval(lockTimer)
       stopWatchdog()
+      // Disconnect / window closed: give auto-rotate back. A dropped link keeps it for the reconnect.
+      if (intentional.has(session)) void restoreAutoRotate(adb, session.serial)
       post({ t: 'closed', error: err?.message, unexpected: !intentional.has(session) })
       port1.close()
       if (sessions.get(wc.id) === session) sessions.delete(wc.id)
@@ -163,6 +166,15 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
   })
 
   ipcMain.handle('session:stop', (e) => stop(e.sender.id))
+
+  // Portrait ↔ landscape (scrcpy's ROTATE_DEVICE is undone at once when auto-rotate is on).
+  ipcMain.handle('device:rotate', async (e) => {
+    const adb = getAdb()
+    const session = sessions.get(e.sender.id)
+    if (!adb || !session) throw new Error('Start mirroring a device first.')
+    const s = await toggleRotation(adb, session.serial)
+    return s ? { rotation: s.rotation, autoRotate: s.free } : null
+  })
 
   // Drag & drop onto the mirror: APKs are installed, anything else goes to /sdcard/Download.
   // Paths come from preload (webUtils.getPathForFile on real dropped File objects); still validate.

@@ -11,14 +11,23 @@ export const COMPACT_RAIL = 56
 
 const fullBounds = new Map<number, Rectangle>()
 const mode = new Map<number, 'full' | 'compact'>()
+/** Last compact content height per window and orientation, so rotating back restores the size. */
+const compactHeight = new Map<string, number>()
+const lastAspect = new Map<number, number>()
+const orient = (aspect: number): string => (aspect < 1 ? 'portrait' : 'landscape')
 
 function applyCompact(win: BrowserWindow, aspect: number): void {
-  if (mode.get(win.id) !== 'compact') fullBounds.set(win.id, win.getBounds())
+  const wasCompact = mode.get(win.id) === 'compact'
+  if (!wasCompact) fullBounds.set(win.id, win.getBounds())
   mode.set(win.id, 'compact')
+  const prev = lastAspect.get(win.id)
+  // Remember the size the user had in the orientation we are leaving.
+  if (wasCompact && prev) compactHeight.set(`${win.id}:${orient(prev)}`, win.getContentSize()[1] ?? 800)
+  lastAspect.set(win.id, aspect)
   const work = screen.getDisplayMatching(win.getBounds()).workArea
-  const curH = win.getContentSize()[1] ?? 800
+  const curH = compactHeight.get(`${win.id}:${orient(aspect)}`) ?? win.getContentSize()[1] ?? 800
   // Keep the current height (within the screen); width follows the phone's aspect.
-  let videoH = Math.min(Math.max(curH - COMPACT_TITLE, 480), work.height - COMPACT_TITLE - 24)
+  let videoH = Math.min(Math.max(curH - COMPACT_TITLE, aspect < 1 ? 480 : 240), work.height - COMPACT_TITLE - 24)
   let videoW = Math.round(videoH * aspect)
   const maxW = work.width - COMPACT_RAIL - 24
   if (videoW > maxW) {

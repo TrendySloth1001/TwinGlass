@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import type { AudioMode, MainToRenderer, RendererToMain } from '@shared/ipc'
 import { videoParams, type CodecPreference, type Quality } from '@shared/quality'
 import { AndroidKey } from '@shared/input/keycodes'
-import { expandNotificationPanel, expandSettingsPanel, rotateDevice, setDisplayPower } from '@shared/scrcpy/control'
+import { expandNotificationPanel, expandSettingsPanel, setDisplayPower } from '@shared/scrcpy/control'
 import type { DeviceAction } from '@shared/shortcuts'
 import type { TransportInfo } from '../../../preload/api'
 import { AudioPlayer } from '@/engine/audio-player'
@@ -421,7 +421,9 @@ export function useMirror(
         case 'volumeDown':
           return key(AndroidKey.VOLUME_DOWN)
         case 'rotate':
-          return send(rotateDevice())
+          return void window.mobMirror.rotateDevice().catch((err: unknown) =>
+            notify('error', 'Couldn’t rotate the phone', { description: errMsg(err) }),
+          )
         case 'screenOff':
           return a.toggleScreenOff()
         case 'screenshot':
