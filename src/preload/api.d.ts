@@ -93,7 +93,7 @@ export interface MobMirrorApi {
   /** Toggles portrait ↔ landscape on the mirrored phone (auto-rotate is restored afterwards). */
   rotateDevice(): Promise<{ rotation: number; autoRotate: boolean } | null>
   /** Installed apps with labels (from the phone, cached 5 min; fresh = re-read). */
-  listApps(fresh?: boolean): Promise<PhoneAppInfo[]>
+  listApps(fresh?: boolean, serial?: string): Promise<PhoneAppInfo[]>
   launchApp(pkg: string): Promise<void>
   /** auto: a link opens on the phone, other text goes to its clipboard. copy / paste: clipboard (and paste). */
   sendToPhone(text: string, mode?: 'auto' | 'copy' | 'paste'): Promise<{ kind: 'opened'; url: string } | { kind: 'copied' } | { kind: 'pasted' }>
@@ -150,12 +150,13 @@ export interface MobMirrorApi {
   startQrPairing(): Promise<{ svg: string; name: string }>
   cancelQrPairing(): Promise<void>
   onQrState(cb: (s: QrState) => void): () => void
-  openDeviceWindow(serial: string, kind: 'usb' | 'wifi'): Promise<void>
+  /** opts.second: mirror a new virtual display (a second screen), opening opts.app on it. */
+  openDeviceWindow(serial: string, kind: 'usb' | 'wifi', opts?: { second?: boolean; app?: string }): Promise<void>
   /** Device menu items / their shortcuts (⌘B back, ⇧⌘H home…), sent to the focused window. */
   onDeviceAction(cb: (action: DeviceAction) => void): () => void
   /** View menu commands (toggle sidebar ⌘\, float/dock ⌥⌘\). */
   onUiCommand(
-    cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view' | 'open-settings' | 'open-palette' | 'open-clipboard' | 'send-clipboard') => void,
+    cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view' | 'open-settings' | 'open-palette' | 'open-clipboard' | 'send-clipboard' | 'open-second-screen') => void,
   ): () => void
   /** compact: phone-shaped window locked to `aspect` (video width / height); full: restore. */
   /** extra: chrome around the video besides the title strip and rail (nav bar, phone frame). */

@@ -72,9 +72,13 @@ export function registerPhoneAppsIpc(
     if (!adb || !session) throw new Error('Mirror a phone first.')
     return { adb, session }
   }
-  ipcMain.handle('apps:list', async (e, fresh: unknown) => {
-    const { adb, session } = ctx(e.sender.id)
-    return listApps(adb, session.serial, serverPath(), fresh === true)
+  // The mirrored phone's apps; or, with nothing mirrored (home screen, second screen), a given phone's.
+  ipcMain.handle('apps:list', async (e, fresh: unknown, serialArg: unknown) => {
+    const adb = getAdb()
+    if (!adb) throw new Error('adb not found')
+    const serial = getSession(e.sender.id)?.serial ?? (typeof serialArg === 'string' ? serialArg : null)
+    if (!serial) throw new Error('Connect a phone first.')
+    return listApps(adb, serial, serverPath(), fresh === true)
   })
   ipcMain.handle('apps:launch', (e, pkg: unknown) => {
     const { session } = ctx(e.sender.id)

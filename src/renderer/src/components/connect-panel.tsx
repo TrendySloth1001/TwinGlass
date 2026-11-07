@@ -8,6 +8,7 @@ import {
   Film,
   Image as ImageIcon,
   Keyboard,
+  Layers,
   Loader2,
   LockKeyhole,
   Play,
@@ -47,6 +48,8 @@ interface ConnectPanelProps {
   onOpenClipboard: () => void
   onOpenSettings: () => void
   onShowHelp: () => void
+  /** Pick an app to open on a second screen (a new virtual display) in its own window. */
+  onSecondScreen: () => void
   autoConnect: boolean
   onAutoConnectChange: (on: boolean) => void
   frame: FrameStyle
@@ -80,6 +83,7 @@ function SectionTitle({ children }: { children: ReactNode }): ReactNode {
 
 /** The phone, big: picture, facts, and the ways to mirror it. */
 function PhoneHero(props: {
+  onSecondScreen: () => void
   device: DeviceInfo
   connecting: boolean
   onMirror: ConnectPanelProps['onMirror']
@@ -121,6 +125,9 @@ function PhoneHero(props: {
             ))}
           <Button variant="ghost" onClick={() => void window.mobMirror.openDeviceWindow(best.serial, best.kind)}>
             <AppWindow /> New window
+          </Button>
+          <Button variant="ghost" onClick={props.onSecondScreen} title="Run another app on a separate screen while you keep using the phone">
+            <Layers /> Second screen
           </Button>
           {usb && !hasWifi && (
             <Button
@@ -304,7 +311,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
             <SectionTitle>{devices.length > 1 ? 'Your phones' : 'Your phone'}</SectionTitle>
             <div className="flex flex-col gap-3">
               {devices.map((d) => (
-                <PhoneHero key={d.id} device={d} connecting={p.connecting} onMirror={p.onMirror} frame={p.frame} frameColor={p.frameColor} />
+                <PhoneHero key={d.id} onSecondScreen={p.onSecondScreen} device={d} connecting={p.connecting} onMirror={p.onMirror} frame={p.frame} frameColor={p.frameColor} />
               ))}
               {pending.map((t) => (
                 <div key={t.serial} className="flex items-center gap-3 rounded-2xl border border-dashed bg-card p-5 text-sm">

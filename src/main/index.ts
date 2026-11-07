@@ -35,7 +35,7 @@ function getAdb(): Adb | null {
 }
 
 /** @param autoConnect transport serial to start mirroring as soon as the window loads */
-function createWindow(autoConnect?: { serial: string; kind: string }): BrowserWindow {
+function createWindow(autoConnect?: { serial: string; kind: string; second?: boolean; app?: string }): BrowserWindow {
   const win = new BrowserWindow({
     width: 1180,
     height: 900,
@@ -60,14 +60,18 @@ function createWindow(autoConnect?: { serial: string; kind: string }): BrowserWi
       backgroundThrottling: false,
     },
   })
-  const hash = autoConnect ? `connect=${encodeURIComponent(autoConnect.serial)}&kind=${autoConnect.kind}` : ''
+  const hash = autoConnect
+    ? `connect=${encodeURIComponent(autoConnect.serial)}&kind=${autoConnect.kind}` +
+      (autoConnect.second ? `&screen=second${autoConnect.app ? `&app=${encodeURIComponent(autoConnect.app)}` : ''}` : '')
+    : ''
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(`${process.env.ELECTRON_RENDERER_URL}#${hash}`)
   else void win.loadFile(join(__dirname, '../renderer/index.html'), { hash })
   return win
 }
 
-ipcMain.handle('window:open-device', (_e, serial: string, kind: string) => {
-  createWindow({ serial, kind })
+ipcMain.handle('window:open-device', (_e, serial: string, kind: string, opts?: { second?: boolean; app?: string }) => {
+  const app = typeof opts?.app === 'string' && /^[\w.]+$/.test(opts.app) ? opts.app : undefined
+  createWindow({ serial, kind, second: opts?.second === true, app })
 })
 
 registerDevicesIpc(getAdb)

@@ -130,6 +130,15 @@ The dates are when each item was asked for (2026-11-06 unless noted).
 - ✅ **Settings:** each field is validated on load (bad or old value: default) and synced across windows.
 - ✅ **Error boundary:** a UI crash shows the error with a "Reload window" button instead of a blank window.
 
+## Second screens (2026-11-07, user: "two instances of the same phone")
+- ✅ **Run another app on a separate screen of the same phone while using the phone normally.**
+  - How: scrcpy `new_display=1080x2400/420` (a virtual display), `vd_destroy_content=false` (apps move to the phone on close), `display_ime_policy=local` (keyboard on the second screen). The app is opened with START_APP once the screen is up.
+  - Each second screen is its own Mac window ("A024 · Second screen"); several at once work.
+  - Entry points: **Second screen** on the home screen, ⌘K → "Open a second screen…", the Phone menu (⌥⌘N). The app picker works before mirroring too (apps listed by phone).
+  - **Verified on the A024:** Calculator on display 372 and Clock on display 373, while the physical display 0 kept its app; the user went on using WhatsApp throughout.
+  - Limits: one app can't be on two screens at once; audio and notifications are shared; some apps refuse non-default displays.
+- ✅ **Fixed: windows opened for a phone stuck at "Starting mirror…"** in development. StrictMode's double mount ran the mirror hook's cleanup, which cancelled the connect that had just started. Auto-connect is now scheduled and cancelled in cleanup.
+
 ## Scope decision (2026-11-06)
 - **Removed at the user's request:** "Mac screen on phone" and "phone as second display". That covers the streaming server, the virtual-display and touch-input helpers, the phone viewer page, the companion viewer and its share buttons, the menu and ⌘K actions, and the status pill.
 - **Mob Mirror focuses on mirroring and controlling the phone.** The code is in git history (last at commit 5dcf91d) if it's ever wanted back.

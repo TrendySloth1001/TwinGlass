@@ -34,7 +34,8 @@ import {
 } from '@/components/ui/command'
 import { matchScore } from '@/lib/rank'
 
-export type PaletteMode = 'all' | 'clipboard'
+/** all: everything; clipboard: history only; second: pick an app to open on a second screen. */
+export type PaletteMode = 'all' | 'clipboard' | 'second'
 
 const ACTIONS: { action: DeviceAction; label: string; icon: ReactNode }[] = [
   { action: 'home', label: 'Home', icon: <House /> },
@@ -72,6 +73,12 @@ interface CommandPaletteProps {
   /** A phone is mirrored (apps / sending need it). */
   live: boolean
   onAction: (a: DeviceAction) => void
+  /** Phone to list apps from when nothing is mirrored (second screen from the home screen). */
+  phoneSerial?: string
+  /** Open a second screen (optionally straight into an app) in a new window. */
+  onOpenSecondScreen: (app?: string) => void
+  /** Switch this palette to picking an app for a second screen. */
+  onPickSecondScreen: () => void
 }
 
 /**
@@ -79,7 +86,7 @@ interface CommandPaletteProps {
  * open it on the phone, or any text to put it on the phone's clipboard; pick from the clipboard
  * history; or run a phone action. ⇧⌘V opens it on the clipboard history.
  */
-export function CommandPalette({ open, mode, onOpenChange, live, onAction }: CommandPaletteProps): ReactNode {
+export function CommandPalette({ open, mode, onOpenChange, live, onAction, phoneSerial, onOpenSecondScreen, onPickSecondScreen }: CommandPaletteProps): ReactNode {
   const [query, setQuery] = useState('')
   const [apps, setApps] = useState<PhoneAppInfo[] | null>(null)
   const [appsError, setAppsError] = useState<string | null>(null)
@@ -88,8 +95,8 @@ export function CommandPalette({ open, mode, onOpenChange, live, onAction }: Com
   const loadApps = useCallback((fresh = false) => {
     setAppsError(null)
     if (fresh) setApps(null)
-    window.mobMirror.listApps(fresh).then(setApps, (e: unknown) => setAppsError(e instanceof Error ? e.message : String(e)))
-  }, [])
+    window.mobMirror.listApps(fresh, phoneSerial).then(setApps, (e: unknown) => setAppsError(e instanceof Error ? e.message : String(e)))
+  }, [phoneSerial])
 
   // Reset the search only when the palette opens. (Resetting on a reconnect too would re-target ↵
   // to whatever is first in the unfiltered list while the user is typing.)
@@ -100,9 +107,9 @@ export function CommandPalette({ open, mode, onOpenChange, live, onAction }: Com
   useEffect(() => {
     if (!open) return
     void window.mobMirror.clipboardHistory().then(setClips)
-    if (live && mode === 'all') loadApps()
+    if ((live && mode === 'all') || (mode === 'second' && (live || phoneSerial))) loadApps()
     return window.mobMirror.onClipboardHistoryChanged(() => void window.mobMirror.clipboardHistory().then(setClips))
-  }, [open, live, mode, loadApps])
+  }, [open, live, mode, loadApps, phoneSerial])
 
   const close = (): void => onOpenChange(false)
   const run = (fn: () => Promise<unknown> | void): void => {
@@ -130,7 +137,7 @@ export function CommandPalette({ open, mode, onOpenChange, live, onAction }: Com
   const rows = (list: Row[]): Row[] => list.filter((r) => r.score > 0).sort((a, b) => b.score - a.score)
 
   const appRows: Row[] =
-    mode === 'all' && live && apps
+    ((mode === 'all' && live) || mode === 'second') && apps
       ? rows(
           apps.map((a) => ({
             key: a.pkg,
@@ -141,10 +148,12 @@ export function CommandPalette({ open, mode, onOpenChange, live, onAction }: Com
                 key={a.pkg}
                 value={`app:${a.pkg}`}
                 onSelect={() =>
-                  run(async () => {
-                    await window.mobMirror.launchApp(a.pkg)
-                    toast.success(`Opening ${a.label}`)
-                  })
+                  mode === 'second'
+                    ? run(() => onOpenSecondScreen(a.pkg))
+                    : run(async () => {
+                        await window.mobMirror.launchApp(a.pkg)
+                        toast.success(`Opening ${a.label}`)
+                      })
                 }
               >
                 <AppWindow />
@@ -159,6 +168,16 @@ export function CommandPalette({ open, mode, onOpenChange, live, onAction }: Com
   const actionRows: Row[] =
     mode === 'all' && live
       ? rows([
+          {
+            key: 'second-screen',
+            score: Math.max(matchScore('Open a second screen', q), matchScore('second screen virtual display another app parallel', q)),
+            node: (
+              <CommandItem key="second-screen" value="action:second-screen" onSelect={onPickSecondScreen}>
+                <AppWindow /> Open a second screen…
+                <CommandShortcut>⌥⌘N</CommandShortcut>
+              </CommandItem>
+            ),
+          },
           ...ACTIONS.map((a) => ({
             key: a.action,
             // +1 on a real match: "home" means the Home button rather than an app called Home.
@@ -174,7 +193,7 @@ export function CommandPalette({ open, mode, onOpenChange, live, onAction }: Com
       : []
 
   const clipSource = mode === 'clipboard' ? clips.items : q ? clips.items : clips.items.slice(0, 6)
-  const clipRows: Row[] = clips.enabled
+  const clipRows: Row[] = clips.enabled && mode !== 'second'
     ? rows(
         clipSource.map((it, n) => ({
           key: `clip-${it.id}`,
@@ -193,7 +212,7 @@ export function CommandPalette({ open, mode, onOpenChange, live, onAction }: Com
 
   // Groups ordered by their best match (without a query: apps, clipboard, phone).
   const groups = [
-    { id: 'apps', heading: 'Apps', rows: appRows, base: 3 },
+    { id: 'apps', heading: mode === 'second' ? 'Open on the second screen' : 'Apps', rows: appRows, base: 3 },
     { id: 'clip', heading: mode === 'clipboard' ? `Clipboard history · ${clips.items.length}` : 'Clipboard', rows: clipRows, base: 2 },
     { id: 'phone', heading: 'Phone', rows: actionRows, base: 1 },
   ]
@@ -205,7 +224,7 @@ export function CommandPalette({ open, mode, onOpenChange, live, onAction }: Com
     <CommandDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={mode === 'clipboard' ? 'Clipboard history' : 'Command palette'}
+      title={mode === 'clipboard' ? 'Clipboard history' : mode === 'second' ? 'Second screen' : 'Command palette'}
       description="Search apps, send to the phone, clipboard history"
       className="sm:max-w-lg"
       commandProps={{ shouldFilter: false }}
@@ -213,13 +232,29 @@ export function CommandPalette({ open, mode, onOpenChange, live, onAction }: Com
       <CommandInput
         value={query}
         onValueChange={setQuery}
-        placeholder={mode === 'clipboard' ? 'Search clipboard history…' : live ? 'Open an app, paste a link, search…' : 'Search… (mirror a phone for apps)'}
+        placeholder={
+          mode === 'clipboard'
+            ? 'Search clipboard history…'
+            : mode === 'second'
+              ? 'Which app on the second screen? Your phone screen stays as it is.'
+              : live
+                ? 'Open an app, paste a link, search…'
+                : 'Search… (mirror a phone for apps)'
+        }
       />
       <CommandList className="max-h-[min(420px,60vh)]">
         {nothing && (
           <div className="py-6 text-center text-sm text-muted-foreground">
             {mode === 'clipboard' && !clips.items.length ? 'Nothing copied yet.' : 'No matches.'}
           </div>
+        )}
+
+        {mode === 'second' && !q && (
+          <CommandGroup heading="Second screen">
+            <CommandItem value="second:home" onSelect={() => run(() => onOpenSecondScreen())}>
+              <House /> Home screen (pick an app there)
+            </CommandItem>
+          </CommandGroup>
         )}
 
         {/* A link opens first: ↵ on a pasted URL opens it on the phone. */}
@@ -232,7 +267,7 @@ export function CommandPalette({ open, mode, onOpenChange, live, onAction }: Com
           </CommandGroup>
         )}
 
-        {mode === 'all' && live && !apps && (
+        {((mode === 'all' && live) || mode === 'second') && !apps && (
           <CommandGroup heading="Apps">
             {appsError ? (
               <CommandItem value="apps:retry" onSelect={() => loadApps(true)}>

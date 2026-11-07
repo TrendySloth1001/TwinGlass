@@ -89,6 +89,8 @@ export interface ConnectOptions {
   maxFps?: number
   stayAwake?: boolean
   clipboardSync?: boolean
+  /** Second screen: a new virtual display (phone-shaped), optionally opening this app on it. */
+  secondScreen?: { app?: string }
 }
 
 /** Can this Mac hardware-decode HEVC? (verified true on Apple Silicon / Electron 45). Cached. */
@@ -199,6 +201,8 @@ export function useMirror(
           ...(opts.maxFps ? { maxFps: opts.maxFps } : {}),
           stayAwake: opts.stayAwake ?? true,
           clipboardAutosync: opts.clipboardSync ?? true,
+          // 1080x2400 @ 420 dpi: phone-shaped (same 9:20 as most phones), sharp, light to encode.
+          ...(opts.secondScreen ? { newDisplay: { width: 1080, height: 2400, dpi: 420 }, startApp: opts.secondScreen.app } : {}),
         }
         try {
           await window.mobMirror.startSession({ ...request, videoCodec: wantHevc ? 'h265' : 'h264' })

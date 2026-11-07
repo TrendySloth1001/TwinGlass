@@ -15,6 +15,10 @@ export interface StartSessionRequest {
   stayAwake?: boolean
   /** Sync the phone clipboard to the Mac automatically (scrcpy clipboard_autosync). Default true. */
   clipboardAutosync?: boolean
+  /** Second screen: mirror a new virtual display of this size instead of the phone's screen. */
+  newDisplay?: { width: number; height: number; dpi?: number }
+  /** Package to open on the second screen once it is up. */
+  startApp?: string
 }
 
 export interface FileResult {

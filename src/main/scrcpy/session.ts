@@ -25,6 +25,11 @@ export interface SessionOptions {
   /** false: don't push phone clipboard changes to the Mac (scrcpy default is true). */
   clipboardAutosync?: boolean
   /**
+   * Mirror a NEW virtual display instead of the phone's screen ("second screen"): apps run there
+   * independently of what the user does on the physical screen (scrcpy 3.0+, Android 10+).
+   */
+  newDisplay?: { width: number; height: number; dpi?: number }
+  /**
    * off: no audio. mac: audio_source=output (mutes the phone while mirroring, scrcpy default).
    * both: audio_source=playback + audio_dup (Android 13+, keeps the phone playing; apps may opt out).
    */
@@ -87,6 +92,13 @@ export function buildServerArgs(scid: string, o: SessionOptions): string[] {
   if (o.videoBitRate) args.push(`video_bit_rate=${o.videoBitRate}`)
   if (o.maxFps) args.push(`max_fps=${o.maxFps}`)
   if (o.clipboardAutosync === false) args.push('clipboard_autosync=false')
+  if (o.newDisplay) {
+    const { width, height, dpi } = o.newDisplay
+    args.push(`new_display=${Math.round(width)}x${Math.round(height)}${dpi ? `/${Math.round(dpi)}` : ''}`)
+    // Keep its apps alive (moved to the phone's screen) when the second screen closes, and show the
+    // keyboard on the second screen, not on the physical one.
+    args.push('vd_destroy_content=false', 'display_ime_policy=local')
+  }
   return args
 }
 

@@ -4,7 +4,7 @@
 import { statSync } from 'node:fs'
 import { basename, extname, isAbsolute } from 'node:path'
 import { clipboard, ipcMain, MessageChannelMain, webContents, type WebContents } from 'electron'
-import { scanFile } from '@shared/scrcpy/control'
+import { scanFile, startApp } from '@shared/scrcpy/control'
 import type { Adb } from './adb/adb'
 import { ScrcpySession } from './scrcpy/session'
 import {
@@ -21,6 +21,18 @@ import { notePhoneClipboard } from './clipboard-history'
 import type { FileResult, MainToRenderer, RendererToMain, StartSessionRequest } from '../shared/ipc'
 
 const sessions = new Map<number, ScrcpySession>()
+
+/** Second-screen size from the renderer: sane bounds only (the server rejects odd values). */
+function sanitizeDisplay(d: unknown): { width: number; height: number; dpi?: number } | undefined {
+  const v = d as { width?: unknown; height?: unknown; dpi?: unknown } | undefined
+  if (!v || typeof v.width !== 'number' || typeof v.height !== 'number') return undefined
+  const clamp = (n: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, Math.round(n)))
+  return {
+    width: clamp(v.width, 320, 3840) & ~1,
+    height: clamp(v.height, 320, 3840) & ~1,
+    dpi: typeof v.dpi === 'number' ? clamp(v.dpi, 120, 640) : undefined,
+  }
+}
 /**
  * Bumped on every start/stop/destroy of a window. A start that finishes after its generation
  * was superseded (user pressed Disconnect, picked another device, or closed the window while
@@ -110,6 +122,7 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
       audio: req.audio ?? 'off',
       stayAwake: req.stayAwake ?? true,
       clipboardAutosync: req.clipboardAutosync,
+      newDisplay: sanitizeDisplay(req.newDisplay),
     })
     if (wc.isDestroyed() || generation.get(wc.id) !== gen) {
       session.close()
@@ -176,6 +189,11 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
     })
     port1.start()
     session.begin()
+    // Second screen: open the chosen app on it (the server launches on the mirrored display).
+    if (req.newDisplay && typeof req.startApp === 'string' && /^[\w.]+$/.test(req.startApp)) {
+      const pkg = req.startApp
+      setTimeout(() => session.sendControl(startApp(pkg)), 300)
+    }
 
     wc.postMessage('session:port', { deviceName: session.deviceName }, [port2])
     return { deviceName: session.deviceName }

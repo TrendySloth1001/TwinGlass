@@ -33,6 +33,14 @@ function autoConnectTarget(): TransportInfo | null {
   return { serial, kind, state: 'device' }
 }
 
+/** Second-screen windows carry #…&screen=second&app=<pkg> (a new virtual display, not the phone's screen). */
+const SECOND_SCREEN: { app?: string } | null = (() => {
+  const h = new URLSearchParams(location.hash.slice(1))
+  if (h.get('screen') !== 'second') return null
+  const app = h.get('app')
+  return app && /^[\w.]+$/.test(app) ? { app } : {}
+})()
+
 export function App(): ReactNode {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
@@ -129,6 +137,7 @@ export function App(): ReactNode {
         maxFps: settings.maxFps,
         stayAwake: settings.stayAwake,
         clipboardSync: settings.clipboardSync,
+        secondScreen: SECOND_SCREEN ?? undefined,
         deviceId,
       })
     },
@@ -157,13 +166,19 @@ export function App(): ReactNode {
     if (!live) setUnlockOpen(false)
   }, [live])
 
+  // Windows opened for a phone ("new window", second screen) connect once on load. Scheduled and
+  // cancelled in cleanup (StrictMode-safe): React's dev double-mount runs the mirror hook's unmount
+  // cleanup, which cancels an in-flight connect; connecting directly here orphaned it ("Starting
+  // mirror…" forever) and the once-guard then blocked the retry.
   const autoConnected = useRef(false)
   useEffect(() => {
     const target = autoConnectTarget()
-    if (target && !autoConnected.current) {
+    if (!target || autoConnected.current) return
+    const t = setTimeout(() => {
       autoConnected.current = true
       onMirror(target)
-    }
+    }, 0)
+    return () => clearTimeout(t)
   }, [onMirror])
 
   // Auto-connect: when the phone used last time (or, the first time, the only ready phone) appears,
@@ -196,6 +211,7 @@ export function App(): ReactNode {
       window.mobMirror.onUiCommand((cmd) => {
         const s = settingsRef.current
         if (cmd === 'open-settings') setSettingsOpen(true)
+        else if (cmd === 'open-second-screen') setPalette({ open: true, mode: 'second' })
         else if (cmd === 'open-palette') setPalette({ open: true, mode: 'all' })
         else if (cmd === 'open-clipboard') setPalette({ open: true, mode: 'clipboard' })
         else if (cmd === 'send-clipboard') {
@@ -249,6 +265,9 @@ export function App(): ReactNode {
   // view (devices, settings, toolbar) is one click away and is used when nothing is mirrored.
   const compact = settings.viewMode === 'compact' && (mirror.state.phase === 'live' || mirror.state.phase === 'reconnecting')
   const framed = compact && settings.frame !== 'none'
+  // Phone a second screen opens on: the mirrored one, else the home screen's first phone.
+  const secondTarget: TransportInfo | undefined =
+    mirror.state.transport ?? (devices.list?.devices.find((d) => d.id === settings.lastDevice) ?? devices.list?.devices[0])?.transports[0]
   const frameButtons = frameSpec(settings.frame)?.buttons ?? 0
   const vw = mirror.state.stats?.width ?? 0
   const vh = mirror.state.stats?.height ?? 0
@@ -292,7 +311,7 @@ export function App(): ReactNode {
       <main className={cn('flex min-w-0 flex-1 flex-col', compact && settings.frame === 'none' && 'overflow-hidden rounded-xl bg-stage')}>
         {compact ? (
           <CompactTitleBar
-            name={mirror.state.deviceName}
+            name={SECOND_SCREEN ? `${mirror.state.deviceName} · Second screen` : mirror.state.deviceName}
             transport={mirror.state.transport?.kind ?? null}
             floating={settings.frame !== 'none'}
             inset={frameSpec(settings.frame)?.buttons ?? 0}
@@ -341,6 +360,7 @@ export function App(): ReactNode {
               onOpenClipboard={() => setPalette({ open: true, mode: 'clipboard' })}
               onOpenSettings={() => setSettingsOpen(true)}
               onShowHelp={() => setHelpOpen(true)}
+              onSecondScreen={() => setPalette({ open: true, mode: 'second' })}
               recentDevices={settings.recentDevices}
               autoConnect={settings.autoConnect}
               onAutoConnectChange={(on) => updateSettings({ autoConnect: on })}
@@ -394,6 +414,12 @@ export function App(): ReactNode {
         onOpenChange={(open) => setPalette((p) => ({ ...p, open }))}
         live={live}
         onAction={dispatch}
+        phoneSerial={secondTarget?.serial}
+        onPickSecondScreen={() => setPalette({ open: true, mode: 'second' })}
+        onOpenSecondScreen={(app) => {
+          if (!secondTarget) return toast.error('Connect a phone first.')
+          void window.mobMirror.openDeviceWindow(secondTarget.serial, secondTarget.kind, { second: true, app })
+        }}
       />
       <SettingsDialog
         open={settingsOpen}
