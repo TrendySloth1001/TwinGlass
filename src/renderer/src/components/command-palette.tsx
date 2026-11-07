@@ -252,7 +252,7 @@ export function CommandPalette({ open, mode, onOpenChange, live, onAction, phone
         {mode === 'second' && !q && (
           <CommandGroup heading="Second screen">
             <CommandItem value="second:home" onSelect={() => run(() => onOpenSecondScreen())}>
-              <House /> Home screen (pick an app there)
+              <House /> Whole phone (home screen with all apps)
             </CommandItem>
           </CommandGroup>
         )}

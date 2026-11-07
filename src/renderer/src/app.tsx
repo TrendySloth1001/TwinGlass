@@ -5,6 +5,7 @@ import type { TransportInfo } from '../../preload/api'
 import { ControlsHelp } from '@/components/controls-help'
 import { CompactTitleBar } from '@/components/compact-title-bar'
 import { ConnectPanel } from '@/components/connect-panel'
+import { AppGrid } from '@/components/app-grid'
 import { ControlRail } from '@/components/control-rail'
 import { CommandPalette, type PaletteMode } from '@/components/command-palette'
 import { MirrorStage, type PhoneRect } from '@/components/mirror-stage'
@@ -51,6 +52,8 @@ export function App(): ReactNode {
   const [settings, updateSettings] = useSettings()
   const [helpOpen, setHelpOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  /** Second screen's app grid (its home screen). */
+  const [gridOpen, setGridOpen] = useState(false)
   const [palette, setPalette] = useState<{ open: boolean; mode: PaletteMode }>({ open: false, mode: 'all' })
   /** Framed phone body (viewport px): the compact strip and nav dock attach to it. */
   const [phoneRect, setPhoneRect] = useState<PhoneRect | null>(null)
@@ -115,7 +118,12 @@ export function App(): ReactNode {
         }
       } else if (action === 'unlock') {
         if (live) void quickUnlock()
-      } else runAction(action)
+      } else {
+        runAction(action)
+        // Second screen: Home also brings up Twinglass' app grid (its home screen; the phone's own
+        // secondary-display launcher is often just an empty wallpaper).
+        if (action === 'home' && SECOND_SCREEN && live) setGridOpen(true)
+      }
     },
     [live, quickUnlock, runAction],
   )
@@ -230,6 +238,15 @@ export function App(): ReactNode {
     [updateSettings],
   )
   useEffect(() => applyTheme(settings.theme), [settings.theme])
+  // A whole-phone second screen (no specific app) opens on its home screen: the app grid.
+  const gridShownOnce = useRef(false)
+  useEffect(() => {
+    if (SECOND_SCREEN && !SECOND_SCREEN.app && live && !gridShownOnce.current) {
+      gridShownOnce.current = true
+      setGridOpen(true)
+    }
+    if (!live) setGridOpen(false)
+  }, [live])
   useEffect(() => void window.mobMirror.setTrayVisible(settings.showTray).catch(() => {}), [settings.showTray])
   useEffect(() => void window.mobMirror.setClipboardHistoryEnabled(settings.clipboardHistory).catch(() => {}), [settings.clipboardHistory])
   // The menu bar icon asked this window to mirror a phone.
@@ -330,7 +347,8 @@ export function App(): ReactNode {
         />
         )}
         {/* Same tree position in both views: the decoder is bound to this canvas. */}
-        <div className="flex min-h-0 flex-1">
+        <div className="relative flex min-h-0 flex-1">
+          {gridOpen && live && <AppGrid onClose={() => setGridOpen(false)} phoneName={mirror.state.deviceName || 'the phone'} />}
         <MirrorStage
           canvasRef={canvasRef}
           overlayRef={overlayRef}
@@ -360,7 +378,10 @@ export function App(): ReactNode {
               onOpenClipboard={() => setPalette({ open: true, mode: 'clipboard' })}
               onOpenSettings={() => setSettingsOpen(true)}
               onShowHelp={() => setHelpOpen(true)}
-              onSecondScreen={() => setPalette({ open: true, mode: 'second' })}
+              onSecondScreen={() => {
+                // A whole phone, directly: its own home screen (app grid) with every app.
+                if (secondTarget) void window.mobMirror.openDeviceWindow(secondTarget.serial, secondTarget.kind, { second: true })
+              }}
               recentDevices={settings.recentDevices}
               autoConnect={settings.autoConnect}
               onAutoConnectChange={(on) => updateSettings({ autoConnect: on })}
@@ -399,6 +420,7 @@ export function App(): ReactNode {
           onShowHelp={() => setHelpOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
+          onOpenApps={SECOND_SCREEN ? () => setGridOpen(true) : undefined}
           onFullView={() => updateSettings({ viewMode: 'full' })}
         />
       )}

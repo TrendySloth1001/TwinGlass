@@ -6,6 +6,7 @@ import {
   Ellipsis,
   House,
   Keyboard,
+  LayoutGrid,
   KeyRound,
   LockKeyhole,
   LockKeyholeOpen,
@@ -88,6 +89,8 @@ interface ControlRailProps {
   onOpenSettings: () => void
   /** ⌘K command palette (apps, send to phone, clipboard history). */
   onOpenPalette: () => void
+  /** Second screens only: show the app grid (that screen's home screen). */
+  onOpenApps?: () => void
   /** Extra classes / style (e.g. margins that align the strip with a framed phone). */
   className?: string
   style?: CSSProperties
@@ -97,7 +100,7 @@ interface ControlRailProps {
  * Vertical controls on the right of the compact mirror window. Primary actions are always
  * visible; the rest sit in a menu. When the window is short, the middle section scrolls.
  */
-export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSettings, onOpenPalette, className, style }: ControlRailProps): ReactNode {
+export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSettings, onOpenPalette, onOpenApps, className, style }: ControlRailProps): ReactNode {
   const { state } = mirror
   const live = state.phase === 'live'
   const recording = state.recordingSince !== null
@@ -135,6 +138,11 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSe
         <RailButton label="Recent apps" shortcut={sc('recents')} onClick={run('recents')}>
           <SquareStack />
         </RailButton>
+        {onOpenApps && (
+          <RailButton label="All apps on this screen" onClick={onOpenApps}>
+            <LayoutGrid />
+          </RailButton>
+        )}
         <Sep />
         <RailButton label="Volume up" shortcut={sc('volumeUp')} onClick={run('volumeUp')}>
           <Volume2 />

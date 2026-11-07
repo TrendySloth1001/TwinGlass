@@ -137,6 +137,11 @@ The dates are when each item was asked for (2026-11-06 unless noted).
   - Entry points: **Second screen** on the home screen, ⌘K → "Open a second screen…", the Phone menu (⌥⌘N). The app picker works before mirroring too (apps listed by phone).
   - **Verified on the A024:** Calculator on display 372 and Clock on display 373, while the physical display 0 kept its app; the user went on using WhatsApp throughout.
   - Limits: one app can't be on two screens at once; audio and notifications are shared; some apps refuse non-default displays.
+  - **Whole phone on the second screen** (user: "a whole phone, directly; same account but second").
+    - Nothing OS's secondary-display launcher is only a wallpaper (no apps; a swipe up does nothing; verified), so Twinglass shows its own **app grid** as that screen's home screen: searchable, all apps, ↵ opens the top match.
+    - The grid opens when a whole-phone second screen starts; **Home** on that screen brings it back; an **Apps** button sits on the strip.
+    - The home page's **Second screen** opens a whole phone directly; ⌘K → Open a second screen still opens one chosen app.
+    - Type-checked; awaiting the user's own try (they were using second screens themselves, e.g. com.sparky.app).
 - ✅ **Fixed: windows opened for a phone stuck at "Starting mirror…"** in development. StrictMode's double mount ran the mirror hook's cleanup, which cancelled the connect that had just started. Auto-connect is now scheduled and cancelled in cleanup.
 
 ## Scope decision (2026-11-06)

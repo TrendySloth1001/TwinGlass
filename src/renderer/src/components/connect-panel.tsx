@@ -126,7 +126,7 @@ function PhoneHero(props: {
           <Button variant="ghost" onClick={() => void window.mobMirror.openDeviceWindow(best.serial, best.kind)}>
             <AppWindow /> New window
           </Button>
-          <Button variant="ghost" onClick={props.onSecondScreen} title="Run another app on a separate screen while you keep using the phone">
+          <Button variant="ghost" onClick={props.onSecondScreen} title="A second, independent screen of this phone with all its apps, while you keep using the phone">
             <Layers /> Second screen
           </Button>
           {usb && !hasWifi && (
