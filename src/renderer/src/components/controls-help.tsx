@@ -3,6 +3,7 @@ import { SHORTCUTS, acceleratorLabel } from '@shared/shortcuts'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Kbd } from '@/components/ui/kbd'
 import { Separator } from '@/components/ui/separator'
+import { SectionHeader } from '@/components/section-header'
 
 const GESTURES: [string, string][] = [
   ['Click', 'Tap'],
@@ -38,14 +39,14 @@ export function ControlsHelp({ open, onOpenChange }: { open: boolean; onOpenChan
         </DialogHeader>
         <div className="grid gap-x-8 sm:grid-cols-2">
           <section>
-            <h3 className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">Mouse & trackpad</h3>
+            <SectionHeader className="mb-1">Mouse & trackpad</SectionHeader>
             {GESTURES.map(([keys, action]) => (
               <Row key={keys} keys={keys} action={action} />
             ))}
           </section>
           <Separator className="my-3 sm:hidden" />
           <section>
-            <h3 className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">Shortcuts</h3>
+            <SectionHeader className="mb-1">Shortcuts</SectionHeader>
             {SHORTCUTS.map((s) => (
               <Row key={s.action} keys={acceleratorLabel(s.accelerator)} action={s.label} />
             ))}

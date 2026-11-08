@@ -23,6 +23,8 @@ interface MirrorStageProps {
   /** Open the unlock dialog to type a PIN by hand. */
   onTypePin: () => void
   reconnect: { attempt: number; reason: string } | null
+  /** Settings → Advanced: phone folder for dropped files. */
+  dropFolder?: 'Download' | 'Documents' | 'Pictures' | 'Movies'
   /** Shown over the stage while nothing is mirrored (the connect screen). */
   idleContent: ReactNode
   /** Phone frame around the mirror (null = none). Only drawn while a video is showing. */
@@ -69,12 +71,12 @@ function FrameButton({
   )
 }
 
-async function dropFiles(fileList: FileList): Promise<void> {
+async function dropFiles(fileList: FileList, folder?: 'Download' | 'Documents' | 'Pictures' | 'Movies'): Promise<void> {
   const files = [...fileList]
   if (!files.length) return
   const apk = files.some((f) => f.name.toLowerCase().endsWith('.apk'))
   const id = toast.loading(apk ? 'Installing…' : `Copying ${files.length} file(s)…`)
-  const results = await window.mobMirror.dropFiles(files)
+  const results = await window.mobMirror.dropFiles(files, folder)
   const failed = results.filter((r) => !r.ok)
   const lines = results.map((r) => `${r.ok ? '✓' : '✗'} ${r.name}: ${r.message}`).join('\n')
   if (failed.length) toast.error(`${failed.length} of ${results.length} failed`, { id, description: lines })
@@ -91,6 +93,7 @@ export function MirrorStage({
   onUnlock,
   onTypePin,
   reconnect,
+  dropFolder,
   idleContent,
   frame: frameProp,
   frameColor,
@@ -161,7 +164,7 @@ export function MirrorStage({
   const onDrop = (e: DragEvent): void => {
     e.preventDefault()
     setDragging(false)
-    if (live && e.dataTransfer.files.length) void dropFiles(e.dataTransfer.files)
+    if (live && e.dataTransfer.files.length) void dropFiles(e.dataTransfer.files, dropFolder)
   }
 
   return (

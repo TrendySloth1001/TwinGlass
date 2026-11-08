@@ -3,60 +3,74 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* shadcn/ui neutral theme tokens (OKLCH). Dark mode follows the macOS appearance via .dark on <html>. */
+/*
+ * Twinglass design tokens. Visual language shared with Sparky (agent-worker/frontend: core/constants
+ * app_colors.dart, app_sizes.dart): monochrome surfaces (true black on dark, warm off-white on
+ * light), one red accent (#D71921) kept for "on / active / live" (switches, recording, the agent,
+ * unread), Space Grotesk for text, Space Mono caps for small labels, Doto (dot matrix) for figures,
+ * a 4 pt grid, radii 12 / 20 / pill (28 for dialogs), hairline borders and a dot-grid backdrop.
+ * shadcn/ui components read these through the @theme mapping below.
+ */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(0.985 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --success: oklch(0.6 0.15 150);
-  --warning: oklch(0.7 0.16 65);
-  --brand: oklch(0.62 0.19 255);
-  --stage: oklch(0.94 0 0);
-  --sidebar: oklch(0.97 0 0);
-  --sidebar-border: oklch(0.9 0 0);
+  --radius: 0.75rem;
+  --background: #f4f4f2;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #0a0a0a;
+  --primary-foreground: #ffffff;
+  --secondary: #ebebe8;
+  --secondary-foreground: #0a0a0a;
+  --muted: #ebebe8;
+  --muted-foreground: #5e5e5a;
+  --faint: #8e8e89;
+  --accent: #ebebe8;
+  --accent-foreground: #0a0a0a;
+  --destructive: #d71921;
+  --border: #d6d6d2;
+  --border-strong: #a8a8a3;
+  --input: #d6d6d2;
+  --ring: #a8a8a3;
+  --success: #1f8a4c;
+  --warning: #b86e00;
+  --brand: #d71921;
+  --stage: #ebebe8;
+  --sidebar: #ffffff;
+  --sidebar-border: #d6d6d2;
+  --dot-grid: #dcdcd7;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --success: oklch(0.72 0.15 150);
-  --warning: oklch(0.8 0.15 75);
-  --brand: oklch(0.7 0.16 255);
-  --stage: oklch(0.1 0 0);
-  --sidebar: oklch(0.18 0 0);
-  --sidebar-border: oklch(1 0 0 / 9%);
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #0a0a0a;
+  --card-foreground: #ffffff;
+  --popover: #141414;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #000000;
+  --secondary: #141414;
+  --secondary-foreground: #ffffff;
+  --muted: #141414;
+  --muted-foreground: #999999;
+  --faint: #5c5c5c;
+  --accent: #1f1f1f;
+  --accent-foreground: #ffffff;
+  /* Red text on black needs a lift to stay readable; fills keep the true red (--brand). */
+  --destructive: #ff4d55;
+  --border: #2a2a2a;
+  --border-strong: #3d3d3d;
+  --input: #2a2a2a;
+  --ring: #3d3d3d;
+  --success: #4cc38a;
+  --warning: #f0a33a;
+  --brand: #d71921;
+  --stage: #0a0a0a;
+  --sidebar: #0a0a0a;
+  --sidebar-border: #1f1f1f;
+  --dot-grid: #1c1c1c;
 }
 
 @theme inline {
@@ -64,6 +78,8 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -80,6 +96,9 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-faint: var(--faint);
+  --color-dot-grid: var(--dot-grid);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-success: var(--success);
@@ -88,7 +107,12 @@
   --color-stage: var(--stage);
   --color-sidebar: var(--sidebar);
   --color-sidebar-border: var(--sidebar-border);
-  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  --font-sans: 'Space Grotesk Variable', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  /* Dot-matrix face for figures (battery %, timers, fps): the Nothing touch, used sparingly. */
+  --font-dot: 'Doto Variable', 'Space Mono', monospace;
+  /* Springy entrances (Sparky's "snappy" spring, damping ~0.86, as a CSS curve). */
+  --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
   --animate-border-beam: border-beam 6s linear infinite;
   @keyframes border-beam {
     from {
@@ -126,5 +150,33 @@
   input,
   textarea {
     @apply select-text;
+  }
+  /* Lighter icon stroke (Sparky draws Hugeicons at 1.3; lucide's default 2 reads heavy). */
+  svg.lucide {
+    stroke-width: 1.6;
+  }
+}
+
+@layer utilities {
+  /* Small metadata labels: Space Mono caps, letter-spaced (Sparky AppTextStyles.caption). */
+  .label-mono {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    line-height: 1.3;
+  }
+  /* Figures in the dot-matrix face. */
+  .figure-dot {
+    font-family: var(--font-dot);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  /* Nothing-style dot grid (18 px pitch, 1 px dots), for page backgrounds. */
+  .dot-grid {
+    background-image: radial-gradient(circle at center, var(--dot-grid) 1px, transparent 1.2px);
+    background-size: 18px 18px;
+    background-position: 9px 9px;
   }
 }

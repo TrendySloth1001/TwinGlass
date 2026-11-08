@@ -1,25 +1,7 @@
-import {
-  AppWindow,
-  Cable,
-  Check,
-  ChevronDown,
-  ClipboardList,
-  Copy,
-  Film,
-  Image as ImageIcon,
-  Keyboard,
-  Layers,
-  Loader2,
-  LockKeyhole,
-  Play,
-  QrCode,
-  RefreshCw,
-  Search,
-  ShieldAlert,
-  Usb,
-  Wifi,
-} from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { AppWindow, Cable, Check, ChevronDown, ClipboardList, Copy, Film, Image as ImageIcon, Info, Keyboard, Layers, Loader2, LockKeyhole, Play, Plus, QrCode, RefreshCw, Search, ShieldAlert, Usb, Wifi } from 'lucide-react'
+import { showPhoneDetails } from '@/lib/phone-details'
+import { useRef, useEffect, useState, type ReactNode } from 'react'
+import { useVisibleInterval } from '@/hooks/use-visible-interval'
 import { toast } from 'sonner'
 import type { AdbStatusInfo, DeviceInfo, DeviceListInfo, TransportInfo } from '../../../preload/api'
 import { AddDeviceDialog } from '@/components/add-device-dialog'
@@ -31,6 +13,9 @@ import { Switch } from '@/components/ui/switch'
 import type { FrameColor, FrameStyle } from '@/lib/phone-frames'
 import { cn } from '@/lib/utils'
 import appIcon from '@/assets/twinglass-icon.png'
+import { SectionHeader } from '@/components/section-header'
+import { AddPhoneSheet } from '@/components/add-phone-sheet'
+import { DirectPhones, useDirectPhones } from '@/components/direct-phones'
 
 type Details = Awaited<ReturnType<typeof window.mobMirror.deviceDetails>>
 
@@ -61,24 +46,21 @@ const linkName = (t: TransportInfo): string => (t.kind === 'usb' ? 'USB' : 'Wi-F
 
 function useDetails(serial: string | undefined): Details {
   const [d, setD] = useState<Details>(null)
-  useEffect(() => {
+  const alive = useRef(serial)
+  alive.current = serial
+  const load = (): void => {
     if (!serial) return
-    let alive = true
-    const load = (): void => void window.mobMirror.deviceDetails(serial).then((x) => alive && setD(x), () => {})
-    load()
-    const t = setInterval(load, 30_000) // battery stays current while the page is shown
-    return () => {
-      alive = false
-      clearInterval(t)
-    }
-  }, [serial])
+    void window.mobMirror.deviceDetails(serial).then((x) => alive.current === serial && setD(x), () => {})
+  }
+  useEffect(load, [serial])
+  useVisibleInterval(load, 30_000, !!serial) // battery stays current while the page is seen
   return d
 }
 
 
 
 function SectionTitle({ children }: { children: ReactNode }): ReactNode {
-  return <h2 className="mb-3 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{children}</h2>
+  return <SectionHeader>{children}</SectionHeader>
 }
 
 /** The phone, big: picture, facts, and the ways to mirror it. */
@@ -126,6 +108,9 @@ function PhoneHero(props: {
           <Button variant="ghost" onClick={() => void window.mobMirror.openDeviceWindow(best.serial, best.kind)}>
             <AppWindow /> New window
           </Button>
+          <Button variant="ghost" onClick={() => showPhoneDetails(best.serial, device.model)}>
+            <Info /> Details
+          </Button>
           <Button variant="ghost" onClick={props.onSecondScreen} title="A second, independent screen of this phone with all its apps, while you keep using the phone">
             <Layers /> Second screen
           </Button>
@@ -151,16 +136,9 @@ function PhoneHero(props: {
 /** Newest screenshots and recordings (both capture folders), with Quick Look thumbnails. */
 function RecentCaptures(): ReactNode {
   const [items, setItems] = useState<Awaited<ReturnType<typeof window.mobMirror.recentCaptures>> | null>(null)
-  useEffect(() => {
-    let alive = true
-    const load = (): void => void window.mobMirror.recentCaptures(6).then((x) => alive && setItems(x), () => alive && setItems([]))
-    load()
-    const t = setInterval(load, 15_000) // picks up new screenshots while the page is open
-    return () => {
-      alive = false
-      clearInterval(t)
-    }
-  }, [])
+  const load = (): void => void window.mobMirror.recentCaptures(6).then(setItems, () => setItems([]))
+  useEffect(load, [])
+  useVisibleInterval(load, 15_000) // picks up new screenshots while the page is seen
   if (items === null) return null
   if (!items.length) return <p className="text-[13px] text-muted-foreground">Screenshots and recordings you take show up here.</p>
   return (
@@ -272,6 +250,8 @@ function ago(at: number): string {
  */
 export function ConnectPanel(p: ConnectPanelProps): ReactNode {
   const [pairing, setPairing] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const directPhones = useDirectPhones()
   const [copied, setCopied] = useState(false)
   const [open, setOpen] = useState<GuideId | null>(null)
   const devices = [...(p.list?.devices ?? [])].sort((a, z) => Number(z.id === p.lastDevice) - Number(a.id === p.lastDevice))
@@ -298,18 +278,24 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
             <div className="text-[13px] text-muted-foreground">Your Android phone, right on your Mac.</div>
           </div>
         </div>
-        <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-          <span className={cn('size-2 rounded-full', status.dot)} />
-          {status.text}
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+            <span className={cn('size-2 rounded-full', status.dot)} />
+            {status.text}
+          </span>
+          <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
+            <Plus /> Add phone
+          </Button>
+        </div>
       </header>
 
       <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
         {/* ---- main column ---- */}
         <div className="flex min-w-0 flex-col gap-8">
           <section>
-            <SectionTitle>{devices.length > 1 ? 'Your phones' : 'Your phone'}</SectionTitle>
+            <SectionTitle>{devices.length + directPhones.length > 1 ? 'Your phones' : 'Your phone'}</SectionTitle>
             <div className="flex flex-col gap-3">
+              <DirectPhones phones={directPhones} onMirror={p.onMirror} connecting={p.connecting} />
               {devices.map((d) => (
                 <PhoneHero key={d.id} onSecondScreen={p.onSecondScreen} device={d} connecting={p.connecting} onMirror={p.onMirror} frame={p.frame} frameColor={p.frameColor} />
               ))}
@@ -350,22 +336,22 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
                   </Button>
                 </div>
               )}
-              {!devices.length && !pending.length && !adbMissing && (
+              {!devices.length && !pending.length && !directPhones.length && (
                 <div className="flex items-center gap-5 rounded-xl border border-dashed p-5">
                   <div className="shrink-0 opacity-60 [--mp-h:96px] [--mp-w:46px]">
                     <MiniPhone style={p.frame === 'none' ? 'modern' : p.frame} color={p.frameColor} />
                   </div>
                   <div className="flex-1">
-                    <div className="text-lg font-semibold">Connect a phone</div>
+                    <div className="text-lg font-semibold">Add your phone</div>
                     <div className="mt-1 text-[13px] text-muted-foreground">
-                      Plug it in with a USB cable (fastest), or pair it over Wi-Fi. It shows up here by itself.
+                      Over Wi-Fi with the Twinglass app: no cable, no developer options. Or use Developer mode for second screens, agents and the lowest latency.
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <Button onClick={() => setOpen('start')}>
-                        <Cable /> How to connect
+                      <Button onClick={() => setAdding(true)}>
+                        <Wifi /> Add phone
                       </Button>
-                      <Button variant="ghost" onClick={() => setPairing(true)}>
-                        <QrCode /> Pair over Wi-Fi
+                      <Button variant="ghost" onClick={() => setOpen('start')}>
+                        <Cable /> USB / Developer mode
                       </Button>
                     </div>
                   </div>
@@ -478,6 +464,14 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
 
       {p.error && !adbMissing && <p className="mt-6 text-xs text-destructive">{p.error}</p>}
       <AddDeviceDialog open={pairing} onOpenChange={setPairing} />
+      <AddPhoneSheet
+        open={adding}
+        onOpenChange={setAdding}
+        onDeveloper={() => {
+          setAdding(false)
+          setPairing(true)
+        }}
+      />
     </div>
   )
 }

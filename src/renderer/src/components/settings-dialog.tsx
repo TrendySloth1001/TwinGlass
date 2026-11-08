@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import type { AdbStatusInfo, UnlockStatusInfo, UpdateInfo } from '../../../preload/api'
 import type { AudioMode } from '@shared/ipc'
 import { QUALITY_LABELS, type CodecPreference, type Quality } from '@shared/quality'
+import { AgentOptions } from '@/components/agent-options'
 import { AgentAccess } from '@/components/agent-access'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -28,6 +29,7 @@ import type { PopupPref } from '@/lib/notify'
 import { cn } from '@/lib/utils'
 import { FRAME_COLORS, FRAME_LABELS, type FrameColor, type FrameStyle } from '@/lib/phone-frames'
 import { MiniPhone } from '@/components/mini-phone'
+import { SectionHeader } from '@/components/section-header'
 
 
 type Page = 'general' | 'window' | 'mirroring' | 'input' | 'unlock' | 'companion' | 'agents' | 'advanced'
@@ -59,7 +61,7 @@ function Row({ label, hint, children }: { label: string; hint?: ReactNode; child
 function Group({ title, children }: { title?: string; children: ReactNode }): ReactNode {
   return (
     <section className="mb-5">
-      {title && <h3 className="mb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{title}</h3>}
+      {title && <SectionHeader className="mb-2">{title}</SectionHeader>}
       <div className="divide-y rounded-xl border bg-card px-4">{children}</div>
     </section>
   )
@@ -152,6 +154,25 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
       },
       (e: unknown) => toast.error('Could not restart adb', { id, description: String(e) }),
     )
+  }
+
+  const copyDiagnostics = async (): Promise<void> => {
+    const [adb, devices, agent, companion] = await Promise.all([
+      window.mobMirror.adbStatus().catch(() => null),
+      window.mobMirror.listDevices().catch(() => null),
+      window.mobMirror.agentStatus().catch(() => null),
+      window.mobMirror.companionStatus().catch(() => null),
+    ])
+    const lines = [
+      `Twinglass ${update?.current ?? ''} · ${navigator.userAgent.match(/Electron\/[\d.]+/)?.[0] ?? 'Electron'} · ${navigator.platform}`,
+      `adb: ${adb?.adbPath ?? 'not found'} (client ${adb?.clientVersion ?? '?'}, server ${adb?.serverVersion ?? '?'})`,
+      ...(devices?.devices ?? []).map((d) => `phone: ${d.model} (${d.id}) via ${d.transports.map((t) => t.kind).join(' + ')}, API ${d.sdk ?? '?'}`),
+      ...(companion?.phones ?? []).map((c) => `phone app on ${c.model}: ${c.installed ? c.version : 'not installed'}${c.linked ? ', linked' : ''}`),
+      `agents: ${agent?.enabled ? `on, ${agent.running ? 'running' : 'not running'}, port ${agent.port}, works on ${agent.workspace}` : 'off'}`,
+      `settings: quality ${s.quality}, codec ${s.codec}, bitrate ${s.bitrateMbps || 'preset'}, size ${s.maxSizeOverride || 'preset'}, decoder ${s.decoder}, audio ${s.audio}`,
+    ]
+    await navigator.clipboard.writeText(lines.join('\n'))
+    toast.success('Diagnostics copied')
   }
 
   const restartNote = p.live ? 'Applies now (the mirror restarts for a second).' : undefined
@@ -521,15 +542,99 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
           )}
 
           {page === 'agents' && (
-            <Group>
-              <div className="py-3">
-                <AgentAccess />
-              </div>
-            </Group>
+            <>
+              <Group>
+                <div className="py-3">
+                  <AgentAccess />
+                </div>
+              </Group>
+              <Group title="How agents work">
+                <AgentOptions />
+              </Group>
+            </>
           )}
 
           {page === 'advanced' && (
             <>
+              <Group title="Video">
+                <Row label="Bitrate" hint={restartNote ?? 'Overrides the quality preset. Higher is sharper in motion; lower is steadier on weak Wi-Fi.'}>
+                  <Choice<number>
+                    value={s.bitrateMbps}
+                    onChange={(v) => set({ bitrateMbps: v })}
+                    options={[
+                      { value: 0, label: 'From quality' },
+                      ...[2, 4, 6, 8, 12, 16, 24].map((v) => ({ value: v, label: `${v} Mbps` })),
+                    ]}
+                  />
+                </Row>
+                <Row label="Resolution" hint={restartNote ?? 'Longest side of the stream. Native sends the phone’s full resolution.'}>
+                  <Choice<number>
+                    value={s.maxSizeOverride}
+                    onChange={(v) => set({ maxSizeOverride: v })}
+                    options={[
+                      { value: 0, label: 'From quality' },
+                      ...[1024, 1280, 1600, 1920].map((v) => ({ value: v, label: `${v} px` })),
+                      { value: -1, label: 'Native' },
+                    ]}
+                  />
+                </Row>
+                <Row label="Decoder" hint={restartNote ?? 'Hardware is fastest on Apple Silicon. Software can help with a broken stream.'}>
+                  <Choice<'auto' | 'hardware' | 'software'>
+                    value={s.decoder}
+                    onChange={(v) => set({ decoder: v })}
+                    options={[
+                      { value: 'auto', label: 'Automatic' },
+                      { value: 'hardware', label: 'Hardware' },
+                      { value: 'software', label: 'Software' },
+                    ]}
+                  />
+                </Row>
+              </Group>
+              <Group title="Second screens">
+                <Row label="Size" hint="For second screens you open (agents have their own size under Agents).">
+                  <Choice<'phone' | 'tablet' | 'landscape'>
+                    value={s.secondScreenSize}
+                    onChange={(v) => set({ secondScreenSize: v })}
+                    options={[
+                      { value: 'phone', label: 'Phone 1080 × 2400' },
+                      { value: 'tablet', label: 'Tablet 1600 × 2560' },
+                      { value: 'landscape', label: 'Landscape 2400 × 1080' },
+                    ]}
+                  />
+                </Row>
+                <Row label="Keep apps when closing" hint="On: apps on a second screen move to the phone when you close it. Off: they close with it.">
+                  <Toggle value={s.secondScreenKeepApps} onChange={(v) => set({ secondScreenKeepApps: v })} />
+                </Row>
+              </Group>
+              <Group title="Connection">
+                <Row label="Keep reconnecting for" hint="After Wi-Fi or the cable drops (with “Reconnect after a drop” on).">
+                  <Choice<number>
+                    value={s.reconnectSec}
+                    onChange={(v) => set({ reconnectSec: v })}
+                    options={[
+                      { value: 30, label: '30 seconds' },
+                      { value: 90, label: '90 seconds' },
+                      { value: 300, label: '5 minutes' },
+                    ]}
+                  />
+                </Row>
+              </Group>
+              <Group title="Dropped files">
+                <Row label="Copy to" hint="Files you drop on the mirror go to this phone folder. APKs are always installed.">
+                  <Choice<'Download' | 'Documents' | 'Pictures' | 'Movies'>
+                    value={s.dropFolder}
+                    onChange={(v) => set({ dropFolder: v })}
+                    options={(['Download', 'Documents', 'Pictures', 'Movies'] as const).map((v) => ({ value: v, label: v }))}
+                  />
+                </Row>
+              </Group>
+              <Group title="Diagnostics">
+                <Row label="Copy diagnostics" hint="Versions, adb, phones, mirrors, agent and phone-app status, for troubleshooting.">
+                  <Button size="sm" variant="outline" onClick={() => void copyDiagnostics()}>
+                    Copy
+                  </Button>
+                </Row>
+              </Group>
               <Group title="Files">
                 <Row label="Screenshots" hint="~/Pictures/Twinglass">
                   <Button size="sm" variant="outline" onClick={() => void window.mobMirror.openMediaFolder('pictures')}>

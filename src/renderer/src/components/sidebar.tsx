@@ -19,6 +19,7 @@ const CODEC_SHORT: Record<CodecPreference, string> = { auto: 'Auto (H.265 if sup
 const AUDIO_SHORT: Record<AudioMode, string> = { off: 'Off', mac: 'On this Mac', both: 'Mac + phone' }
 import type { AdbStatusInfo, DeviceListInfo, TransportInfo } from '../../../preload/api'
 import { AddDeviceDialog } from '@/components/add-device-dialog'
+import { AddPhoneSheet } from '@/components/add-phone-sheet'
 import { AgentAccess } from '@/components/agent-access'
 import { DeviceCard } from '@/components/device-card'
 import { IconButton } from '@/components/icon-button'
@@ -77,7 +78,7 @@ function Section({
           type="button"
           onClick={onToggle}
           aria-expanded={!closed}
-          className="flex flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-left text-[11px] font-semibold tracking-wide text-muted-foreground uppercase transition-colors hover:text-foreground"
+          className="flex flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-left label-mono text-faint transition-colors hover:text-foreground"
         >
           <ChevronRight className={cn('size-3.5 transition-transform duration-200', !closed && 'rotate-90')} />
           <span className="[&>svg]:size-3.5">{icon}</span>
@@ -97,6 +98,7 @@ function Section({
 
 export function Sidebar(p: SidebarProps): ReactNode {
   const [adding, setAdding] = useState(false)
+  const [devPairing, setDevPairing] = useState(false)
   const floating = p.layout === 'floating'
   const open = p.settings.sidebarOpen
   const closed = new Set(p.settings.closedSections)
@@ -157,7 +159,7 @@ export function Sidebar(p: SidebarProps): ReactNode {
             icon={<Smartphone />}
             badge={deviceCount > 0 && <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">{deviceCount}</Badge>}
             action={
-              <IconButton label="Add wireless device" onClick={() => setAdding(true)}>
+              <IconButton label="Add phone" onClick={() => setAdding(true)}>
                 <Plus />
               </IconButton>
             }
@@ -267,7 +269,16 @@ export function Sidebar(p: SidebarProps): ReactNode {
         </footer>
       </div>
 
-      <AddDeviceDialog open={adding} onOpenChange={setAdding} />
+      {/* "+" opens Add phone (Wi-Fi no setup first); its Developer path leads to wireless debugging pairing. */}
+      <AddPhoneSheet
+        open={adding}
+        onOpenChange={setAdding}
+        onDeveloper={() => {
+          setAdding(false)
+          setDevPairing(true)
+        }}
+      />
+      <AddDeviceDialog open={devPairing} onOpenChange={setDevPairing} />
     </aside>
   )
 }
