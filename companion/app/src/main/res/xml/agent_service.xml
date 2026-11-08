@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lets Twinglass agents read and press elements on any screen (including second screens).
+     Requests only ever come from the Mac through adb (AgentReceiver, DUMP permission). -->
+<!-- Content / text events keep Android's node cache fresh: with window events only, a changed
+     label (e.g. a calculator result) kept reading its old text. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeWindowsChanged|typeViewTextChanged|typeViewScrolled"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
+    android:canRetrieveWindowContent="true"
+    android:canPerformGestures="true"
+    android:notificationTimeout="100"
+    android:description="@string/agent_service_description" />

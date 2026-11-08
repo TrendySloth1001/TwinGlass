@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="agent_service_label">Twinglass control</string>
+    <string name="agent_service_description">Lets you control this phone from Twinglass on your Mac (taps, swipes, Back, Home, typing), and lets coding agents you connected read the screen and press buttons. Twinglass acts only on requests from your paired Mac.</string>
+</resources>
