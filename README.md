@@ -100,10 +100,11 @@ curl -fsSL https://raw.githubusercontent.com/TrendySloth1001/TwinGlass/master/in
 
 It downloads the latest release, checks its SHA-256, installs Twinglass into /Applications (quitting an older copy first) and offers to install adb for Developer mode. Files fetched by `curl` aren't quarantined, so the app opens straight away even though it isn't notarized yet. Add `--open` to launch it, `--no-adb` to skip adb, and `--uninstall` (with `--purge` for settings) to remove it.
 
-Or with Homebrew:
+Or with Homebrew (Homebrew 7 asks you to trust a third-party tap once):
 
 ```bash
-brew install --cask TrendySloth1001/tap/twinglass
+brew tap TrendySloth1001/tap && brew trust TrendySloth1001/tap
+brew install --cask twinglass
 ```
 
 Downloaded the DMG in a browser instead? macOS may refuse to open it the first time; clear the quarantine once with `xattr -cr /Applications/Twinglass.app`.
