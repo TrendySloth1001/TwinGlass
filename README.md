@@ -92,11 +92,21 @@ Numbers from the test phone (Nothing Phone (3), Android 17) and an Apple Silicon
 
 ## Install
 
-Apple Silicon only. Releases are ad-hoc signed (not notarized yet), so macOS 26 may refuse to open the app the first time:
+Apple Silicon, macOS 13 or newer. From the terminal:
 
 ```bash
-xattr -cr /Applications/Twinglass.app
+curl -fsSL https://raw.githubusercontent.com/TrendySloth1001/twinglass/main/install.sh | bash
 ```
+
+It downloads the latest release, checks its SHA-256, installs Twinglass into /Applications (quitting an older copy first) and offers to install adb for Developer mode. Files fetched by `curl` aren't quarantined, so the app opens straight away even though it isn't notarized yet. Add `--open` to launch it, `--no-adb` to skip adb, and `--uninstall` (with `--purge` for settings) to remove it.
+
+Or with Homebrew:
+
+```bash
+brew install --cask TrendySloth1001/tap/twinglass
+```
+
+Downloaded the DMG in a browser instead? macOS may refuse to open it the first time; clear the quarantine once with `xattr -cr /Applications/Twinglass.app`.
 
 Then pick a way to connect:
 
@@ -114,6 +124,7 @@ npm test                      # unit tests (vitest)
 MOB_DEVICE=<serial> npm test  # plus real-device integration tests
 npm run typecheck             # TypeScript 7 (tsc), Vite does the transpiling
 npm run dist:mac              # DMG in dist/
+npm run release               # phone app + DMG (with the phone app inside) + Homebrew cask version/SHA
 npm run companion:build       # phone app (release APK)
 npm run companion:install     # build + adb install
 ```

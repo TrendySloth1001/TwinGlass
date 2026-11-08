@@ -15,6 +15,7 @@
     "fetch-server": "node scripts/fetch-server.mjs",
     "postinstall": "node scripts/fetch-server.mjs",
     "dist:mac": "electron-vite build && electron-builder --mac --arm64",
+    "release": "npm run companion:build && npm run dist:mac && node scripts/update-cask.mjs",
     "ui:add": "node scripts/ui-add.mjs",
     "companion:build": "cd companion && ./gradlew assembleRelease -q",
     "companion:install": "npm run companion:build && adb install -r companion/app/build/outputs/apk/release/app-release.apk"
