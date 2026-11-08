@@ -5,6 +5,7 @@ import {
   Circle,
   House,
   Ellipsis,
+  Info,
   Keyboard,
   PanelLeftClose,
   PanelLeftOpen,
@@ -14,6 +15,8 @@ import {
   MonitorOff,
   Power,
   RotateCw,
+  LayoutGrid,
+  Layers,
   Search,
   Settings,
   Settings2,
@@ -43,6 +46,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
 import type { Mirror } from '@/hooks/use-mirror'
+import { showPhoneDetails } from '@/lib/phone-details'
 import { cn } from '@/lib/utils'
 
 function Group({ children }: { children: ReactNode }): ReactNode {
@@ -90,11 +94,15 @@ interface ToolbarProps {
   onToggleSidebar: () => void
   /** Switch to the compact phone-shaped mirror (only while mirroring). */
   onCompact?: () => void
+  /** Normal windows: open a second screen (a whole phone) in a new window. */
+  onSecondScreen?: () => void
+  /** Second-screen windows: show that screen's app grid. */
+  onOpenApps?: () => void
   onOpenSettings: () => void
   onOpenPalette: () => void
 }
 
-export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sidebarOpen, onToggleSidebar, onCompact, onOpenSettings, onOpenPalette }: ToolbarProps): ReactNode {
+export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sidebarOpen, onToggleSidebar, onCompact, onOpenSettings, onOpenPalette, onSecondScreen, onOpenApps }: ToolbarProps): ReactNode {
   const { state } = mirror
   const live = state.phase === 'live'
   const idle = state.phase === 'idle'
@@ -240,6 +248,16 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sideba
           </IconButton>
         )}
         <NotificationCenter />
+        {!idle && onOpenApps && (
+          <IconButton label="All apps on this screen" onClick={onOpenApps}>
+            <LayoutGrid />
+          </IconButton>
+        )}
+        {!idle && onSecondScreen && (
+          <IconButton label="Open a second screen (whole phone)" shortcut="⌥⌘N" onClick={onSecondScreen}>
+            <Layers />
+          </IconButton>
+        )}
         <IconButton label="Settings" shortcut="⌘," onClick={onOpenSettings}>
           <Settings />
         </IconButton>
@@ -274,6 +292,11 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sideba
             <DropdownMenuItem onSelect={onShowHelp}>
               <Keyboard /> Controls & shortcuts
             </DropdownMenuItem>
+            {state.transport && (
+              <DropdownMenuItem onSelect={() => showPhoneDetails(state.transport!.serial, state.deviceName || 'Phone')}>
+                <Info /> Phone details
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
         )}

@@ -5,7 +5,9 @@ import {
   Circle,
   Ellipsis,
   House,
+  Info,
   Keyboard,
+  Layers,
   LayoutGrid,
   KeyRound,
   LockKeyhole,
@@ -41,6 +43,7 @@ import {
 import { Kbd } from '@/components/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { Mirror } from '@/hooks/use-mirror'
+import { showPhoneDetails } from '@/lib/phone-details'
 import { cn } from '@/lib/utils'
 
 /** Rail button: icon only, tooltip to the left (the rail sits on the right edge). */
@@ -91,6 +94,8 @@ interface ControlRailProps {
   onOpenPalette: () => void
   /** Second screens only: show the app grid (that screen's home screen). */
   onOpenApps?: () => void
+  /** Normal windows: open a second screen (a whole phone) in a new window. */
+  onSecondScreen?: () => void
   /** Extra classes / style (e.g. margins that align the strip with a framed phone). */
   className?: string
   style?: CSSProperties
@@ -100,7 +105,7 @@ interface ControlRailProps {
  * Vertical controls on the right of the compact mirror window. Primary actions are always
  * visible; the rest sit in a menu. When the window is short, the middle section scrolls.
  */
-export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSettings, onOpenPalette, onOpenApps, className, style }: ControlRailProps): ReactNode {
+export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSettings, onOpenPalette, onOpenApps, onSecondScreen, className, style }: ControlRailProps): ReactNode {
   const { state } = mirror
   const live = state.phase === 'live'
   const recording = state.recordingSince !== null
@@ -236,6 +241,11 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSe
                 <DropdownMenuItem onSelect={onShowHelp}>
                   <Keyboard /> Controls & shortcuts
                 </DropdownMenuItem>
+                {state.transport && (
+                  <DropdownMenuItem onSelect={() => showPhoneDetails(state.transport!.serial, state.deviceName || 'Phone')}>
+                    <Info /> Phone details
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
               </>
             )}
@@ -243,6 +253,12 @@ export function ControlRail({ mirror, onAction, onShowHelp, onFullView, onOpenSe
               <KeyRound /> Type PIN to unlock…
               <DropdownMenuShortcut>{sc('unlockManual')}</DropdownMenuShortcut>
             </DropdownMenuItem>
+            {onSecondScreen && (
+              <DropdownMenuItem onSelect={onSecondScreen}>
+                <Layers /> Open a second screen
+                <DropdownMenuShortcut>⌥⌘N</DropdownMenuShortcut>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onSelect={onOpenSettings}>
               <Settings /> Settings…
               <DropdownMenuShortcut>⌘,</DropdownMenuShortcut>

@@ -5,12 +5,15 @@ import { ipcMain } from 'electron'
 import { SCRCPY_VERSION } from '@shared/scrcpy/constants'
 import { setClipboard, startApp } from '@shared/scrcpy/control'
 import type { Adb } from './adb/adb'
+import { deviceIdOf, readIcons } from './app-icons'
 import type { ScrcpySession } from './scrcpy/session'
 
 export interface PhoneApp {
   label: string
   pkg: string
   system: boolean
+  /** PNG data URL, when the Twinglass phone app has sent this app's icon. */
+  icon?: string
 }
 
 /**
@@ -44,9 +47,21 @@ export function openableUrl(text: string): string | null {
 
 const cache = new Map<string, { at: number; apps: PhoneApp[] }>()
 
-async function listApps(adb: Adb, serial: string, serverPath: string, fresh: boolean): Promise<PhoneApp[]> {
+/** One listing per phone at a time: the lister server deletes its own jar once started, so two
+ * parallel runs (e.g. React's dev double-mount, or two windows) made the second one fail. */
+const inflight = new Map<string, Promise<PhoneApp[]>>()
+
+export function listApps(adb: Adb, serial: string, serverPath: string, fresh: boolean): Promise<PhoneApp[]> {
   const hit = cache.get(serial)
-  if (hit && !fresh && Date.now() - hit.at < 5 * 60_000) return hit.apps
+  if (hit && !fresh && Date.now() - hit.at < 5 * 60_000) return Promise.resolve(hit.apps)
+  const running = inflight.get(serial)
+  if (running) return running
+  const p = readApps(adb, serial, serverPath).finally(() => inflight.delete(serial))
+  inflight.set(serial, p)
+  return p
+}
+
+async function readApps(adb: Adb, serial: string, serverPath: string): Promise<PhoneApp[]> {
   await adb.push(serial, serverPath, LIST_SERVER_PATH)
   const out = await adb.runLoose(
     ['shell', `CLASSPATH=${LIST_SERVER_PATH} app_process / com.genymobile.scrcpy.Server ${SCRCPY_VERSION} list_apps=true`],
@@ -57,6 +72,26 @@ async function listApps(adb: Adb, serial: string, serverPath: string, fresh: boo
   if (!apps.length) throw new Error('Could not read the app list from the phone.')
   cache.set(serial, { at: Date.now(), apps })
   return apps
+}
+
+/**
+ * Apps open on one display, top (front) first, from `dumpsys activity activities`. Only that
+ * display's own top-level section counts (sections start at column 0: "Display #439 (activities…").
+ * Home and Twinglass' own phone app are left out.
+ */
+export function parseDisplayTasks(out: string, displayId: number): string[] {
+  const pkgs: string[] = []
+  let inside = false
+  for (const line of out.split('\n')) {
+    if (/^\S/.test(line)) {
+      inside = new RegExp(`^Display #${displayId} \\(`).test(line)
+      continue
+    }
+    if (!inside || !/\* Task\{/.test(line) || !/type=standard/.test(line)) continue
+    const pkg = / A=\d+:([\w.]+)/.exec(line)?.[1] ?? / I=([\w.]+)\//.exec(line)?.[1]
+    if (pkg && pkg !== 'com.mobmirror.companion' && !pkgs.includes(pkg)) pkgs.push(pkg)
+  }
+  return pkgs
 }
 
 let clipboardSeq = 1n
@@ -78,7 +113,15 @@ export function registerPhoneAppsIpc(
     if (!adb) throw new Error('adb not found')
     const serial = getSession(e.sender.id)?.serial ?? (typeof serialArg === 'string' ? serialArg : null)
     if (!serial) throw new Error('Connect a phone first.')
-    return listApps(adb, serial, serverPath(), fresh === true)
+    const [apps, deviceId] = await Promise.all([listApps(adb, serial, serverPath(), fresh === true), deviceIdOf(adb, serial)])
+    const icons = readIcons(deviceId)
+    return apps.map((a) => (icons.has(a.pkg) ? { ...a, icon: icons.get(a.pkg) } : a))
+  })
+  // Second screens' app switcher: what's open on this screen, and on the phone itself.
+  ipcMain.handle('apps:running', async (e) => {
+    const { adb, session } = ctx(e.sender.id)
+    const out = await adb.runLoose(['shell', 'dumpsys activity activities'], session.serial, 10_000)
+    return { here: session.displayId === null ? [] : parseDisplayTasks(out, session.displayId), phone: parseDisplayTasks(out, 0), displayId: session.displayId }
   })
   ipcMain.handle('apps:launch', (e, pkg: unknown) => {
     const { session } = ctx(e.sender.id)

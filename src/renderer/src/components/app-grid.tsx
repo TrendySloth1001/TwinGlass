@@ -1,4 +1,4 @@
-import { Loader2, RefreshCw, Search, X } from 'lucide-react'
+import { Download, Loader2, RefreshCw, Search, Sparkles, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import type { PhoneAppInfo } from '../../../preload/api'
@@ -7,7 +7,7 @@ import { matchScore } from '@/lib/rank'
 import { cn } from '@/lib/utils'
 
 /** Stable colour per app (hash of the package name), for its letter tile. */
-function tileColor(pkg: string): string {
+export function tileColor(pkg: string): string {
   let h = 0
   for (const c of pkg) h = (h * 31 + c.charCodeAt(0)) >>> 0
   return `oklch(0.62 0.15 ${h % 360})`
@@ -19,15 +19,56 @@ function tileColor(pkg: string): string {
  * an app, and whenever Home is pressed there: Android's own secondary-display launcher on many
  * phones (e.g. Nothing OS) is just an empty wallpaper.
  */
-export function AppGrid({ onClose, phoneName }: { onClose: () => void; phoneName: string }): ReactNode {
+/** Icons: none yet → loading them from the phone app, or it isn't installed (offer to install). */
+type IconState = 'unknown' | 'loading' | 'need-app' | 'installing' | 'done' | 'failed'
+
+export function AppGrid({ onClose, phoneName, serial }: { onClose: () => void; phoneName: string; serial?: string }): ReactNode {
   const [apps, setApps] = useState<PhoneAppInfo[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
-  const load = (fresh = false): void => {
+  const [icons, setIcons] = useState<IconState>('unknown')
+  const load = (fresh = false): Promise<void> => {
     setError(null)
-    window.mobMirror.listApps(fresh).then(setApps, (e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+    return window.mobMirror.listApps(fresh).then(
+      (a) => {
+        setApps(a)
+        setError(null)
+      },
+      (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+    )
   }
-  useEffect(() => load(), [])
+  useEffect(() => void load(), [])
+
+  /** Pull real icons from the Twinglass phone app, then re-read the list (it carries them). */
+  const fetchIcons = async (): Promise<void> => {
+    if (!serial) return
+    setIcons('loading')
+    try {
+      const n = await window.mobMirror.fetchAppIcons(serial)
+      setIcons(n > 0 ? 'done' : 'failed')
+      if (n > 0) await load()
+    } catch (e) {
+      setIcons(String(e).includes('no-companion') ? 'need-app' : 'failed')
+    }
+  }
+  // First time on this phone: no icons cached yet. If the phone app is there, just load them.
+  const noIcons = !!apps && apps.length > 0 && !apps.some((a) => a.icon)
+  useEffect(() => {
+    if (noIcons && icons === 'unknown') void fetchIcons()
+  }, [noIcons, icons])
+
+  /** Only on the user's click: installs the small Twinglass app on the phone, then loads icons. */
+  const install = async (): Promise<void> => {
+    if (!serial) return
+    setIcons('installing')
+    try {
+      await window.mobMirror.companionInstall(serial)
+      await fetchIcons()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e))
+      setIcons('need-app')
+    }
+  }
 
   const shown = useMemo(() => {
     if (!apps) return []
@@ -72,16 +113,32 @@ export function AppGrid({ onClose, phoneName }: { onClose: () => void; phoneName
         </Button>
       </div>
 
+      {noIcons && (icons === 'need-app' || icons === 'installing' || icons === 'loading') && (
+        <div className="mx-4 mb-3 flex items-center gap-3 rounded-xl border bg-card px-3 py-2 text-xs">
+          <Sparkles className="size-4 shrink-0 text-muted-foreground" />
+          {icons === 'loading' ? (
+            <span className="flex-1 text-muted-foreground">Loading app icons from the phone…</span>
+          ) : (
+            <>
+              <span className="flex-1 text-muted-foreground">Real app icons need the small Twinglass app on your phone.</span>
+              <Button size="sm" variant="outline" disabled={icons === 'installing'} onClick={() => void install()}>
+                {icons === 'installing' ? <Loader2 className="animate-spin" /> : <Download />} Install
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
         {!apps && !error && (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" /> Loading apps…
           </div>
         )}
-        {error && (
+        {error && !apps && (
           <div className="flex flex-col items-center gap-3 py-16 text-sm text-muted-foreground">
             {error}
-            <Button size="sm" variant="outline" onClick={() => load(true)}>
+            <Button size="sm" variant="outline" onClick={() => void load(true)}>
               <RefreshCw /> Try again
             </Button>
           </div>
@@ -96,12 +153,16 @@ export function AppGrid({ onClose, phoneName }: { onClose: () => void; phoneName
                 title={a.pkg}
                 className={cn('group flex flex-col items-center gap-1.5 rounded-xl p-1.5 transition-colors hover:bg-accent', q && i === 0 && 'bg-accent')}
               >
-                <span
-                  className="grid size-12 place-items-center rounded-2xl text-lg font-semibold text-white shadow-sm transition-transform group-hover:scale-105"
-                  style={{ background: tileColor(a.pkg) }}
-                >
-                  {a.label.trim().charAt(0).toUpperCase()}
-                </span>
+                {a.icon ? (
+                  <img src={a.icon} alt="" draggable={false} className="size-12 drop-shadow-sm transition-transform group-hover:scale-105" />
+                ) : (
+                  <span
+                    className="grid size-12 place-items-center rounded-2xl text-lg font-semibold text-white shadow-sm transition-transform group-hover:scale-105"
+                    style={{ background: tileColor(a.pkg) }}
+                  >
+                    {a.label.trim().charAt(0).toUpperCase()}
+                  </span>
+                )}
                 <span className="line-clamp-2 w-full text-center text-[11px] leading-tight">{a.label}</span>
               </button>
             ))}
