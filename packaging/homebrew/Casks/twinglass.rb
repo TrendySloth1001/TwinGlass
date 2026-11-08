@@ -3,7 +3,7 @@
 # Updated by scripts/update-cask.mjs after each release (version + sha256).
 cask "twinglass" do
   version "0.1.0"
-  sha256 "70eac10ddc1f3a353f9e4d6032f73297c46295453dc9f0fd53d127c7e525acce"
+  sha256 "fd96a9b55007c3affbdbfdcc6c1697acb59cfc456568893c6059bf445cbd9ece"
 
   url "https://github.com/TrendySloth1001/TwinGlass/releases/download/v#{version}/Twinglass-#{version}-arm64.dmg"
   name "Twinglass"
