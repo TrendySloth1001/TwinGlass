@@ -57,6 +57,9 @@ export class VideoView {
   private inflight = new Map<number, [number, number]>()
   private transitMin = new WindowMin(300)
   private lat: LatencyStats = { ipcMs: 0, decodeMs: 0, appMs: 0, jitterMs: 0, queue: 0 }
+  /** Settings → Advanced → Decoder (WebCodecs hardwareAcceleration). Set before the first config. */
+  accel: HardwareAcceleration = 'no-preference'
+
   /** Video size from the latest session packet; touch coordinates must use exactly this. */
   size: { width: number; height: number } | null = null
 
@@ -74,11 +77,50 @@ export class VideoView {
       this.fps = this.frames
       this.frames = 0
     }, 1000)
+    document.addEventListener('visibilitychange', this.onVisibility)
+  }
+
+  // ---- frame pacing ----
+  // The phone can send more frames than the screen shows (the A024 runs at 120 Hz), and with
+  // several windows that is wasted drawing. Keep only the newest decoded frame and draw it on the
+  // next screen refresh; while the window is hidden, don't draw at all (the newest frame is kept
+  // and drawn when it shows again, or on flush() for agent screenshots).
+
+  private pending: VideoFrame | null = null
+  private raf = 0
+  /** Something needs every frame drawn even while hidden (a recording reads the canvas). */
+  keepDrawing = false
+
+  private enqueue(frame: VideoFrame): void {
+    this.frames++ // fps = decoded frames, as before
+    this.pending?.close() // superseded before it could be shown
+    this.pending = frame
+    if (this.keepDrawing) return this.flush()
+    if (this.raf || document.visibilityState === 'hidden') return
+    // Measured (Wi-Fi, 120 Hz phone, 2026-11-08, test probe on a second screen): packet → drawn is
+    // ~12 ms either way (drawing each frame at once vs on the next refresh; runs vary ±4 ms), so
+    // pace to requestAnimationFrame: same latency, fewer wasted draws.
+    this.raf = requestAnimationFrame(() => {
+      this.raf = 0
+      this.flush()
+    })
+  }
+
+  /** Draws the newest decoded frame now (if one is waiting). */
+  flush(): void {
+    const f = this.pending
+    if (!f) return
+    this.pending = null
+    this.draw(f)
+  }
+
+  private onVisibility = (): void => {
+    if (document.visibilityState === 'visible') this.flush()
   }
 
   private createDecoder(): VideoDecoder {
     return new VideoDecoder({
-      output: (frame) => this.draw(frame),
+      output: (frame) => this.enqueue(frame),
       error: (e) => {
         // Recover: build a fresh decoder and wait for the next keyframe.
         this.onError(e instanceof Error ? e : new Error(String(e)))
@@ -120,14 +162,13 @@ export class VideoView {
       this.lat.appMs = ewma(this.lat.appMs, now - t[0])
     }
     frame.close()
-    this.frames++
   }
 
   private configure(codec: string): void {
     this.inflight.clear()
     if (this.decoder.state === 'configured') this.decoder.reset()
     if (this.decoder.state === 'closed') this.decoder = this.createDecoder()
-    this.decoder.configure({ codec, optimizeForLatency: true, hardwareAcceleration: 'no-preference' })
+    this.decoder.configure({ codec, optimizeForLatency: true, hardwareAcceleration: this.accel })
     void VideoDecoder.isConfigSupported({ codec, hardwareAcceleration: 'prefer-hardware' }).then(
       (r) => (this.hardware = r.supported ? 'hardware' : 'software'),
       () => (this.hardware = 'software'),
@@ -179,6 +220,10 @@ export class VideoView {
 
   dispose(): void {
     clearInterval(this.fpsTimer)
+    document.removeEventListener('visibilitychange', this.onVisibility)
+    cancelAnimationFrame(this.raf)
+    this.pending?.close()
+    this.pending = null
     if (this.decoder.state !== 'closed') this.decoder.close()
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
   }

@@ -1,13 +1,11 @@
 import { Circle, Cpu, Gauge, Music, Timer } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { MirrorState } from '@/hooks/use-mirror'
+import { useVisibleInterval } from '@/hooks/use-visible-interval'
 
 function Elapsed({ since }: { since: number }): ReactNode {
   const [now, setNow] = useState(Date.now())
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 500)
-    return () => clearInterval(t)
-  }, [])
+  useVisibleInterval(() => setNow(Date.now()), 500) // only while someone can see it
   const s = Math.max(0, Math.floor((now - since) / 1000))
   return (
     <span className="tabular-nums">

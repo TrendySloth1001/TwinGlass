@@ -6,6 +6,7 @@ import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { promisify } from 'node:util'
+import { hostCommand, hostQuery, socketPush, socketShell, socketUsable, transportCommand } from './adb-socket'
 import { KeyedLimiter } from './limiter'
 import { batchShellCommand, parseDevicesL, splitBatchOutput, type AdbTransport } from './parse'
 import {
@@ -78,13 +79,57 @@ export class Adb {
   /** At most 4 adb commands at once per phone (see KeyedLimiter); server-wide commands are not limited. */
   private limiter = new KeyedLimiter(4)
 
+  /** Set when the adb server's socket refused us: use the adb program from then on. */
+  private socketBroken = !socketUsable()
+
+  /**
+   * Runs a socket call, falling back to the adb program when the server's socket can't be
+   * reached (e.g. the server isn't started yet: the program starts it).
+   */
+  private async viaSocket<T>(call: () => Promise<T>, fallback: () => Promise<T>): Promise<T> {
+    if (this.socketBroken) return fallback()
+    try {
+      return await call()
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code
+      if (code === 'ECONNREFUSED' || code === 'ENOENT') return fallback()
+      throw e
+    }
+  }
+
   async run(args: string[], serial?: string, timeoutMs = 15000): Promise<string> {
     const full = serial ? ['-s', serial, ...args] : args
     const exec = async (): Promise<string> => {
       const { stdout, stderr } = await execFileP(this.path, full, { timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 })
       return stdout + stderr
     }
+    // `adb shell …` (most frequent: lock polls, details, agent tools): over the server socket,
+    // no process start. Like adb, the arguments are joined with spaces into one command line.
+    // `adb reverse tcp:a tcp:b | --remove tcp:a | --list` (companion link, agents' reverse_port).
+    if (serial && args[0] === 'reverse') {
+      const req =
+        args[1] === '--list'
+          ? 'reverse:list-forward'
+          : args[1] === '--remove' && args[2]
+            ? `reverse:killforward:${args[2]}`
+            : args.length === 3 && args[1]!.startsWith('tcp:')
+              ? `reverse:forward:${args[1]};${args[2]}`
+              : null
+      if (req) return this.limiter.run(serial, () => this.viaSocket(() => transportCommand(serial, req, timeoutMs), exec))
+    }
+    if (serial && args[0] === 'shell' && args.length >= 2) {
+      const cmd = args.slice(1).join(' ')
+      return this.limiter.run(serial, () => this.viaSocket(() => socketShell(serial, cmd, timeoutMs), exec))
+    }
     return serial ? this.limiter.run(serial, exec) : exec()
+  }
+
+  /** `adb get-state` without a process: "device", "offline"…; throws when the phone is gone. */
+  getState(serial: string, timeoutMs = 3000): Promise<string> {
+    return this.viaSocket(
+      () => hostQuery(`host-serial:${serial}:get-state`, timeoutMs),
+      () => this.run(['get-state'], serial, timeoutMs).then((s) => s.trim()),
+    )
   }
 
   /**
@@ -127,8 +172,9 @@ export class Adb {
     return (await this.run(['shell', 'getprop', name], serial)).trim()
   }
 
+  /** Every agent tool call and the device list ask this: over the socket, no process start. */
   async transports(): Promise<AdbTransport[]> {
-    return parseDevicesL(await this.run(['devices', '-l']))
+    return parseDevicesL(await this.viaSocket(() => hostQuery('host:devices-l'), () => this.run(['devices', '-l'])))
   }
 
   private deviceProps(serial: string): Promise<DeviceProps> {
@@ -175,16 +221,28 @@ export class Adb {
     return this.group(await this.transports())
   }
 
+  /** Sync-protocol push over the server socket (the scrcpy server: ~10 ms instead of ~0.3 s). */
   push(serial: string, local: string, remote: string): Promise<string> {
-    return this.run(['push', local, remote], serial, 60000)
+    return this.limiter.run(serial, () =>
+      this.viaSocket(
+        () => socketPush(serial, local, remote).then(() => `${local}: 1 file pushed`),
+        () => execFileP(this.path, ['-s', serial, 'push', local, remote], { timeout: 60000 }).then((r) => r.stdout + r.stderr),
+      ),
+    )
   }
 
   forward(serial: string, localPort: number, remote: string): Promise<string> {
-    return this.run(['forward', `tcp:${localPort}`, remote], serial)
+    return this.viaSocket(
+      () => hostCommand(`host-serial:${serial}:forward:tcp:${localPort};${remote}`).then(() => ''),
+      () => this.run(['forward', `tcp:${localPort}`, remote], serial),
+    )
   }
 
   removeForward(serial: string, localPort: number): Promise<string> {
-    return this.run(['forward', '--remove', `tcp:${localPort}`], serial)
+    return this.viaSocket(
+      () => hostCommand(`host-serial:${serial}:killforward:tcp:${localPort}`).then(() => ''),
+      () => this.run(['forward', '--remove', `tcp:${localPort}`], serial),
+    )
   }
 
   // ---- wireless ----
