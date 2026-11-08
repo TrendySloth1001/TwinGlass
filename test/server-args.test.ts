@@ -25,3 +25,19 @@ describe('second screen (virtual display)', () => {
     expect(buildServerArgs('1', base).some((x) => x.startsWith('new_display'))).toBe(false)
   })
 })
+
+describe('second screen display id', () => {
+  it('reads the id from the server log', async () => {
+    const { parseNewDisplayId } = await import('../src/main/scrcpy/session')
+    expect(parseNewDisplayId('[server] INFO: New display: 1080x2400/420 (id=439)\n')).toBe(439)
+    expect(parseNewDisplayId('[server] INFO: Device: [Nothing] A024 (Android 17)\n')).toBeNull()
+  })
+})
+
+describe('video codec options', () => {
+  it('formats key:type=value, skips bad keys', () => {
+    const a = buildServerArgs('1', { ...base, videoCodecOptions: { 'intra-refresh-period': 30, 'operating-rate': 120.5, 'bad key,x': 1 } })
+    expect(a).toContain('video_codec_options=intra-refresh-period:int=30,operating-rate:float=120.5')
+    expect(buildServerArgs('1', base).some((x) => x.startsWith('video_codec_options'))).toBe(false)
+  })
+})

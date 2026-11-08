@@ -1,9 +1,9 @@
 # Controlling the phone from coding agents (MCP)
 
-Mob Mirror runs a local **MCP server**. Claude Code, Cursor, VS Code and other MCP clients can use it to see and operate the phone.
+Twinglass runs a local **MCP server**. Claude Code, Cursor, VS Code and other MCP clients can use it to see and operate the phone.
 
 ## Turn it on
-1. In Mob Mirror's sidebar, switch on **Agent access (MCP)**.
+1. In Twinglass → Settings → Agents, switch on **Agent access (MCP)**.
 2. Click **Copy Claude Code setup** and paste the command into a terminal once:
    ```bash
    claude mcp add --transport http --scope user mob-mirror http://127.0.0.1:38297/mcp --header "Authorization: Bearer <token>"
@@ -14,22 +14,51 @@ Other clients use the same URL and `Authorization` header:
 - **Cursor:** `~/.cursor/mcp.json` → `{"mcpServers":{"mob-mirror":{"url":"http://127.0.0.1:38297/mcp","headers":{"Authorization":"Bearer ${env:MOB_MIRROR_TOKEN}"}}}}`
 - **VS Code:** `.vscode/mcp.json` → `"servers": {"mob-mirror": {"type":"http","url":…,"headers":{…}}}`
 
+## Where agents work
+- **Their own second screen (default).** On the first action Twinglass opens a virtual display of the phone, the **agent screen**. It shows in a window that appears without taking focus, so the user can watch. The user keeps using the phone; nothing the agent does shows on the physical screen.
+  - Apps opened there run there.
+  - `agent_screen {action:"close"}` ends it (apps move to the phone in the background). It also closes after an idle time (Settings → Agents).
+- **The phone's screen:** pass `screen: "phone"` to a tool, or change the default in Settings → Agents.
+
 ## Tools
-| Tool | What it does |
+Every touch / read tool takes optional `device` and `screen` ("agent" | "phone").
+
+| Group | Tools |
 |---|---|
-| `list_devices`, `device_info` | Phones, Android version, battery, foreground app, coordinate space |
-| `screenshot` | JPEG with the long side at 1280 px. **All coordinates are in this image's pixels.** Uses the live mirror frame (~240 ms) or `adb screencap` (~2 s) |
-| `get_ui_tree` | On-screen elements (text, id, type, clickable) with `center` coordinates to tap. Can fail while the screen animates |
-| `tap`, `long_press`, `swipe`, `scroll` | Touch input |
-| `type_text` | Types into the focused field (non-ASCII via clipboard paste); `submit` presses Enter |
-| `press_key` | back, home, recents, enter, delete, volume, power, dpad… |
-| `list_apps`, `launch_app` | Installed packages; open an app by package |
-| `unlock_phone` | Uses the PIN the user saved in the app. **The user must approve with Touch ID.** The agent never sees the PIN |
-| `wait` | Pause, up to 10 s |
+| Phones | `list_devices`, `device_info` (locked?, app in front, apps on this screen, allowed tools), `phone_details` (SoC, Android build, memory, display, battery, cameras, sensors, codecs…) |
+| Agent screen | `agent_screen` open / status / close |
+| See | `screenshot` (JPEG, long side 1280 px; **coordinates are in this image's pixels**), `get_ui_tree`, `find_elements` |
+| Layout map | `screen_map`: every view in dp (position, size, parent, insets, gaps), layout width/height (match_parent / wrap_content / dp), text size in sp, sampled colours, system bar and keyboard heights, a design summary (type scale, spacing, keylines, repeated items, palette), and an annotated image (numbered boxes with dp sizes, optional dp grid) |
+| Act by element | `tap_element`, `set_text` (any language, replaces the field), `wait_for` (appears / gone) |
+| Act by coordinates | `tap`, `long_press`, `swipe`, `scroll`, `type_text`, `press_key` |
+| Batches | `run_steps`: up to 50 actions in one call, stops at the first failure, optional screenshot at the end |
+| Apps | `list_apps` (names + packages), `launch_app` (name or package), `open_url` (web, mailto, tel, geo, market, app deep links), `stop_app` |
+| App testing | `install_apk`, `app_info`, `start_activity` (component, action, data, extras, cold start time), `clear_app_data`, `uninstall_app`, `set_permission`, `get_crashes`, `logcat`, `app_performance` (jank %, frame-time percentiles, PSS, CPU) |
+| Conditions | `set_device_state`: dark mode, font scale, animations, density, Wi-Fi, mobile data, airplane mode, fake battery. `reset:true` restores everything it changed |
+| Dev servers | `reverse_port` (phone localhost → Mac localhost) |
+| Files | `push_file`, `pull_file` (to ~/Downloads/Twinglass), `list_files` |
+| Other | `get_notifications`, `set_clipboard`, `record_screen` (~/Movies/Twinglass), `unlock_phone` (Touch ID), `shell` (opt-in), `wait` |
+
+## Reading the screen
+- **"Agents read any screen" on** (Settings → Agents): the Twinglass phone app's accessibility service lists elements on any display, the agent screen included.
+  - Element refs let `tap_element` / `set_text` act through accessibility actions.
+  - Requests travel over adb only (`am broadcast` to a receiver that requires the DUMP permission). The answer comes back as the broadcast result.
+- **Off:** `get_ui_tree` uses `uiautomator dump`, which only sees the phone's own screen. On the agent screen, agents then use screenshots and coordinates.
+
+## Settings → Agents
+- **Agents work on:** their own second screen, or the phone's screen.
+- **Agent screen size:** phone 1080×2400, same as the phone, or tablet 1600×2560.
+- **Close the agent screen when idle:** never, or after 5, 15 or 30 minutes.
+- **What agents may do:**
+  - files and installs (on)
+  - clearing, uninstalling and permissions (on)
+  - phone settings (on)
+  - shell commands (**off**)
+- **Undo agents' phone setting changes:** puts back everything changed by `set_device_state`.
 
 ## How input is sent
-- **With a mirror session open:** input goes through the scrcpy control socket. It's fast, and identical to the user's own mouse.
-- **Without one:** it falls back to `adb shell input …`, which is slower and can't type non-ASCII text.
+- **Agent screen, or an open mirror:** the scrcpy control socket. It's fast, and identical to the user's own mouse.
+- **Phone screen without a mirror:** `adb shell input …`, which is slower and can't type non-ASCII text (use `set_text`).
 
 ## Security
 - **Off by default.** It listens on `127.0.0.1` only, and Host/Origin validation blocks DNS-rebinding from web pages.
@@ -39,6 +68,8 @@ Other clients use the same URL and `Authorization` header:
   - **New token** (↻) revokes old configs.
 - **Every agent action shows** as "Agent: …" on the mirror.
 - **Agents can't unlock without your fingerprint.**
+- **Turning Wi-Fi off or airplane mode on is refused** while the phone is connected over Wi-Fi only (it would cut the link).
+- **Twinglass' own phone app** can't be cleared or uninstalled through the tools.
 - **Secure screens are captured black** (FLAG_SECURE): PIN entry, banking apps, DRM video.
 
 ## Tips for agents

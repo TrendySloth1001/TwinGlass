@@ -6,6 +6,12 @@
 
 export const AGENT_MAX_DIM = 1280
 
+/** Settings → Agents → Advanced → Screenshot size (long side). Every agent-space conversion reads it. */
+export let agentMaxDim = AGENT_MAX_DIM
+export function setAgentMaxDim(n: number): void {
+  agentMaxDim = [1024, 1280, 1600].includes(n) ? n : AGENT_MAX_DIM
+}
+
 export interface Size {
   width: number
   height: number
@@ -17,7 +23,7 @@ export interface Point {
 }
 
 /** Size of the agent-facing image for a screen of `screen` pixels (never upscales). */
-export function agentSpace(screen: Size, maxDim = AGENT_MAX_DIM): Size {
+export function agentSpace(screen: Size, maxDim = agentMaxDim): Size {
   const scale = Math.min(1, maxDim / Math.max(screen.width, screen.height))
   return { width: Math.round(screen.width * scale), height: Math.round(screen.height * scale) }
 }
