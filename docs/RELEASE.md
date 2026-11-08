@@ -161,7 +161,7 @@ read from the GitHub repo at the `electron-builder@26.18.1` tag.
 `npm run release` builds the phone app, the DMG (with the phone app bundled for *Add phone*), and updates
 `packaging/homebrew/Casks/twinglass.rb` (version + SHA-256) and `dist/Twinglass-<version>-arm64.dmg.sha256`.
 
-1. Create the GitHub release `v<version>` on TrendySloth1001/twinglass and attach the DMG and its `.sha256`.
+1. Create the GitHub release `v<version>` on TrendySloth1001/TwinGlass and attach the DMG and its `.sha256`.
    `install.sh` picks the latest release's `*arm64.dmg` and verifies it against the `.sha256` when present.
 2. Copy `packaging/homebrew/Casks/twinglass.rb` to the tap repo TrendySloth1001/homebrew-tap under `Casks/`.
 

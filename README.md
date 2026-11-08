@@ -95,7 +95,7 @@ Numbers from the test phone (Nothing Phone (3), Android 17) and an Apple Silicon
 Apple Silicon, macOS 13 or newer. From the terminal:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TrendySloth1001/twinglass/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/TrendySloth1001/TwinGlass/master/install.sh | bash
 ```
 
 It downloads the latest release, checks its SHA-256, installs Twinglass into /Applications (quitting an older copy first) and offers to install adb for Developer mode. Files fetched by `curl` aren't quarantined, so the app opens straight away even though it isn't notarized yet. Add `--open` to launch it, `--no-adb` to skip adb, and `--uninstall` (with `--purge` for settings) to remove it.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Twinglass installer for macOS (Apple Silicon).
 #
-#   curl -fsSL https://raw.githubusercontent.com/TrendySloth1001/twinglass/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/TrendySloth1001/TwinGlass/master/install.sh | bash
 #
 # Downloads the latest release DMG, installs Twinglass.app into /Applications, and offers adb for
 # Developer mode. Files fetched with curl carry no quarantine flag, so macOS opens the (ad-hoc
@@ -15,7 +15,7 @@
 #   TWINGLASS_APP_DIR    install here instead of /Applications
 set -euo pipefail
 
-REPO="${TWINGLASS_REPO:-TrendySloth1001/twinglass}"
+REPO="${TWINGLASS_REPO:-TrendySloth1001/TwinGlass}"
 APP_DIR="${TWINGLASS_APP_DIR:-/Applications}"
 APP="$APP_DIR/Twinglass.app"
 
@@ -139,5 +139,5 @@ fi
 say ""
 say "${bold}Twinglass is installed.${reset}"
 say "Open it, then click ${bold}Add phone${reset}: scan the QR with your phone to get the Twinglass phone app and pair."
-say "${dim}Uninstall any time:  curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | bash -s -- --uninstall${reset}"
+say "${dim}Uninstall any time:  curl -fsSL https://raw.githubusercontent.com/$REPO/master/install.sh | bash -s -- --uninstall${reset}"
 if [ "$OPEN" = 1 ] || ask "Open Twinglass now?"; then open "$APP"; fi

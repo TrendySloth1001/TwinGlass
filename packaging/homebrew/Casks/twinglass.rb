@@ -5,10 +5,10 @@ cask "twinglass" do
   version "0.1.0"
   sha256 "70eac10ddc1f3a353f9e4d6032f73297c46295453dc9f0fd53d127c7e525acce"
 
-  url "https://github.com/TrendySloth1001/twinglass/releases/download/v#{version}/Twinglass-#{version}-arm64.dmg"
+  url "https://github.com/TrendySloth1001/TwinGlass/releases/download/v#{version}/Twinglass-#{version}-arm64.dmg"
   name "Twinglass"
   desc "Mirror and control Android phones over USB or Wi-Fi"
-  homepage "https://github.com/TrendySloth1001/twinglass"
+  homepage "https://github.com/TrendySloth1001/TwinGlass"
 
   livecheck do
     url :url
