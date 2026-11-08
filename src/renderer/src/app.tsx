@@ -1,28 +1,24 @@
 import { cn } from '@/lib/utils'
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import type { TransportInfo } from '../../preload/api'
-import { ControlsHelp } from '@/components/controls-help'
 import { CompactTitleBar } from '@/components/compact-title-bar'
-import { ConnectPanel } from '@/components/connect-panel'
-import { AppGrid } from '@/components/app-grid'
 import { ControlRail } from '@/components/control-rail'
-import { CommandPalette, type PaletteMode } from '@/components/command-palette'
+import type { PaletteMode } from '@/components/command-palette'
 import { MirrorStage, type PhoneRect } from '@/components/mirror-stage'
 import { NAV_BAR_HEIGHT, NavBar } from '@/components/nav-bar'
 import { frameExtra, frameSpec } from '@/lib/phone-frames'
 import { FRAMED_TITLE, GAP, NAV, RAIL_WIDTH, TITLE } from '@shared/compact-layout'
-import { SettingsDialog } from '@/components/settings-dialog'
 import { applyTheme } from '@/hooks/use-theme'
 import { notify, setPopups } from '@/lib/notify'
 import { MirrorToolbar } from '@/components/mirror-toolbar'
 import { Sidebar } from '@/components/sidebar'
 import { StatusBar } from '@/components/status-bar'
-import { UnlockDialog } from '@/components/unlock-dialog'
 import type { DeviceAction } from '@shared/shortcuts'
 import { useDevices } from '@/hooks/use-devices'
 import { useMirror } from '@/hooks/use-mirror'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { PHONE_DETAILS_EVENT } from '@/lib/phone-details'
 import { DEFAULT_SETTINGS, STREAM_KEYS, useSettings } from '@/hooks/use-settings'
 
 /** Windows opened via "Mirror in new window" carry #connect=<serial>&kind=<usb|wifi>. */
@@ -34,12 +30,78 @@ function autoConnectTarget(): TransportInfo | null {
   return { serial, kind, state: 'device' }
 }
 
+// Loaded on first use, so new windows (second screens, the agent screen) start with less code.
+const ControlsHelp = lazy(() =>
+  import('@/components/controls-help').then((m) => ({
+    default: m.ControlsHelp,
+  })),
+)
+const ConnectPanel = lazy(() =>
+  import('@/components/connect-panel').then((m) => ({
+    default: m.ConnectPanel,
+  })),
+)
+const AppGrid = lazy(() => import('@/components/app-grid').then((m) => ({ default: m.AppGrid })))
+const AppSwitcher = lazy(() => import('@/components/app-switcher').then((m) => ({ default: m.AppSwitcher })))
+const PhoneDetailsDialog = lazy(() =>
+  import('@/components/phone-details-dialog').then((m) => ({
+    default: m.PhoneDetailsDialog,
+  })),
+)
+const SettingsDialog = lazy(() =>
+  import('@/components/settings-dialog').then((m) => ({
+    default: m.SettingsDialog,
+  })),
+)
+const UnlockDialog = lazy(() =>
+  import('@/components/unlock-dialog').then((m) => ({
+    default: m.UnlockDialog,
+  })),
+)
+const CommandPalette = lazy(() =>
+  import('@/components/command-palette').then((m) => ({
+    default: m.CommandPalette,
+  })),
+)
+
+/** Settings → Advanced → Second screen size. */
+const SECOND_SCREEN_SIZES = {
+  phone: { width: 1080, height: 2400, dpi: 420 },
+  tablet: { width: 1600, height: 2560, dpi: 320 },
+  landscape: { width: 2400, height: 1080, dpi: 320 },
+} as const
+
+/** True from the first time `open` is true: keeps a lazily loaded dialog mounted for its close animation. */
+function useOpenedOnce(open: boolean): boolean {
+  const [once, setOnce] = useState(open)
+  if (open && !once) setOnce(true)
+  return once || open
+}
+
 /** Second-screen windows carry #…&screen=second&app=<pkg> (a new virtual display, not the phone's screen). */
-const SECOND_SCREEN: { app?: string } | null = (() => {
+const SECOND_SCREEN: {
+  app?: string
+  agent?: boolean
+  size?: { width: number; height: number; dpi: number }
+} | null = (() => {
   const h = new URLSearchParams(location.hash.slice(1))
   if (h.get('screen') !== 'second') return null
   const app = h.get('app')
-  return app && /^[\w.]+$/.test(app) ? { app } : {}
+  // agent=1: the MCP agents' own second screen (they act here; the user watches).
+  const size = /^(\d{3,4})x(\d{3,4})\/(\d{2,3})$/.exec(h.get('size') ?? '')
+  return {
+    ...(app && /^[\w.]+$/.test(app) ? { app } : {}),
+    ...(h.get('agent') === '1' ? { agent: true } : {}),
+    ...(size
+      ? {
+          size: {
+            width: Number(size[1]),
+            height: Number(size[2]),
+            dpi: Number(size[3]),
+          },
+        }
+      : {}),
+  }
 })()
 
 export function App(): ReactNode {
@@ -52,9 +114,30 @@ export function App(): ReactNode {
   const [settings, updateSettings] = useSettings()
   const [helpOpen, setHelpOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  /** Phone details requests (menus anywhere dispatch PHONE_DETAILS_EVENT); the dialog loads on the first one. */
+  const [detailsRequest, setDetailsRequest] = useState<{
+    serial: string
+    name: string
+    n: number
+  } | null>(null)
+  useEffect(() => {
+    let n = 0
+    const on = (e: Event): void =>
+      setDetailsRequest({
+        ...(e as CustomEvent<{ serial: string; name: string }>).detail,
+        n: ++n,
+      })
+    window.addEventListener(PHONE_DETAILS_EVENT, on)
+    return () => window.removeEventListener(PHONE_DETAILS_EVENT, on)
+  }, [])
   /** Second screen's app grid (its home screen). */
   const [gridOpen, setGridOpen] = useState(false)
-  const [palette, setPalette] = useState<{ open: boolean; mode: PaletteMode }>({ open: false, mode: 'all' })
+  /** Second screens: Twinglass' own Recents (Android's shows nothing for a second screen). */
+  const [switcherOpen, setSwitcherOpen] = useState(false)
+  const [palette, setPalette] = useState<{ open: boolean; mode: PaletteMode }>({
+    open: false,
+    mode: 'all',
+  })
   /** Framed phone body (viewport px): the compact strip and nav dock attach to it. */
   const [phoneRect, setPhoneRect] = useState<PhoneRect | null>(null)
   const [viewportW, setViewportW] = useState(window.innerWidth)
@@ -118,7 +201,11 @@ export function App(): ReactNode {
         }
       } else if (action === 'unlock') {
         if (live) void quickUnlock()
+      } else if (action === 'recents' && SECOND_SCREEN && live) {
+        setGridOpen(false)
+        setSwitcherOpen((o) => !o)
       } else {
+        setSwitcherOpen(false)
         runAction(action)
         // Second screen: Home also brings up Twinglass' app grid (its home screen; the phone's own
         // secondary-display launcher is often just an empty wallpaper).
@@ -145,7 +232,13 @@ export function App(): ReactNode {
         maxFps: settings.maxFps,
         stayAwake: settings.stayAwake,
         clipboardSync: settings.clipboardSync,
-        secondScreen: SECOND_SCREEN ?? undefined,
+        bitrateMbps: settings.bitrateMbps,
+        maxSizeOverride: settings.maxSizeOverride,
+        decoder: settings.decoder,
+        reconnectSec: settings.reconnectSec,
+        secondScreenKeepApps: settings.secondScreenKeepApps,
+        // Your own second screens use Settings → Advanced → size; the agent screen brings its own.
+        secondScreen: SECOND_SCREEN ? { ...SECOND_SCREEN, size: SECOND_SCREEN.size ?? SECOND_SCREEN_SIZES[settings.secondScreenSize] } : undefined,
         deviceId,
       })
     },
@@ -230,10 +323,16 @@ export function App(): ReactNode {
               (r) => toast.success(r.kind === 'opened' ? 'Opened on the phone' : 'Copied to the phone'),
               (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
             )
-        }
-        else if (cmd === 'toggle-view') updateSettings({ viewMode: s.viewMode === 'compact' ? 'full' : 'compact' })
+        } else if (cmd === 'toggle-view')
+          updateSettings({
+            viewMode: s.viewMode === 'compact' ? 'full' : 'compact',
+          })
         else if (cmd === 'toggle-sidebar') updateSettings({ sidebarOpen: !s.sidebarOpen })
-        else updateSettings({ sidebarLayout: s.sidebarLayout === 'floating' ? 'docked' : 'floating', sidebarOpen: true })
+        else
+          updateSettings({
+            sidebarLayout: s.sidebarLayout === 'floating' ? 'docked' : 'floating',
+            sidebarOpen: true,
+          })
       }),
     [updateSettings],
   )
@@ -241,7 +340,7 @@ export function App(): ReactNode {
   // A whole-phone second screen (no specific app) opens on its home screen: the app grid.
   const gridShownOnce = useRef(false)
   useEffect(() => {
-    if (SECOND_SCREEN && !SECOND_SCREEN.app && live && !gridShownOnce.current) {
+    if (SECOND_SCREEN && !SECOND_SCREEN.app && !SECOND_SCREEN.agent && live && !gridShownOnce.current) {
       gridShownOnce.current = true
       setGridOpen(true)
     }
@@ -256,18 +355,36 @@ export function App(): ReactNode {
       window.mobMirror.onUpdateAvailable((u) =>
         notify('info', `Twinglass ${u.latest} is available`, {
           description: `You have ${u.current}. Download it and drag it into Applications (automatic install needs a signed app).`,
-          action: u.url ? { label: 'Download', run: () => void window.mobMirror.downloadUpdate(u.url!) } : undefined,
+          action: u.url
+            ? {
+                label: 'Download',
+                run: () => void window.mobMirror.downloadUpdate(u.url!),
+              }
+            : undefined,
         }),
       ),
     [],
   )
-  useEffect(() => window.mobMirror.onAppError((m) => notify('error', 'Something went wrong in the background', { description: m })), [])
+  useEffect(
+    () =>
+      window.mobMirror.onAppError((m) =>
+        notify('error', 'Something went wrong in the background', {
+          description: m,
+        }),
+      ),
+    [],
+  )
   useEffect(() => void window.mobMirror.setRequireTouchId(settings.requireTouchId).catch(() => {}), [settings.requireTouchId])
   const { setInputOptions, setAutoReconnect } = mirror
   useEffect(() => setAutoReconnect(settings.autoReconnect), [setAutoReconnect, settings.autoReconnect])
   useEffect(() => setPopups(settings.popups), [settings.popups])
   useEffect(
-    () => setInputOptions({ mouseShortcuts: settings.mouseShortcuts, invertScroll: settings.invertScroll, scrollSpeed: settings.scrollSpeed }),
+    () =>
+      setInputOptions({
+        mouseShortcuts: settings.mouseShortcuts,
+        invertScroll: settings.invertScroll,
+        scrollSpeed: settings.scrollSpeed,
+      }),
     [setInputOptions, settings.mouseShortcuts, settings.invertScroll, settings.scrollSpeed],
   )
   useEffect(() => void window.mobMirror.setAlwaysOnTop(settings.alwaysOnTop).catch(() => {}), [settings.alwaysOnTop])
@@ -282,9 +399,22 @@ export function App(): ReactNode {
   // view (devices, settings, toolbar) is one click away and is used when nothing is mirrored.
   const compact = settings.viewMode === 'compact' && (mirror.state.phase === 'live' || mirror.state.phase === 'reconnecting')
   const framed = compact && settings.frame !== 'none'
+  const helpMounted = useOpenedOnce(helpOpen)
+  const paletteMounted = useOpenedOnce(palette.open)
+  const settingsMounted = useOpenedOnce(settingsOpen)
+  const unlockMounted = useOpenedOnce(unlockOpen)
   // Phone a second screen opens on: the mirrored one, else the home screen's first phone.
   const secondTarget: TransportInfo | undefined =
     mirror.state.transport ?? (devices.list?.devices.find((d) => d.id === settings.lastDevice) ?? devices.list?.devices[0])?.transports[0]
+  /** Open a whole-phone second screen for the phone in front (new window, app grid as its home). */
+  const openSecondScreen = (): void => {
+    const t = secondTarget
+    if (t)
+      void window.mobMirror.openDeviceWindow(t.serial, t.kind, {
+        second: true,
+      })
+    else toast.error('Connect a phone first.')
+  }
   const frameButtons = frameSpec(settings.frame)?.buttons ?? 0
   const vw = mirror.state.stats?.width ?? 0
   const vh = mirror.state.stats?.height ?? 0
@@ -310,86 +440,105 @@ export function App(): ReactNode {
   return (
     <div className={cn('relative flex h-full', !compact && 'overflow-hidden rounded-[12px] bg-background')}>
       {!compact && (
-      <Sidebar
-        list={devices.list}
-        error={devices.error}
-        adb={devices.adb}
-        refresh={devices.refresh}
-        activeSerial={mirror.state.transport?.serial ?? null}
-        connecting={mirror.state.phase === 'connecting'}
-        onMirror={onMirror}
-        settings={settings}
-        layout={sidebarLayout}
-        layoutLocked={narrow}
-        onSettingsChange={onSettingsChange}
-      />
+        <Sidebar
+          list={devices.list}
+          error={devices.error}
+          adb={devices.adb}
+          refresh={devices.refresh}
+          activeSerial={mirror.state.transport?.serial ?? null}
+          connecting={mirror.state.phase === 'connecting'}
+          onMirror={onMirror}
+          settings={settings}
+          layout={sidebarLayout}
+          layoutLocked={narrow}
+          onSettingsChange={onSettingsChange}
+        />
       )}
       {/* Compact: the phone is one rounded dark block; the rail floats beside it (see-through gap). */}
       <main className={cn('flex min-w-0 flex-1 flex-col', compact && settings.frame === 'none' && 'overflow-hidden rounded-xl bg-stage')}>
         {compact ? (
           <CompactTitleBar
-            name={SECOND_SCREEN ? `${mirror.state.deviceName} · Second screen` : mirror.state.deviceName}
+            name={SECOND_SCREEN ? `${mirror.state.deviceName} · ${SECOND_SCREEN.agent ? 'Agent screen' : 'Second screen'}` : mirror.state.deviceName}
             transport={mirror.state.transport?.kind ?? null}
             floating={settings.frame !== 'none'}
             inset={frameSpec(settings.frame)?.buttons ?? 0}
           />
         ) : (
-        <MirrorToolbar
-          onCompact={live ? () => updateSettings({ viewMode: 'compact' }) : undefined}
-          mirror={mirror}
-          onAction={dispatch}
-          onShowHelp={() => setHelpOpen(true)}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
-          ownsCorner={toolbarOwnsCorner}
-          sidebarOpen={settings.sidebarOpen}
-          onToggleSidebar={() => updateSettings({ sidebarOpen: !settings.sidebarOpen })}
-        />
+          <MirrorToolbar
+            onCompact={live ? () => updateSettings({ viewMode: 'compact' }) : undefined}
+            mirror={mirror}
+            onAction={dispatch}
+            onShowHelp={() => setHelpOpen(true)}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
+            onSecondScreen={SECOND_SCREEN ? undefined : openSecondScreen}
+            onOpenApps={SECOND_SCREEN ? () => setGridOpen(true) : undefined}
+            ownsCorner={toolbarOwnsCorner}
+            sidebarOpen={settings.sidebarOpen}
+            onToggleSidebar={() => updateSettings({ sidebarOpen: !settings.sidebarOpen })}
+          />
         )}
         {/* Same tree position in both views: the decoder is bound to this canvas. */}
         <div className="relative flex min-h-0 flex-1">
-          {gridOpen && live && <AppGrid onClose={() => setGridOpen(false)} phoneName={mirror.state.deviceName || 'the phone'} />}
-        <MirrorStage
-          canvasRef={canvasRef}
-          overlayRef={overlayRef}
-          phase={mirror.state.phase}
-          recording={mirror.state.recordingSince !== null}
-          locked={mirror.state.locked === true}
-          appPrompt={mirror.state.appPrompt}
-          onUnlock={() => dispatch('unlock')}
-          onTypePin={() => dispatch('unlockManual')}
-          frame={frameSpec(settings.frame)}
-          frameColor={settings.frameColor}
-          aspect={vw && vh ? vw / vh : 0}
-          fit={compact}
-          onAction={dispatch}
-          onFrameRect={setPhoneRect}
-          reconnect={mirror.state.reconnect}
-          idleContent={
-            <ConnectPanel
-              list={devices.list}
-              error={devices.error}
-              adb={devices.adb}
-              refresh={devices.refresh}
-              connecting={mirror.state.phase === 'connecting'}
-              lastDevice={settings.lastDevice}
-              onMirror={onMirror}
-              onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
-              onOpenClipboard={() => setPalette({ open: true, mode: 'clipboard' })}
-              onOpenSettings={() => setSettingsOpen(true)}
-              onShowHelp={() => setHelpOpen(true)}
-              onSecondScreen={() => {
-                // A whole phone, directly: its own home screen (app grid) with every app.
-                if (secondTarget) void window.mobMirror.openDeviceWindow(secondTarget.serial, secondTarget.kind, { second: true })
-              }}
-              recentDevices={settings.recentDevices}
-              autoConnect={settings.autoConnect}
-              onAutoConnectChange={(on) => updateSettings({ autoConnect: on })}
-              frame={settings.frame}
-              frameColor={settings.frameColor}
-            />
-          }
-        />
+          {/* Lazy overlays get their own boundary: the canvas below must never suspend/unmount. */}
+          <Suspense fallback={null}>
+            {switcherOpen && live && (
+              <AppSwitcher
+                onClose={() => setSwitcherOpen(false)}
+                onAllApps={() => {
+                  setSwitcherOpen(false)
+                  setGridOpen(true)
+                }}
+              />
+            )}
+            {gridOpen && live && (
+              <AppGrid onClose={() => setGridOpen(false)} phoneName={mirror.state.deviceName || 'the phone'} serial={mirror.state.transport?.serial} />
+            )}
+          </Suspense>
+          <MirrorStage
+            canvasRef={canvasRef}
+            overlayRef={overlayRef}
+            phase={mirror.state.phase}
+            recording={mirror.state.recordingSince !== null}
+            locked={mirror.state.locked === true}
+            appPrompt={mirror.state.appPrompt}
+            onUnlock={() => dispatch('unlock')}
+            onTypePin={() => dispatch('unlockManual')}
+            frame={frameSpec(settings.frame)}
+            frameColor={settings.frameColor}
+            aspect={vw && vh ? vw / vh : 0}
+            fit={compact}
+            onAction={dispatch}
+            onFrameRect={setPhoneRect}
+            reconnect={mirror.state.reconnect}
+          dropFolder={settings.dropFolder}
+            idleContent={
+              <Suspense fallback={null}>
+                <ConnectPanel
+                  list={devices.list}
+                  error={devices.error}
+                  adb={devices.adb}
+                  refresh={devices.refresh}
+                  connecting={mirror.state.phase === 'connecting'}
+                  lastDevice={settings.lastDevice}
+                  onMirror={onMirror}
+                  onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
+                  onOpenClipboard={() => setPalette({ open: true, mode: 'clipboard' })}
+                  onOpenSettings={() => setSettingsOpen(true)}
+                  onShowHelp={() => setHelpOpen(true)}
+                  onSecondScreen={() => {
+                    // A whole phone, directly: its own home screen (app grid) with every app.
+                    if (secondTarget) void window.mobMirror.openDeviceWindow(secondTarget.serial, secondTarget.kind, { second: true })
+                  }}
+                  recentDevices={settings.recentDevices}
+                  autoConnect={settings.autoConnect}
+                  onAutoConnectChange={(on) => updateSettings({ autoConnect: on })}
+                  frame={settings.frame}
+                  frameColor={settings.frameColor}
+                />
+              </Suspense>
+            }
+          />
         </div>
         {compact && settings.navBar && !framed && <NavBar onAction={dispatch} disabled={!live} />}
         {/* Framed: the dock attaches right under the phone body (absolute), this keeps its room. */}
@@ -412,7 +561,10 @@ export function App(): ReactNode {
                   transform: `translateX(${phoneRect.x + phoneRect.width + frameButtons + GAP - (viewportW - RAIL_WIDTH)}px)`,
                 }
               : framed
-                ? { marginTop: FRAMED_TITLE, marginBottom: settings.navBar ? NAV : 0 }
+                ? {
+                    marginTop: FRAMED_TITLE,
+                    marginBottom: settings.navBar ? NAV : 0,
+                  }
                 : undefined
           }
           mirror={mirror}
@@ -421,40 +573,60 @@ export function App(): ReactNode {
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
           onOpenApps={SECOND_SCREEN ? () => setGridOpen(true) : undefined}
+          onSecondScreen={SECOND_SCREEN ? undefined : openSecondScreen}
           onFullView={() => updateSettings({ viewMode: 'full' })}
         />
       )}
       {framed && settings.navBar && phoneRect && (
-        <div className="absolute" style={{ top: phoneRect.y + phoneRect.height, left: phoneRect.x, width: phoneRect.width }}>
+        <div
+          className="absolute"
+          style={{
+            top: phoneRect.y + phoneRect.height,
+            left: phoneRect.x,
+            width: phoneRect.width,
+          }}
+        >
           <NavBar onAction={dispatch} disabled={!live} floating />
         </div>
       )}
-      <ControlsHelp open={helpOpen} onOpenChange={setHelpOpen} />
-      <CommandPalette
-        open={palette.open}
-        mode={palette.mode}
-        onOpenChange={(open) => setPalette((p) => ({ ...p, open }))}
-        live={live}
-        onAction={dispatch}
-        phoneSerial={secondTarget?.serial}
-        onPickSecondScreen={() => setPalette({ open: true, mode: 'second' })}
-        onOpenSecondScreen={(app) => {
-          if (!secondTarget) return toast.error('Connect a phone first.')
-          void window.mobMirror.openDeviceWindow(secondTarget.serial, secondTarget.kind, { second: true, app })
-        }}
-      />
-      <SettingsDialog
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        settings={settings}
-        onSettingsChange={onSettingsChange}
-        adb={devices.adb}
-        refreshDevices={devices.refresh}
-        live={live}
-        narrow={narrow}
-        onReset={() => onSettingsChange({ ...DEFAULT_SETTINGS, lastDevice: settings.lastDevice })}
-      />
-      <UnlockDialog open={unlockOpen} onOpenChange={setUnlockOpen} initialError={unlockError} requireTouchId={settings.requireTouchId} />
+      <Suspense fallback={null}>
+        {helpMounted && <ControlsHelp open={helpOpen} onOpenChange={setHelpOpen} />}
+        {paletteMounted && (
+          <CommandPalette
+            open={palette.open}
+            mode={palette.mode}
+            onOpenChange={(open) => setPalette((p) => ({ ...p, open }))}
+            live={live}
+            onAction={dispatch}
+            phoneSerial={secondTarget?.serial}
+            onPickSecondScreen={() => setPalette({ open: true, mode: 'second' })}
+            onOpenSecondScreen={(app) => {
+              if (!secondTarget) return toast.error('Connect a phone first.')
+              void window.mobMirror.openDeviceWindow(secondTarget.serial, secondTarget.kind, { second: true, app })
+            }}
+          />
+        )}
+        {detailsRequest && <PhoneDetailsDialog request={detailsRequest} />}
+        {settingsMounted && (
+          <SettingsDialog
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+            settings={settings}
+            onSettingsChange={onSettingsChange}
+            adb={devices.adb}
+            refreshDevices={devices.refresh}
+            live={live}
+            narrow={narrow}
+            onReset={() =>
+              onSettingsChange({
+                ...DEFAULT_SETTINGS,
+                lastDevice: settings.lastDevice,
+              })
+            }
+          />
+        )}
+        {unlockMounted && <UnlockDialog open={unlockOpen} onOpenChange={setUnlockOpen} initialError={unlockError} requireTouchId={settings.requireTouchId} />}
+      </Suspense>
     </div>
   )
 }

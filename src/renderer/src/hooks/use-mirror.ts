@@ -89,8 +89,16 @@ export interface ConnectOptions {
   maxFps?: number
   stayAwake?: boolean
   clipboardSync?: boolean
+  /** Advanced: bitrate (Mbps, 0 = preset), longest side (0 = preset, -1 = native), decoder. */
+  bitrateMbps?: number
+  maxSizeOverride?: number
+  decoder?: 'auto' | 'hardware' | 'software'
+  /** Advanced: how long to keep reconnecting after a drop (s). */
+  reconnectSec?: number
+  /** Advanced: a closed second screen keeps its apps (moved to the phone). */
+  secondScreenKeepApps?: boolean
   /** Second screen: a new virtual display (phone-shaped), optionally opening this app on it. */
-  secondScreen?: { app?: string }
+  secondScreen?: { app?: string; agent?: boolean; size?: { width: number; height: number; dpi: number } }
 }
 
 /** Can this Mac hardware-decode HEVC? (verified true on Apple Silicon / Electron 45). Cached. */
@@ -125,6 +133,60 @@ export interface Mirror {
   setAutoReconnect: (on: boolean) => void
 }
 
+/**
+ * screen_map's annotated image: a light grid, then each element's box (colour by depth) with its
+ * number and size in dp ("n12 · 360×48"), largest first so small labels stay on top.
+ */
+function drawMapOverlay(
+  c: OffscreenCanvasRenderingContext2D,
+  w: number,
+  h: number,
+  o: { boxes: { x: number; y: number; w: number; h: number; label: string; depth: number }[]; grid?: number },
+): void {
+  if (o.grid && o.grid >= 4) {
+    c.strokeStyle = 'rgba(255,0,180,0.18)'
+    c.lineWidth = 1
+    c.beginPath()
+    for (let x = 0; x < w; x += o.grid) (c.moveTo(x + 0.5, 0), c.lineTo(x + 0.5, h))
+    for (let y = 0; y < h; y += o.grid) (c.moveTo(0, y + 0.5), c.lineTo(w, y + 0.5))
+    c.stroke()
+  }
+  const hues = [210, 140, 30, 280, 0, 180, 60, 320]
+  const boxes = [...o.boxes].sort((a, b) => b.w * b.h - a.w * a.h)
+  c.font = '600 11px -apple-system, system-ui, sans-serif'
+  c.textBaseline = 'top'
+  for (const b of boxes) {
+    const hue = hues[b.depth % hues.length]
+    c.strokeStyle = `hsla(${hue},90%,50%,0.9)`
+    c.lineWidth = 1.5
+    c.strokeRect(b.x + 0.75, b.y + 0.75, Math.max(b.w - 1.5, 1), Math.max(b.h - 1.5, 1))
+  }
+  // Labels never cover each other: try the box's top-left, top-right, bottom-left, bottom-right
+  // corners (inside), then just above it; skip the label if all collide (the JSON still has it).
+  const placed: [number, number, number, number][] = []
+  const free = (x: number, y: number, tw: number): boolean =>
+    x >= 0 && y >= 0 && x + tw <= w && y + 14 <= h && placed.every(([px, py, pw, ph]) => x + tw <= px || px + pw <= x || y + 14 <= py || py + ph <= y)
+  for (const b of [...boxes].reverse()) {
+    if (b.w < 18 || b.h < 10) continue
+    const hue = hues[b.depth % hues.length]
+    const tw = c.measureText(b.label).width + 6
+    const spots: [number, number][] = [
+      [b.x + 1, b.y + 1],
+      [b.x + b.w - tw - 1, b.y + 1],
+      [b.x + 1, b.y + b.h - 15],
+      [b.x + b.w - tw - 1, b.y + b.h - 15],
+      [b.x + 1, b.y - 15],
+    ]
+    const spot = spots.find(([x, y]) => free(x, y, tw))
+    if (!spot) continue
+    placed.push([spot[0], spot[1], tw, 14])
+    c.fillStyle = `hsla(${hue},90%,38%,0.88)`
+    c.fillRect(spot[0], spot[1], tw, 14)
+    c.fillStyle = '#fff'
+    c.fillText(b.label, spot[0] + 3, spot[1] + 1.5)
+  }
+}
+
 export function useMirror(
   canvasRef: RefObject<HTMLCanvasElement | null>,
   overlayRef: RefObject<HTMLDivElement | null>,
@@ -152,6 +214,7 @@ export function useMirror(
       if (!e) return
       engine.current = null
       window.mobMirror.setFrameCapture(null)
+      window.mobMirror.setAgentRecorder(null)
       clearInterval(e.timer)
       if (e.recorder.active) void e.recorder.stop()
       e.input.dispose()
@@ -197,12 +260,18 @@ export function useMirror(
         const request = {
           serial: t.serial,
           audio: audioMode,
-          ...videoParams(opts.quality, t.kind),
+          ...((): { maxSize: number; videoBitRate: number } => {
+            const v = videoParams(opts.quality, t.kind)
+            return {
+              maxSize: opts.maxSizeOverride ? (opts.maxSizeOverride < 0 ? 0 : opts.maxSizeOverride) : v.maxSize,
+              videoBitRate: opts.bitrateMbps ? opts.bitrateMbps * 1_000_000 : v.videoBitRate,
+            }
+          })(),
           ...(opts.maxFps ? { maxFps: opts.maxFps } : {}),
           stayAwake: opts.stayAwake ?? true,
           clipboardAutosync: opts.clipboardSync ?? true,
           // 1080x2400 @ 420 dpi: phone-shaped (same 9:20 as most phones), sharp, light to encode.
-          ...(opts.secondScreen ? { newDisplay: { width: 1080, height: 2400, dpi: 420 }, startApp: opts.secondScreen.app } : {}),
+          ...(opts.secondScreen ? { newDisplay: opts.secondScreen.size ?? { width: 1080, height: 2400, dpi: 420 }, startApp: opts.secondScreen.app, agentScreen: opts.secondScreen.agent === true, keepApps: opts.secondScreenKeepApps !== false } : {}),
         }
         try {
           await window.mobMirror.startSession({ ...request, videoCodec: wantHevc ? 'h265' : 'h264' })
@@ -224,6 +293,7 @@ export function useMirror(
           () => {},
           () => post(resetVideo()),
         )
+        video.accel = opts.decoder === 'hardware' ? 'prefer-hardware' : opts.decoder === 'software' ? 'prefer-software' : 'no-preference'
         const audio = audioMode === 'off' ? null : new AudioPlayer((e) => toast.error(`Audio: ${e.message}`))
         const overlay = overlayRef.current ? new TouchOverlay(overlayRef.current, canvas) : null
         const input = new InputController(canvas, () => video.size, post, (points, size) =>
@@ -247,17 +317,45 @@ export function useMirror(
         port.start()
 
         const timer = window.setInterval(() => {
-          patch({ stats: video.stats(), audio: audio ? audio.state : 'off' })
+          const st = video.stats()
+          // Dev builds: let the CDP benchmark read the live latency numbers.
+          if (import.meta.env.DEV) (window as unknown as { __mirrorStats?: unknown }).__mirrorStats = st
+          patch({ stats: st, audio: audio ? audio.state : 'off' })
         }, 1000)
 
         engine.current = { port, video, input, audio, recorder, overlay, timer }
         // Fast agent screenshots: hand main the current decoded frame instead of `adb screencap`.
-        window.mobMirror.setFrameCapture(
-          () =>
-            new Promise((resolve) =>
-              canvas.toBlob((b) => (b ? void b.arrayBuffer().then((a) => resolve(new Uint8Array(a))) : resolve(null)), 'image/png'),
-            ),
-        )
+        window.mobMirror.setFrameCapture(async (size, overlay) => {
+          video.flush() // the newest decoded frame, even if the window is hidden
+          if (size) {
+            // Agent screenshots: scale + JPEG here (one GPU pass) instead of a full PNG that main
+            // decodes, resizes and re-encodes.
+            const off = new OffscreenCanvas(size.width, size.height)
+            const c = off.getContext('2d')
+            if (!c) return null
+            c.imageSmoothingQuality = 'high'
+            c.drawImage(canvas, 0, 0, size.width, size.height)
+            if (overlay) drawMapOverlay(c, size.width, size.height, overlay)
+            return new Uint8Array(await (await off.convertToBlob({ type: 'image/jpeg', quality: size.quality ?? 0.82 })).arrayBuffer())
+          }
+          return new Promise((resolve) =>
+            canvas.toBlob((b) => (b ? void b.arrayBuffer().then((a) => resolve(new Uint8Array(a))) : resolve(null)), 'image/png'),
+          )
+        })
+        // Agents' record_screen: same recorder as the Record button (saved to ~/Movies/Twinglass).
+        window.mobMirror.setAgentRecorder(async (on) => {
+          const r = engine.current?.recorder
+          if (!r || on === r.active) return null
+          if (on) {
+            video.keepDrawing = true // the recording reads every frame from the canvas
+            await r.start(canvas, engine.current?.audio?.stream ?? null, deviceName)
+            patch({ recordingSince: Date.now() })
+            return null
+          }
+          patch({ recordingSince: null })
+          video.keepDrawing = false
+          return r.stop()
+        })
         setState({ ...IDLE, phase: 'live', transport: t, deviceName, audio: audio ? 'waiting' : 'off' })
         canvas.focus()
         return true
@@ -335,7 +433,8 @@ export function useMirror(
       void (async () => {
         const match = (devices: DeviceInfo[]): DeviceInfo | undefined =>
           devices.find((d) => (opts.deviceId && d.id === opts.deviceId) || d.transports.some((x) => x.serial === lost.serial))
-        for (let n = 1; Date.now() - started < RECONNECT_WINDOW_MS; n++) {
+        const windowMs = (last.current?.opts.reconnectSec ?? RECONNECT_WINDOW_MS / 1000) * 1000
+        for (let n = 1; Date.now() - started < windowMs; n++) {
           // Event-driven: retry the moment adb reports the phone again (USB replug, Wi-Fi rejoin),
           // with exponential backoff + jitter as the fallback when no event comes.
           await new Promise<void>((resolve) => {
@@ -399,6 +498,7 @@ export function useMirror(
     const canvas = canvasRef.current
     if (!canvas || !engine.current) return
     try {
+      engine.current.video.flush() // newest frame, not the one from the last screen refresh
       const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'))
       if (!blob) throw new Error('nothing to capture yet')
       const path = await window.mobMirror.saveScreenshot(new Uint8Array(await blob.arrayBuffer()), state.deviceName)
@@ -418,6 +518,7 @@ export function useMirror(
     try {
       if (e.recorder.active) {
         patch({ recordingSince: null })
+        e.video.keepDrawing = false
         const path = await e.recorder.stop()
         if (path) {
           toast.success('Recording saved', {
@@ -426,6 +527,7 @@ export function useMirror(
           })
         }
       } else {
+        e.video.keepDrawing = true // the recording reads every frame from the canvas
         await e.recorder.start(canvas, e.audio?.stream ?? null, state.deviceName)
         patch({ recordingSince: Date.now() })
       }

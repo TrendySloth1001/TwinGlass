@@ -7,6 +7,7 @@ import { clipboard, ipcMain, MessageChannelMain, webContents, type WebContents }
 import { scanFile, startApp } from '@shared/scrcpy/control'
 import type { Adb } from './adb/adb'
 import { ScrcpySession } from './scrcpy/session'
+import { DirectSession, directServer } from './direct/server'
 import {
   isCredentialPrompt,
   LOCK_POLL_CMDS,
@@ -20,7 +21,8 @@ import { restoreAutoRotate, toggleRotation } from './adb/rotation'
 import { notePhoneClipboard } from './clipboard-history'
 import type { FileResult, MainToRenderer, RendererToMain, StartSessionRequest } from '../shared/ipc'
 
-const sessions = new Map<number, ScrcpySession>()
+/** Mirrors per window: scrcpy over adb, or a phone on the no-setup direct link. */
+const sessions = new Map<number, ScrcpySession | DirectSession>()
 
 /** Second-screen size from the renderer: sane bounds only (the server rejects odd values). */
 function sanitizeDisplay(d: unknown): { width: number; height: number; dpi?: number } | undefined {
@@ -48,7 +50,7 @@ function bump(id: number): number {
 }
 
 /** Sessions closed on purpose (Disconnect, new device, window closed): no auto-reconnect. */
-const intentional = new WeakSet<ScrcpySession>()
+const intentional = new WeakSet<ScrcpySession | DirectSession>()
 
 function stop(webContentsId: number): void {
   bump(webContentsId)
@@ -71,10 +73,11 @@ function startWatchdog(adb: Adb, session: ScrcpySession): () => void {
   const timer = setInterval(() => {
     if (busy) return
     busy = true
+    // Over the adb server socket: no process start every 4 s per window.
     adb
-      .run(['get-state'], session.serial, 3000)
-      .then((out) => {
-        misses = out.trim() === 'device' ? 0 : misses + 1
+      .getState(session.serial, 3000)
+      .then((state) => {
+        misses = state.trim() === 'device' ? 0 : misses + 1
       })
       .catch(() => {
         misses++
@@ -105,14 +108,16 @@ function watch(wc: WebContents): void {
 
 export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => string): void {
   ipcMain.handle('session:start', async (e, req: StartSessionRequest) => {
+    // "direct:<id>": a phone on the no-setup Wi-Fi link (no adb at all).
+    const direct = req.serial.startsWith('direct:')
     const adb = getAdb()
-    if (!adb) throw new Error('adb not found')
+    if (!adb && !direct) throw new Error('adb not found')
     const wc: WebContents = e.sender
     watch(wc)
     stop(wc.id)
     const gen = bump(wc.id)
 
-    const session = await ScrcpySession.start(adb, {
+    const session = direct ? directServer.attach(req.serial) : await ScrcpySession.start(adb!, {
       serial: req.serial,
       serverPath: serverPath(),
       maxSize: req.maxSize,
@@ -123,12 +128,15 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
       stayAwake: req.stayAwake ?? true,
       clipboardAutosync: req.clipboardAutosync,
       newDisplay: sanitizeDisplay(req.newDisplay),
+      keepApps: req.keepApps !== false,
     })
     if (wc.isDestroyed() || generation.get(wc.id) !== gen) {
       session.close()
       throw new Error('cancelled')
     }
     sessions.set(wc.id, session)
+    if (req.agentScreen && req.newDisplay) agentScreens.add(session)
+    const scrcpy = session instanceof ScrcpySession ? session : null
 
     const { port1, port2 } = new MessageChannelMain()
     const post = (m: MainToRenderer): void => port1.postMessage(m)
@@ -151,11 +159,11 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
     let last = ''
     let polling = false
     const lockTimer = setInterval(() => {
-      if (polling) return
+      if (polling || !scrcpy || !adb) return
       polling = true
       void (async () => {
         // One adb round trip for all three (was three sequential ones).
-        const [policy = '', topOut = '', focusOut = '', bioOut = ''] = await adb.shellBatch(session.serial, LOCK_POLL_CMDS)
+        const [policy = '', topOut = '', focusOut = '', bioOut = ''] = await adb!.shellBatch(session.serial, LOCK_POLL_CMDS)
         const locked = parseKeyguardShowing(policy)
         if (locked === null) return
         const top = locked ? null : parseTopActivity(topOut)
@@ -172,13 +180,15 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
       })().finally(() => (polling = false))
     }, 2500)
 
-    const stopWatchdog = startWatchdog(adb, session)
+    const stopWatchdog = scrcpy && adb ? startWatchdog(adb, scrcpy) : () => {}
     session.once('closed', (err) => {
       clearInterval(lockTimer)
       stopWatchdog()
       // Disconnect / window closed: give auto-rotate back. A dropped link keeps it for the reconnect.
-      if (intentional.has(session)) void restoreAutoRotate(adb, session.serial)
-      post({ t: 'closed', error: err?.message, unexpected: !intentional.has(session) })
+      if (intentional.has(session) && scrcpy && adb) void restoreAutoRotate(adb, session.serial)
+      // A direct-link mirror ends when the phone stops sharing: a normal end, not a dropped link to
+      // retry (there's nothing to reconnect to until the user taps "Mirror to Mac" again).
+      post({ t: 'closed', error: err?.message, unexpected: !intentional.has(session) && !(session instanceof DirectSession) })
       port1.close()
       if (sessions.get(wc.id) === session) sessions.delete(wc.id)
     })
@@ -190,7 +200,7 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
     port1.start()
     session.begin()
     // Second screen: open the chosen app on it (the server launches on the mirrored display).
-    if (req.newDisplay && typeof req.startApp === 'string' && /^[\w.]+$/.test(req.startApp)) {
+    if (scrcpy && req.newDisplay && typeof req.startApp === 'string' && /^[\w.]+$/.test(req.startApp)) {
       const pkg = req.startApp
       setTimeout(() => session.sendControl(startApp(pkg)), 300)
     }
@@ -204,7 +214,7 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
   // Portrait ↔ landscape (scrcpy's ROTATE_DEVICE is undone at once when auto-rotate is on).
   ipcMain.handle('device:rotate', async (e) => {
     const adb = getAdb()
-    const session = sessions.get(e.sender.id)
+    const session = getSession(e.sender.id)
     if (!adb || !session) throw new Error('Start mirroring a device first.')
     const s = await toggleRotation(adb, session.serial)
     return s ? { rotation: s.rotation, autoRotate: s.free } : null
@@ -212,9 +222,11 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
 
   // Drag & drop onto the mirror: APKs are installed, anything else goes to /sdcard/Download.
   // Paths come from preload (webUtils.getPathForFile on real dropped File objects); still validate.
-  ipcMain.handle('files:drop', async (e, paths: unknown): Promise<FileResult[]> => {
+  ipcMain.handle('files:drop', async (e, paths: unknown, folderArg: unknown): Promise<FileResult[]> => {
+    // Settings → Advanced → Dropped files go to: only these shared folders.
+    const folder = ['Download', 'Documents', 'Pictures', 'Movies'].includes(folderArg as string) ? (folderArg as string) : 'Download'
     const adb = getAdb()
-    const session = sessions.get(e.sender.id)
+    const session = getSession(e.sender.id)
     if (!adb || !session) return [{ name: '', ok: false, message: 'Start mirroring a device first.' }]
     if (!Array.isArray(paths)) return []
     const results: FileResult[] = []
@@ -231,7 +243,7 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
           const ok = /\bSuccess\b/.test(out)
           results.push({ name, ok, message: ok ? 'installed' : out.split('\n').pop() || out })
         } else {
-          const dest = `/sdcard/Download/${name}`
+          const dest = `/sdcard/${folder}/${name}`
           await adb.push(session.serial, p, dest)
           session.sendControl(scanFile(dest))
           results.push({ name, ok: true, message: `copied to ${dest}` })
@@ -246,8 +258,10 @@ export function registerSessionIpc(getAdb: () => Adb | null, serverPath: () => s
   ipcMain.handle('clipboard:write', (_e, text: string) => clipboard.writeText(String(text)))
 }
 
+/** The window's scrcpy session (adb features: unlock, apps, agents); direct-link mirrors excluded. */
 export function getSession(webContentsId: number): ScrcpySession | undefined {
-  return sessions.get(webContentsId)
+  const s = sessions.get(webContentsId)
+  return s instanceof ScrcpySession ? s : undefined
 }
 
 let captureSeq = 0
@@ -258,7 +272,9 @@ ipcMain.on('agent:capture-result', (_e, id: number, png: Uint8Array | null) => {
 })
 
 /** Asks a mirror window for its current decoded frame as PNG (fast path for agent screenshots). */
-function captureFrom(wcId: number): Promise<Uint8Array | null> {
+export type CaptureOverlay = { boxes: { x: number; y: number; w: number; h: number; label: string; depth: number }[]; grid?: number }
+
+function captureFrom(wcId: number, size?: { width: number; height: number; quality?: number }, overlay?: CaptureOverlay): Promise<Uint8Array | null> {
   const wc = webContents.fromId(wcId)
   if (!wc || wc.isDestroyed()) return Promise.resolve(null)
   const id = ++captureSeq
@@ -271,18 +287,38 @@ function captureFrom(wcId: number): Promise<Uint8Array | null> {
       clearTimeout(timer)
       resolve(png)
     })
-    wc.send('agent:capture', id)
+    wc.send('agent:capture', id, size, overlay)
   })
 }
 
-/** Live mirror session for any of a phone's transports (USB / Wi-Fi), for agent control. */
-export function findSessionBySerials(
-  serials: string[],
-): { session: ScrcpySession; capture: () => Promise<Uint8Array | null> } | null {
+/** Sessions whose window is the agents' own second screen ("Agent screen"). */
+const agentScreens = new WeakSet<object>()
+
+export interface LiveSession {
+  session: ScrcpySession
+  /** PNG at full size, or a JPEG scaled to `size`. */
+  capture: (size?: { width: number; height: number; quality?: number }, overlay?: CaptureOverlay) => Promise<Uint8Array | null>
+  /** Window showing it (to close the agent screen). */
+  webContentsId: number
+}
+
+/**
+ * Live session for any of a phone's transports (USB / Wi-Fi), for agent control.
+ * `phone`: a mirror of the phone's own screen. `agent`: the agents' second screen. The user's
+ * own second screens are never handed to agents.
+ */
+export function findSessionBySerials(serials: string[], which: 'phone' | 'agent' = 'phone'): LiveSession | null {
   for (const [wcId, session] of sessions) {
-    if (serials.includes(session.serial)) return { session, capture: () => captureFrom(wcId) }
+    if (!(session instanceof ScrcpySession) || !serials.includes(session.serial)) continue
+    const isAgent = agentScreens.has(session)
+    if (which === 'agent' ? isAgent : !session.displaySize) return { session, capture: (size, overlay) => captureFrom(wcId, size, overlay), webContentsId: wcId }
   }
   return null
+}
+
+/** Every live session: its phone serial, and whether it is a second screen / the agent screen. */
+export function sessionSummary(): { serial: string; second: boolean; agent: boolean }[] {
+  return [...sessions.values()].map((s) => ({ serial: s.serial, second: !!s.displaySize, agent: agentScreens.has(s) }))
 }
 
 export function stopAllSessions(): void {

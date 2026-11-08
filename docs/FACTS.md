@@ -246,3 +246,104 @@ adb shell CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobi
 - With `identity: null`, electron-builder edits Electron's pre-signed bundle and leaves it with a **broken** signature. `codesign --verify --deep --strict` reports "code has no resources but signature indicates they must be present". On Apple Silicon, macOS refuses to open such an app on other Macs ("damaged / can't be opened").
 - Fix: `identity: '-'` (ad-hoc signature over the whole bundle) and `hardenedRuntime: false` (hardened runtime is only for notarized Developer ID builds). After that `codesign --verify` is valid. Gatekeeper (`spctl`) still rejects it as not notarized, so the first open needs right-click → Open, or Privacy & Security → Open Anyway.
 - Running a packaged app from a VS Code terminal: unset `ELECTRON_RUN_AS_NODE`, or it exits silently.
+
+## Agents on a second screen (verified on the A024, Android 17, 2026-11-07)
+- `uiautomator dump` has no display option ("dump [--verbose][file] [--compressed]"). It only dumps the default display, so UI trees of a scrcpy virtual display need an accessibility service. `AccessibilityService.getWindowsOnAllDisplays()` (API 30+) returns the windows per display id.
+- `screencap -d` takes **SurfaceFlinger** display ids (`dumpsys SurfaceFlinger --display-id`: e.g. 4630946765914633619, and virtual "scrcpy" displays as 11529215…). It does not take logical ids like 505, so agent-screen screenshots use the mirror window's frame.
+- `input [-d DISPLAY_ID]` and `am start --display N` exist. scrcpy's control socket injects into the virtual display of its session.
+- The server logs `New display: WxH/dpi (id=N)` when `new_display` is used, which gives each session's display id.
+- `am broadcast -n pkg/.Receiver` prints `Broadcast completed: result=0, data="…"` with the receiver's `resultData`. That makes it a synchronous request/response channel to the phone app (base64 JSON, no network).
+- Accessibility node text is cached. With only `typeWindowStateChanged` events, a changed label (calculator result 42 → 12) kept its old text. Content and text-change events in the service config keep it fresh (phone app 0.4.1).
+- An accessibility service can be switched on from adb: `settings put secure enabled_accessibility_services <existing>:com.mobmirror.companion/.AgentService` plus `accessibility_enabled 1`. It stays on across `adb install -r`.
+- `dumpsys notification --noredact` has per-record blocks `NotificationRecord(…pkg=…` with `android.title=String (…)` / `android.text=…`, `when=<epoch ms>`, `flags=…ONGOING_EVENT…`.
+- Test tool formats:
+  - `dumpsys gfxinfo <pkg>` gives `Total frames rendered`, `Janky frames: N (x%)` and `50th/90th/95th/99th percentile: Nms`.
+  - `dumpsys meminfo <pkg>` gives `TOTAL PSS: N` (KB).
+  - `dumpsys cpuinfo` lines look like `x% pid/pkg: …`.
+  - `am start -W` gives `TotalTime: N`.
+  - `cmd package resolve-activity --brief -c android.intent.category.LAUNCHER <pkg>`: the last line is the component.
+  - `versionName` may contain spaces: "9.3 (967717812)".
+
+## adb server socket and performance (verified 2026-11-08, adb 37.0.0, A024 Android 17)
+- The adb server answers its socket protocol on 127.0.0.1:5037 (`ANDROID_ADB_SERVER_PORT` overrides it). Requests are 4 hex digits of length plus the service; replies are `OKAY` or `FAIL` + 4 hex length + message.
+  - `host:version` → `OKAY00040029`.
+  - `host:devices-l` returns the same lines as `adb devices -l`, without the header.
+  - `host-serial:<s>:get-state` → `device`.
+  - `host-serial:<s>:forward:tcp:L;remote` sends a second OKAY once bound. `host-serial:<s>:killforward:tcp:L` also works.
+  - After `host:transport:<s>`, these services run on the phone:
+    - `shell:<cmd>`: stdout and stderr in one stream, until close.
+    - `reverse:forward:tcp:a;tcp:b`: second OKAY once bound.
+    - `reverse:killforward:tcp:a`
+    - `reverse:list-forward`: length-prefixed; the same lines as `adb reverse --list`.
+    - `sync:`: SEND "path,mode", DATA ≤ 64 KB chunks, DONE mtime, reply OKAY/FAIL. The pushed scrcpy server matched byte for byte (sha256).
+  - Covered by test/adb-socket.test.ts (`MOB_DEVICE=… npm test`).
+- **scrcpy-server deletes its own jar once it starts.** With 2 servers running, `/data/local/tmp` had no `scrcpy-server.jar`, so it must be pushed for every session.
+  - A running server keeps its deleted file open, so pushing again never disturbs it.
+  - `adb push` of the 717 KB server took 0.12–0.45 s, almost all of it starting the adb program. Over the socket it takes milliseconds.
+- `adb` processes started by the app while mirroring, counted over 30 s:
+  - Before: about 20 (a get-state check every 4 s and a lock poll every 2.5 s, per window).
+  - After: 0 short-lived processes. Only `track-devices` and the server's `shell` stay running.
+- Agent screenshots (MCP round trip): 84 ms (full PNG, then decoded, resized and re-encoded in main) → about 57 ms (the window scales the frame and encodes the JPEG).
+- Electron 45 `MessagePortMain.postMessage` transfers only ports, not ArrayBuffers, so video packets are copied to the window (about 750 KB/s at 6 Mbit/s: negligible).
+- Startup bundle: 611 KB → 460 KB. Settings, ⌘K, Phone details, help, unlock, the app grid, the switcher and the home screen load on first use.
+- Phone app: debug build 22 MB → release build (R8 + resource shrinking) 1.8 MB, signed with the debug key so it updates in place.
+
+## Wi-Fi latency (measured 2026-11-08, A024 over wireless debugging, home Wi-Fi)
+- The scrcpy 5.0.1 server already sets `KEY_PRIORITY 0` (realtime) and `KEY_LATENCY 1` on the encoder (`video/SurfaceEncoder.java` createFormat). Passing them again through video_codec_options changes nothing.
+- `video_codec_options` format: `key:type=value`, comma separated, `\` escapes (`model/CodecOption.java`). Supported in SessionOptions.videoCodecOptions.
+- Benchmark (`MOB_DEVICE=… MOB_BENCH=1 npx vitest run test/bench`): a scrolling Settings app on a virtual display, 14 s per setting, "added delay" = arrival − PTS relative to the best frame:
+
+  | Setting | p50 | p95 | p99 | Notes |
+  |---|---|---|---|---|
+  | h265 1600/6M | 14 | 24 | 31 | 70 fps, largest frame 41 KB |
+  | h264 1600/6M | 13 | 25 | 32 | |
+  | h265 1600/4M | 12 | 26 | 34 | |
+  | h265 1280/4M | 12 | 23 | 29 | |
+  | h265 + intra-refresh-period 60 | 13 | 26 | 33 | |
+  | h265, max 60 fps | 9 | 27 | 34 | |
+
+  These differences are within noise: frames are small, so bitrate and size don't change the delay on this link.
+- The phone's Wi-Fi radio: `ping` 4.1 / 6.3 / 24 ms (min / avg / max), 0% loss. `cmd wifi` on this phone has no low-latency / hi-perf command. WifiManager's low-latency lock only works while the requesting app is in the foreground, so it can't help during mirroring.
+- Mac pipeline, packet → drawn (`appMs`), on a second screen at ~117 fps: about 12 ms (decode about 3.5 ms) whether frames are drawn at once or on the next refresh (runs vary ±4 ms; one 3.7 ms reading was an outlier). Refresh-paced drawing is kept, since it costs fewer draws.
+
+## Screen map (verified 2026-11-08, A024 Android 17)
+- AccessibilityNodeInfo `EXTRA_DATA_RENDERING_INFO_KEY` (API 30) through `refreshWithExtraData` returns:
+  - `layoutSize`: layout params in px; -1 match_parent, -2 wrap_content
+  - `textSizeInPx` and `textSizeUnit` (TypedValue: 0 px, 1 dp, 2 sp)
+- Home screen: 85 views, 46 with a layout size, 13 with a text size; map in about 750 ms.
+- Settings on the agent screen: 82 views; the full MCP call including the image took about 550 ms.
+- Text sizes come back as whole pixels: 18sp at 2.625 density is 47.25 px, reported as 47. screen_map reports the simplest value that rounds to the measured pixels (`nice()` in screen-map.ts), so it shows 18sp, not 17.9.
+
+## Direct link: "Wi-Fi, no setup" (verified 2026-11-08)
+- **Mac side:** src/main/direct/protocol.ts (spec in its header) and server.ts. **Phone side:** companion …/direct/DirectCrypto.kt, DirectLink.kt, MirrorService.kt, DirectInput.kt.
+- **Transport and discovery:** TCP port 47200 on the Mac. Advertised with macOS' own `/usr/bin/dns-sd -R <Mac name> _twinglass._tcp local 47200 v=1` (verified with `dns-sd -B`: "Nikhils-MacBook-Pro" on 2 interfaces). Phones discover it with Android NsdManager.
+- **Pairing:** P-256 ECDH. Node `createECDH('prime256v1')` and Android EC/ECDH both give the 32-byte x-coordinate, and public keys are uncompressed 65-byte points. Key derivation is HKDF-SHA256 with salt = the 6-digit code; both sides confirm with HMACs. The code lasts 5 minutes or 3 wrong tries.
+- **Sessions:** HKDF from the long-term secret and both nonces. Frames are AES-256-GCM with a 4-zero + u64 counter IV per direction; replayed or out-of-order frames are rejected.
+- **Interop:** fixed test vectors give identical bytes in vitest (test/direct-protocol.test.ts) and JUnit (companion DirectCryptoTest).
+- **Video:** the payload is scrcpy's own stream framing (codec id, 12-byte session packet with bit 0x80, then u64 flags/pts + u32 size + data), so the Mac reuses StreamDemuxer, the decoder, recording and screenshots unchanged.
+- **End-to-end test:** a fake phone (scratch script) checked the following.
+  - A wrong code is rejected ("code").
+  - The right code pairs.
+  - The encrypted session opens.
+  - An "offer" makes the Mac open a mirror window by itself (#connect=direct:<id>).
+  - "go", then a recorded real H.264 clip decodes (avc1.64002a, 720×1600) and shows.
+- **Phone side:**
+  - MediaProjection needs the user's consent each session; on Android 14+ the foreground service (type mediaProjection) must be started before getMediaProjection.
+  - Input goes through AccessibilityService.dispatchGesture (canPerformGestures="true"): a finger's path is sent as one gesture on release, wheel → swipe, keys → global actions / the focused field.
+  - Accessibility-bound apps may start activities from the background (START_APP).
+- **Not possible without developer mode:** second screens / the agent screen (creating displays for other apps needs shell), silent installs, logcat / pm / dumpsys tools, the lock-screen PIN.
+
+## USB latency: the encoder, not the cable (measured 2026-11-08, A024 over USB, test/bench MOB_BENCH_SET=usb)
+- A phone-sized 1260×2800 virtual display was scrolled for 14 s per setting. "Added delay" is arrival − PTS, relative to the best frame:
+
+  | Setting | p50 | p95 | p99 |
+  |---|---|---|---|
+  | native 16 Mbps h265 (the old USB "High") | 50 | 74 | 87 |
+  | 1920 px 12 Mbps h265 | 16 | 33 | 82 |
+  | 1600 px 8 Mbps h265 | 19 | 43 | 78 |
+  | 1600 px 8 Mbps h264 | 19 | 36 | 49 |
+  | native 16 Mbps h264 | 42 | 60 | 80 |
+
+- Full-resolution frames queue in the phone's encoder. That is why USB at native felt slower than Wi-Fi (capped at 1600).
+- USB "High" (and Auto on USB) is now 1920 px / 12 Mbps; native is only "Maximum".
+- A second full-resolution 120 fps stream (agent screen) showed ~15 ms main → window IPC delay on that window. Keep concurrent streams capped.

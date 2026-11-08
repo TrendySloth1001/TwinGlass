@@ -29,6 +29,8 @@ export interface SessionOptions {
    * independently of what the user does on the physical screen (scrcpy 3.0+, Android 10+).
    */
   newDisplay?: { width: number; height: number; dpi?: number }
+  /** Second screen closes: keep its apps (moved to the phone's screen). Default true. */
+  keepApps?: boolean
   /**
    * off: no audio. mac: audio_source=output (mutes the phone while mirroring, scrcpy default).
    * both: audio_source=playback + audio_dup (Android 13+, keeps the phone playing; apps may opt out).
@@ -36,6 +38,12 @@ export interface SessionOptions {
   audio?: AudioMode
   /** scrcpy show_touches: the phone draws touch dots (setting restored by the server's cleanup). */
   showTouches?: boolean
+  /**
+   * MediaFormat keys for the encoder (scrcpy video_codec_options, "key:type=value" comma separated,
+   * see the server's model/CodecOption.java). E.g. { 'intra-refresh-period': 30 }. The server already
+   * sets KEY_PRIORITY 0 (realtime) and KEY_LATENCY 1 itself (video/SurfaceEncoder.java).
+   */
+  videoCodecOptions?: Record<string, number>
   /** h265 = sharper at the same bitrate (both hardware on the test phone and the Mac). */
   videoCodec?: 'h264' | 'h265'
   logLevel?: 'verbose' | 'debug' | 'info' | 'warn' | 'error'
@@ -72,6 +80,12 @@ function openSocket(port: number): Promise<Socket> {
   })
 }
 
+/** scrcpy-server logs "New display: 1080x2400/420 (id=439)" when it creates a virtual display. */
+export function parseNewDisplayId(log: string): number | null {
+  const m = /New display: [^\n]*?\(id=(\d+)\)/.exec(log)
+  return m ? Number(m[1]) : null
+}
+
 export function buildServerArgs(scid: string, o: SessionOptions): string[] {
   const args = [
     `scid=${scid}`,
@@ -92,18 +106,22 @@ export function buildServerArgs(scid: string, o: SessionOptions): string[] {
   if (o.videoBitRate) args.push(`video_bit_rate=${o.videoBitRate}`)
   if (o.maxFps) args.push(`max_fps=${o.maxFps}`)
   if (o.clipboardAutosync === false) args.push('clipboard_autosync=false')
+  const codecOpts = Object.entries(o.videoCodecOptions ?? {}).filter(([k, v]) => /^[a-z][\w-]*$/i.test(k) && Number.isFinite(v))
+  if (codecOpts.length) args.push(`video_codec_options=${codecOpts.map(([k, v]) => `${k}:${Number.isInteger(v) ? 'int' : 'float'}=${v}`).join(',')}`)
   if (o.newDisplay) {
     const { width, height, dpi } = o.newDisplay
     args.push(`new_display=${Math.round(width)}x${Math.round(height)}${dpi ? `/${Math.round(dpi)}` : ''}`)
     // Keep its apps alive (moved to the phone's screen) when the second screen closes, and show the
     // keyboard on the second screen, not on the physical one.
-    args.push('vd_destroy_content=false', 'display_ime_policy=local')
+    args.push(`vd_destroy_content=${o.keepApps === false}`, 'display_ime_policy=local')
   }
   return args
 }
 
 export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
   deviceName = ''
+  /** Second screens: the id of the virtual display the server created (from its log). */
+  displayId: number | null = null
   private closed = false
   private videoReader: SocketReader | null = null
 
@@ -121,6 +139,16 @@ export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
 
   get serial(): string {
     return this.opts.serial
+  }
+
+  /** Second screens: the virtual display's size in its own pixels; null = the phone's screen. */
+  /** Second screens: the virtual display's density (dpi). */
+  get displayDpi(): number | null {
+    return this.opts.newDisplay?.dpi ?? null
+  }
+
+  get displaySize(): { width: number; height: number } | null {
+    return this.opts.newDisplay ? { width: this.opts.newDisplay.width, height: this.opts.newDisplay.height } : null
   }
 
   /** Latest video size from session packets: touch coordinates must be in this space. */
@@ -189,7 +217,12 @@ export class ScrcpySession extends EventEmitter<ScrcpySessionEvents> {
 
       server.stdout?.off('data', onLog)
       server.stderr?.off('data', onLog)
-      const emitLog = (b: Buffer): void => void session.emit('log', b.toString())
+      if (opts.newDisplay) session.displayId = parseNewDisplayId(logs.join(''))
+      const emitLog = (b: Buffer): void => {
+        const text = b.toString()
+        if (opts.newDisplay && session.displayId === null) session.displayId = parseNewDisplayId(text)
+        session.emit('log', text)
+      }
       server.stdout?.on('data', emitLog)
       server.stderr?.on('data', emitLog)
       server.once('exit', (code) => session.close(code ? new Error(`scrcpy-server exited with ${code}`) : undefined))

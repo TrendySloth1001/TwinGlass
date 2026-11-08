@@ -142,6 +142,18 @@ The dates are when each item was asked for (2026-11-06 unless noted).
     - The grid opens when a whole-phone second screen starts; **Home** on that screen brings it back; an **Apps** button sits on the strip.
     - The home page's **Second screen** opens a whole phone directly; ⌘K → Open a second screen still opens one chosen app.
     - Type-checked; awaiting the user's own try (they were using second screens themselves, e.g. com.sparky.app).
+  - **Options visible in every layout** (user: "i am not getting the option"): full view's top bar now has **Second screen** (normal windows) and **Apps** (second-screen windows); the compact strip's ⋯ menu has "Open a second screen" too.
+    - Fixed "Could not read the app list": two loads at once (React dev double mount) collided on the lister jar. One listing per phone now; the error shows only when no list loaded.
+  - **Real app icons** (user: "use real icons instead of just buttons"):
+    - The Twinglass phone app (companion v0.2.0) draws each launcher icon (IconReceiver, DUMP-guarded like LinkReceiver, `<queries>` for launcher apps) and POSTs PNGs to the Mac over the companion link (key-checked).
+    - The Mac caches them per phone in userData/app-icons/<device id>/ (package-name and PNG-signature checked). The app grid and ⌘K show them; letter tiles stay as the fallback.
+    - Without the phone app the grid offers **Install**, which installs it only on that click (the user had uninstalled it).
+    - ✅ Verified on the A024 (user said "you do it": phone app v0.2.0 installed): 85 of 88 apps got real icons in 6 s.
+    - When another Twinglass already holds port 47123 (e.g. the installed app beside a dev build), the link falls back to a free port; the phone is told the port on every link.
+  - **App switcher on second screens** (user: "no app switch option"): Android's Recents shows "No recent items" on a second screen, so there **Recents** opens Twinglass' own switcher.
+    - It shows the apps open on this screen, front first. It also shows the apps open on the phone ("move here"). A click brings the app to this screen.
+    - How it works: the display id comes from the server's "New display: … (id=N)" log. The apps come from that display's section of `dumpsys activity activities`.
+    - ✅ Verified: display 444 listed Calculator; picking Clock moved it from the phone to the second screen.
 - ✅ **Fixed: windows opened for a phone stuck at "Starting mirror…"** in development. StrictMode's double mount ran the mirror hook's cleanup, which cancelled the connect that had just started. Auto-connect is now scheduled and cancelled in cleanup.
 
 ## Scope decision (2026-11-06)
@@ -212,3 +224,129 @@ The dates are when each item was asked for (2026-11-06 unless noted).
 ## Agents (MCP)
 - ✅ Coding agents (Claude Code and others) can control the phone through the local MCP server. It is off by default and protected by a token.
 - On hold: no new agent features unless the user asks.
+
+## Phone app (companion) v0.3.0 and phone details (2026-11-07)
+- User: "make the companion app better using native Android components, and show all the API details of the phone, both sides".
+- **Phone app:**
+  - Rebuilt with Jetpack Compose + Material 3, using Material You colours on Android 12+.
+  - Screen: a large top app bar (refresh, copy all), a connection card, a summary (model, Android and API level, chips for RAM, storage, battery and refresh rate), and collapsible detail cards. Long-press a row to copy it.
+- **Details:**
+  - Read by `DeviceInfo.kt` from Android APIs. No runtime permissions; ACCESS_NETWORK_STATE is install-time.
+  - 12 sections: device and SoC, Android (API level, security patch, build, kernel, uptime, fingerprint), CPU, memory and storage, display, battery, cameras, sensors, video codecs, network, features, region.
+- **Mac:**
+  - The **Phone details** window opens from the home screen (Details), the device ⋯ menu, the strip ⋯ menu and the full-view ⋯ menu.
+  - It has a filter, click-to-copy and Copy all. The data is the same list as on the phone, sent by InfoReceiver (DUMP-guarded) to POST /link/info and validated on the Mac.
+  - Without the phone app (or with an older one), it falls back to adb (getprop, battery, wm, meminfo, df) and offers Install or Update.
+- ✅ Verified on the A024: 12 sections came from phone app 0.3.0, and the Compose UI renders in Material You dark.
+
+## Agents on their own second screen + a much stronger MCP (2026-11-07)
+- User: "optimize the app to always use the secondary display of the phone and make the MCP powerful as hell", then "add everything that u would love to have while testing an android app", then "add options to the settings as well".
+- ✅ **Agent screen:**
+  - Agents act on their own virtual display by default (`screen: "agent"`). It opens by itself without taking focus, in a window titled "A024 · Agent screen".
+  - The user's own second screens are never handed to agents. `screen: "phone"` targets the physical screen.
+  - Verified: Calculator 7×6=42 via `run_steps` while the user's phone stayed on Instagram; Chrome opened there via `open_url`.
+- ✅ **Phone app 0.4.1:**
+  - It adds AgentService (accessibility) and AgentReceiver (DUMP-guarded; answers through the `am broadcast` result).
+  - Element tools work on the agent screen. Verified: `tap_element` "9", "plus", "3", "equals" gave 12.
+  - The user agreed to switch the service on (2026-11-07).
+- ✅ **Tools:**
+  - agent_screen, find_elements, tap_element, set_text, wait_for, run_steps, open_url (deep links), stop_app
+  - get_notifications, logcat, push/pull/list files, install_apk, set_clipboard
+  - shell (opt-in), phone_details, app_info, start_activity (verified cold start 228 ms)
+  - clear_app_data, uninstall_app, set_permission, get_crashes, app_performance (verified frames, PSS)
+  - set_device_state (verified: animations and battery set, then reset restored scale 1.0 and battery 42%; Wi-Fi-off refused on a Wi-Fi-only link)
+  - reverse_port, record_screen (verified: saved an .mp4)
+- ✅ **Settings → Agents:**
+  - Choices: agents work on (second screen / phone), agent screen size (phone / same as phone / tablet), idle close (never / 5 / 15 / 30 min).
+  - Switches: "Agents read any screen", files and installs, clearing/uninstalling/permissions, phone settings, shell (off by default).
+  - Button: undo agents' phone setting changes.
+- Fixed along the way: companion-link fallback ports piled up as adb reverse entries on every restart. Old ports are now removed on link.
+
+## Performance pass (2026-11-08, user: "implement all of em")
+- ✅ **adb over the server socket:** shell, push, get-state, forward/killforward, reverse and devices-l. Falls back to the adb program if the socket is refused. The connection check uses the socket too.
+- ✅ **Server push over the socket.** The planned "skip the push" was wrong: the server deletes its jar on start (see FACTS), so it is pushed every time, just faster.
+- ✅ **Agent screenshots as a scaled JPEG from the window:** 84 → about 57 ms.
+- ✅ **Video frames drawn once per screen refresh (newest only), not while hidden.** Recording, screenshots and agent captures flush the newest frame first.
+- ✅ **Lazy-loaded dialogs and overlays:** startup bundle 611 → 460 KB.
+- ✅ **Home and status-bar timers pause while the window is hidden** (useVisibleInterval).
+- ✅ **Phone app release build** 1.8 MB (was 22 MB); `npm run companion:build` builds it, and the Mac installs it.
+- Not done, on purpose: removing the video copy from main to the window (not possible with Electron 45 MessagePortMain; negligible cost).
+
+## Wi-Fi latency + screen map (2026-11-08)
+- User: "optimize scrcpy for latency in wireless", and "give MCP a precise MAP of the screen… so when it builds UI it does not assume but has proper dimensions".
+- ✅ **Latency:** measured instead of guessed (FACTS: Wi-Fi latency).
+  - No stream setting measurably beats the current one on the user's link. The Mac pipeline is about 12 ms; the Wi-Fi radio is healthy.
+  - Kept: refresh-paced drawing.
+  - Added: `videoCodecOptions` support and a repeatable benchmark (test/bench).
+  - Remaining delay: the phone's capture and encode, plus Wi-Fi air time. Nothing in Twinglass can tune these further.
+- ✅ **screen_map MCP tool** (phone app 0.5.0 `map` op):
+  - JSON in dp: boxes, parents, insets, gaps, layout params, text sizes in sp (font scale applied), sampled colours, system bars, keyboard.
+  - A design summary, and an annotated image with non-overlapping labels and an optional dp grid.
+  - Verified on Settings: 18sp / 14sp, 52 dp rows ×11, keylines 0 / 64.5 dp, two-colour palette.
+
+## Phone app 0.6.0: a usable companion with real foundations (2026-11-08)
+- User asks:
+  - "build the whole app more better… inspiration from my sparky project" (the phone app was meant)
+  - "use normal font only"
+  - "make the phone app practically usable… settings, device details, connected to"
+  - "add more controllable settings as much as possible"
+  - "build the advanced settings as well both the sides"
+  - "header section is transparent"
+- ✅ **Design:** Sparky's language ported to Compose (ui/Theme.kt, Components.kt, Controls.kt).
+  - Black / warm off-white surfaces, red accent for on/live states.
+  - Space Grotesk only (the user asked for one normal font; no dot-matrix figures, no mono).
+  - Android 16 grouped cells, dot grid, dot meters, spring motion.
+  - A solid backdrop under the status and navigation bars. Bar icons follow the app theme.
+- ✅ **Screens:**
+  - Home: link hero with live ping, mirroring state and link type; phone at a glance; quick actions.
+  - Device: searchable details.
+  - Settings, plus pushed Connected to and Advanced pages, with a floating pill nav.
+- ✅ **Share to Mac** (ShareActivity): text → Mac clipboard; files streamed (up to 2 GB) → ~/Downloads/Twinglass, with a Mac notification. Send clipboard to Mac from Home.
+  - Mac endpoints: /link/status (rich), /link/clipboard, /link/file. All key-checked; file names sanitised (verified: "../../etc/evil.txt" → evil.txt in Downloads/Twinglass); notify=0 supported.
+- ✅ **Settings (each one honoured):**
+  - Appearance: theme, text size, dot grid, reduce motion, haptics.
+  - Home: open on, tiles, quick actions, link refresh.
+  - Details: units (GB / GiB), copy format (Text / Markdown / JSON).
+  - Share: show in share sheets (component switch), close after sending, ask over N MB, notify on Mac, date in file names.
+  - What the Mac may use: details, icons, agent requests (component switches enforced by Android); Read any screen.
+  - Connection: Connected to, copy diagnostics, forget.
+  - Keep screen on; About (licences, reset).
+- ✅ **Phone Advanced:** link timeout, agent max elements, layout/text-size info, sensors / codecs in details, icon size cap, debug logging (logcat "Twinglass"), copy diagnostics, Android app info.
+- ✅ **Mac Advanced:**
+  - Video: bitrate / resolution overrides, decoder hardware / software.
+  - Second screens: size (phone / tablet / landscape), keep apps when closing (vd_destroy_content).
+  - Connection: reconnect window (30 s / 90 s / 5 min).
+  - Dropped files: phone folder.
+  - Copy diagnostics.
+  - Agents page → Advanced: screenshot size (1024 / 1280 / 1600), JPEG quality, MCP port (server restarts).
+- ✅ **Agent fixes found while testing:**
+  - device_info's lock check used the wrong line; it now uses parseKeyguardShowing.
+  - launch_app on the agent screen moves the app's task there if it was on the phone's screen (cmd activity display move-stack), and refuses while the phone is locked (Android shows no apps on any display then).
+- Mistake, fixed at once: a test launch while the phone was locked put the phone app on the user's own screen. It was moved to the agent screen; the cause is fixed above.
+
+## Two ways to connect + landing page + bottom sheets (2026-11-08)
+- User: "let's build those both options… keep the user exp ux in mind… a landing page… a bottomsheet popup to ask for additional features… think as product designer".
+- ✅ **Phone app:**
+  - Landing page on first run ("Your phone, on your Mac."), with a choice between "Wi-Fi, no setup" (recommended) and "Full control" (Developer mode); switchable in Settings → Connection → Connect with.
+  - Bottom sheets, one ask at a time when needed: pair (pick a Mac found on the Wi-Fi, then the code), before Android's screen-share prompt, control from Mac (accessibility), notifications, and the Developer-mode upgrade (3-step guide).
+  - No-setup Home: hero card with "Mirror to Mac" / "Stop mirroring", plus "Unlock more" cells with ON / SET UP states.
+- ✅ **Mac:**
+  - "Add phone" bottom sheet: Wi-Fi path first (QR to download the phone app from this Mac over the Wi-Fi, a big 6-digit code with a countdown, auto-confirmation when paired) or Developer mode.
+  - Paired no-setup phones listed on Home with live states (offline / ready / sharing / mirroring) and Forget.
+  - The empty state leads with "Add phone".
+  - A phone's "Mirror to Mac" opens a window by itself; ending it on the phone is a clean stop (no reconnect loop).
+- ✅ **Verified:** protocol interop (vitest + JUnit vectors), mDNS advertisement, full Mac flow with a fake phone (pairing, wrong code, encrypted session, auto window, H.264 decoding).
+- ⏳ **Real phone flow:** waiting for the user (screen-share consent is the user's own tap).
+- ⏳ **Packaged DMG:** bundle the phone APK (extraResources → mob-mirror-companion.apk) so "Get the app" works outside development.
+- ⏳ **Next:** the Electron UI update.
+
+## Forgetting is two-way (2026-11-08, user: "when user forgets from any one place must be forgotten from both the devices, make sure of it")
+- ✅ **Mac → phone:**
+  - Phone connected: the Mac sends "forget" first and the phone drops the pairing at once (any session: presence or mirror).
+  - Phone offline: its next connection is answered "unknown" and the phone drops the pairing. The phone app checks on every open (presence connection), so it shows right away.
+- ✅ **Phone → Mac:** the phone sends an authenticated "forget" before dropping its secret. If the Mac is unreachable, the request is kept (pending.*) and delivered the next time the app opens and the Mac is reachable; "unknown" also counts as done.
+- ✅ Both sides confirm first ("removed on this Mac and on the phone") and report whether the other side was told now or will be later.
+- ✅ **Developer mode:** "Forget this Mac" blocks the Mac's automatic re-link over adb until "Link again", so a forget isn't silently undone.
+- ✅ **Verified with fake phones:** (1) Mac forget → phone received "forget", gone from the list; (2) phone "forget" → gone on the Mac; (3) offline → next hello answered "unknown".
+- ✅ **Presence:** while the phone app is open in Wi-Fi mode it stays connected, so the Mac shows "Ready" truthfully. It reconnects after drops and closes when the app goes to the background.
+- ✅ shadcn alert-dialog added with the pinned CLI; the button override was declined and the CLI's stray `cn` npm dependency removed (ADR-7).

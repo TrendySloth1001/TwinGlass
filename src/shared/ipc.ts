@@ -19,6 +19,10 @@ export interface StartSessionRequest {
   newDisplay?: { width: number; height: number; dpi?: number }
   /** Package to open on the second screen once it is up. */
   startApp?: string
+  /** Second screens: keep their apps when closed (moved to the phone). Default true. */
+  keepApps?: boolean
+  /** This second screen is the agents' workspace (MCP tools act here, not on the phone's screen). */
+  agentScreen?: boolean
 }
 
 export interface FileResult {

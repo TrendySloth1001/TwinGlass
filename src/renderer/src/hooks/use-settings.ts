@@ -59,6 +59,21 @@ export interface Settings {
   clipboardHistory: boolean
   /** Phones mirrored before, newest first (home screen "Recent"). */
   recentDevices: { id: string; model: string; at: number }[]
+  // ---- Advanced ----
+  /** Video bitrate override in Mbps (0 = the quality preset decides). */
+  bitrateMbps: number
+  /** Longest side override in px (0 = preset, -1 = native). */
+  maxSizeOverride: number
+  /** WebCodecs decoder preference. */
+  decoder: 'auto' | 'hardware' | 'software'
+  /** Size of the second screens you open (agents have their own setting). */
+  secondScreenSize: 'phone' | 'tablet' | 'landscape'
+  /** Closing a second screen keeps its apps running (moved to the phone); off = they close. */
+  secondScreenKeepApps: boolean
+  /** How long to keep trying after the link drops (s). */
+  reconnectSec: number
+  /** Phone folder for files dropped on the mirror (APKs are always installed). */
+  dropFolder: 'Download' | 'Documents' | 'Pictures' | 'Movies'
 }
 
 const DEFAULTS: Settings = {
@@ -91,11 +106,18 @@ const DEFAULTS: Settings = {
   showTray: true,
   clipboardHistory: true,
   recentDevices: [],
+  bitrateMbps: 0,
+  maxSizeOverride: 0,
+  decoder: 'auto',
+  secondScreenSize: 'phone',
+  secondScreenKeepApps: true,
+  reconnectSec: 90,
+  dropFolder: 'Download',
 }
 
 export const DEFAULT_SETTINGS = DEFAULTS
 /** Settings that need a new video/audio stream: changing them restarts a live mirror (~1 s). */
-export const STREAM_KEYS = ['audio', 'quality', 'codec', 'maxFps', 'stayAwake', 'clipboardSync'] as const
+export const STREAM_KEYS = ['audio', 'quality', 'codec', 'maxFps', 'stayAwake', 'clipboardSync', 'bitrateMbps', 'maxSizeOverride', 'decoder'] as const
 
 /** Allowed values for the enum-like settings. Anything else (old version, hand edit) -> default. */
 const ALLOWED: Partial<Record<keyof Settings, readonly unknown[]>> = {
@@ -110,6 +132,12 @@ const ALLOWED: Partial<Record<keyof Settings, readonly unknown[]>> = {
   scrollSpeed: [0.5, 1, 1.5, 2.5],
   frame: ['none', 'modern', 'minimal', 'classic'],
   frameColor: ['black', 'graphite', 'silver', 'white', 'sand', 'blue', 'green'],
+  bitrateMbps: [0, 2, 4, 6, 8, 12, 16, 24],
+  maxSizeOverride: [0, 1024, 1280, 1600, 1920, -1],
+  decoder: ['auto', 'hardware', 'software'],
+  secondScreenSize: ['phone', 'tablet', 'landscape'],
+  reconnectSec: [30, 90, 300],
+  dropFolder: ['Download', 'Documents', 'Pictures', 'Movies'],
 }
 
 /**

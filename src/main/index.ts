@@ -5,14 +5,15 @@ import { registerDevicesIpc, stopDeviceTracking } from './devices-ipc'
 import { closeAllRecordings, registerMediaIpc } from './media-ipc'
 import { installMenu } from './menu'
 import { registerWindowLayoutIpc } from './window-layout'
-import { getSession, registerSessionIpc, stopAllSessions } from './session-ipc'
+import { getSession, mirroredSerials, registerSessionIpc, sessionSummary, stopAllSessions } from './session-ipc'
 import { registerUnlockIpc } from './unlock-ipc'
 import { registerPhoneAppsIpc } from './phone-apps'
 import { registerClipboardHistoryIpc, startClipboardHistory } from './clipboard-history'
 import { setTrayVisible, startTrayUpdates } from './tray'
 import { registerUpdateIpc } from './update-check'
 import { startCompanionLink, stopCompanionLink } from './companion-link'
-import { registerAgentIpc, stopAgentServer } from './agent-ipc'
+import { agentSummary, registerAgentIpc, stopAgentServer } from './agent-ipc'
+import { closeApkDownload, directServer, openApkDownload } from './direct/server'
 
 export function serverPath(): string {
   return app.isPackaged
@@ -35,8 +36,18 @@ function getAdb(): Adb | null {
 }
 
 /** @param autoConnect transport serial to start mirroring as soon as the window loads */
-function createWindow(autoConnect?: { serial: string; kind: string; second?: boolean; app?: string }): BrowserWindow {
+function createWindow(autoConnect?: {
+  serial: string
+  kind: string
+  second?: boolean
+  app?: string
+  agent?: boolean
+  /** Second screen size (agent screen setting). */
+  display?: { width: number; height: number; dpi: number }
+}): BrowserWindow {
   const win = new BrowserWindow({
+    // The agent screen opens without taking focus from what the user is doing.
+    show: !autoConnect?.agent,
     width: 1180,
     height: 900,
     // The layout adapts down to this (toolbar overflow menu, floating sidebar, compact status bar).
@@ -62,12 +73,43 @@ function createWindow(autoConnect?: { serial: string; kind: string; second?: boo
   })
   const hash = autoConnect
     ? `connect=${encodeURIComponent(autoConnect.serial)}&kind=${autoConnect.kind}` +
-      (autoConnect.second ? `&screen=second${autoConnect.app ? `&app=${encodeURIComponent(autoConnect.app)}` : ''}` : '')
+      (autoConnect.second ? `&screen=second${autoConnect.app ? `&app=${encodeURIComponent(autoConnect.app)}` : ''}` : '') +
+      (autoConnect.agent ? '&agent=1' : '') +
+      (autoConnect.display ? `&size=${autoConnect.display.width}x${autoConnect.display.height}/${autoConnect.display.dpi}` : '')
     : ''
+  if (autoConnect?.agent) win.once('ready-to-show', () => win.showInactive())
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(`${process.env.ELECTRON_RENDERER_URL}#${hash}`)
   else void win.loadFile(join(__dirname, '../renderer/index.html'), { hash })
   return win
 }
+
+/**
+ * "Wi-Fi, no setup" phones (the Twinglass app without developer mode). A phone that offers its
+ * screen ("Mirror to Mac" on the phone) gets a mirror window here, unless one already shows it.
+ */
+function startDirect(): void {
+  directServer.start()
+  const broadcast = (): void => {
+    for (const w of BrowserWindow.getAllWindows()) w.webContents.send('direct:changed', directServer.list())
+  }
+  directServer.on('changed', broadcast)
+  directServer.on('offer', (serial) => {
+    if (mirroredSerials().has(serial)) return
+    const w = createWindow({ serial, kind: 'wifi' })
+    w.once('ready-to-show', () => w.focus())
+  })
+}
+ipcMain.handle('direct:list', () => directServer.list())
+ipcMain.handle('direct:pairing', (_e, open: unknown) => (open === false ? (directServer.closePairing(), null) : directServer.openPairing()))
+ipcMain.handle('direct:pairing-state', () => directServer.pairingState())
+// The phone app's APK for "Get the app" (release build in development, bundled when packaged).
+ipcMain.handle('direct:apk', async (_e, open: unknown) => {
+  if (open === false) return closeApkDownload(), null
+  const packaged = join(process.resourcesPath, 'mob-mirror-companion.apk')
+  const dev = join(app.getAppPath(), 'companion/app/build/outputs/apk/release/app-release.apk')
+  return openApkDownload(app.isPackaged ? packaged : dev)
+})
+ipcMain.handle('direct:forget', (_e, id: unknown) => (typeof id === 'string' ? { told: directServer.forget(id) } : { told: false }))
 
 ipcMain.handle('window:open-device', (_e, serial: string, kind: string, opts?: { second?: boolean; app?: string }) => {
   const app = typeof opts?.app === 'string' && /^[\w.]+$/.test(opts.app) ? opts.app : undefined
@@ -77,7 +119,13 @@ ipcMain.handle('window:open-device', (_e, serial: string, kind: string, opts?: {
 registerDevicesIpc(getAdb)
 registerSessionIpc(getAdb, serverPath)
 registerUnlockIpc(getAdb, getSession)
-void app.whenReady().then(() => registerAgentIpc(getAdb)) // needs app paths (userData)
+void app.whenReady().then(() =>
+  registerAgentIpc(getAdb, {
+    serverPath,
+    // The agents' own second screen: a normal Twinglass window, so the user can watch it.
+    openAgentScreen: (serial, kind, display) => void createWindow({ serial, kind, second: true, agent: true, display }),
+  }),
+) // needs app paths (userData)
 registerMediaIpc()
 registerWindowLayoutIpc()
 registerPhoneAppsIpc(getAdb, serverPath, getSession)
@@ -119,7 +167,8 @@ void app.whenReady().then(() => {
   createWindow()
   startClipboardHistory()
   startTrayUpdates(trayDeps)
-  startCompanionLink(getAdb)
+  startCompanionLink(getAdb, { sessions: sessionSummary, agents: agentSummary })
+  startDirect()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
@@ -136,6 +185,8 @@ process.on('uncaughtException', reportMainError('uncaught exception'))
 process.on('unhandledRejection', reportMainError('unhandled rejection'))
 
 app.on('before-quit', () => {
+  directServer.stop()
+  closeApkDownload()
   stopCompanionLink()
   stopAllSessions()
   stopDeviceTracking()

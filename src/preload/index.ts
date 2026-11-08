@@ -8,12 +8,27 @@ ipcRenderer.on('session:port', (e, info: { deviceName: string }) => {
 })
 
 // Agent screenshots: main asks for the current mirror frame; the page provides it as PNG bytes.
-let captureFn: (() => Promise<Uint8Array | null>) | null = null
-ipcRenderer.on('agent:capture', (_e, id: number) => {
+type CaptureOverlay = { boxes: { x: number; y: number; w: number; h: number; label: string; depth: number }[]; grid?: number }
+let captureFn: ((size?: { width: number; height: number; quality?: number }, overlay?: CaptureOverlay) => Promise<Uint8Array | null>) | null = null
+ipcRenderer.on('agent:capture', (_e, id: number, size?: { width: number; height: number; quality?: number }, overlay?: CaptureOverlay) => {
   const fn = captureFn
-  void (fn ? fn() : Promise.resolve(null))
+  const ok = size && Number.isInteger(size.width) && Number.isInteger(size.height) && size.width > 0 && size.height > 0 && size.width <= 4096 && size.height <= 4096
+  const boxes = Array.isArray(overlay?.boxes) ? overlay.boxes.slice(0, 2000) : null
+  const quality = typeof size?.quality === 'number' && size.quality >= 0.5 && size.quality <= 0.95 ? size.quality : undefined
+  void (fn ? fn(ok ? { width: size.width, height: size.height, quality } : undefined, boxes ? { boxes, grid: overlay?.grid } : undefined) : Promise.resolve(null))
     .catch(() => null)
     .then((png) => ipcRenderer.send('agent:capture-result', id, png))
+})
+
+// Agent recordings (record_screen): main asks this window's recorder to start / stop.
+let recordFn: ((on: boolean) => Promise<string | null>) | null = null
+ipcRenderer.on('agent:record', (_e, id: number, on: boolean) => {
+  const fn = recordFn
+  void (fn ? fn(on === true) : Promise.reject(new Error('not mirroring')))
+    .then(
+      (path) => ipcRenderer.send('agent:record-result', id, { ok: true, path }),
+      (e: unknown) => ipcRenderer.send('agent:record-result', id, { ok: false, error: e instanceof Error ? e.message : String(e) }),
+    )
 })
 
 /** Subscribes to a main -> renderer channel; returns an unsubscribe function. */
@@ -30,6 +45,9 @@ const api: MobMirrorApi = {
   restartAdbServer: () => ipcRenderer.invoke('adb:restart-server'),
   rotateDevice: () => ipcRenderer.invoke('device:rotate'),
   listApps: (fresh?: boolean, serial?: string) => ipcRenderer.invoke('apps:list', fresh === true, serial),
+  phoneDetails: (serial: string) => ipcRenderer.invoke('phone:details', serial),
+  runningApps: () => ipcRenderer.invoke('apps:running'),
+  fetchAppIcons: (serial: string) => ipcRenderer.invoke('apps:fetch-icons', serial),
   launchApp: (pkg: string) => ipcRenderer.invoke('apps:launch', pkg),
   sendToPhone: (text: string, mode: 'auto' | 'copy' | 'paste' = 'auto') => ipcRenderer.invoke('phone:send', text, mode),
   clipboardHistory: () => ipcRenderer.invoke('clipboard:history'),
@@ -77,19 +95,34 @@ const api: MobMirrorApi = {
   forgetUnlockSecret: () => ipcRenderer.invoke('unlock:forget'),
   agentStatus: () => ipcRenderer.invoke('agent:status'),
   setAgentEnabled: (enabled) => ipcRenderer.invoke('agent:set-enabled', enabled),
+  setAgentOptions: (o) => ipcRenderer.invoke('agent:set-options', o),
+  agentA11yStatus: (serial) => ipcRenderer.invoke('agent:a11y-status', serial),
+  setAgentA11y: (serial, on) => ipcRenderer.invoke('agent:a11y-set', serial, on),
+  setAgentPort: (port) => ipcRenderer.invoke('agent:set-port', port),
+  agentResetDeviceState: (serial) => ipcRenderer.invoke('agent:reset-device-state', serial),
   copyAgentSetup: () => ipcRenderer.invoke('agent:copy-setup'),
   regenerateAgentToken: () => ipcRenderer.invoke('agent:regenerate-token'),
   onAgentActivity: (cb) => subscribe('agent:activity', cb),
   onAgentStatus: (cb) => subscribe('agent:status', cb),
+  directList: () => ipcRenderer.invoke('direct:list'),
+  directPairing: (open) => ipcRenderer.invoke('direct:pairing', open),
+  directPairingState: () => ipcRenderer.invoke('direct:pairing-state'),
+  directForget: (id) => ipcRenderer.invoke('direct:forget', id),
+  directApk: (open) => ipcRenderer.invoke('direct:apk', open),
+  onDirectChanged: (cb) => subscribe('direct:changed', cb),
   setFrameCapture: (fn) => {
     captureFn = fn
   },
+  setAgentRecorder: (fn) => {
+    recordFn = fn
+  },
   // Only real dropped File objects are accepted: the page can't hand main an arbitrary path string.
   // (Sandboxed renderers have no File.path; webUtils.getPathForFile is the supported replacement.)
-  dropFiles: (files) =>
+  dropFiles: (files, folder) =>
     ipcRenderer.invoke(
       'files:drop',
       files.map((f) => webUtils.getPathForFile(f)).filter((p) => p.length > 0),
+      folder,
     ),
   saveScreenshot: (png, deviceName) => ipcRenderer.invoke('media:screenshot', png, deviceName),
   startRecording: (deviceName, ext) => ipcRenderer.invoke('media:record:start', deviceName, ext),
