@@ -1,4 +1,5 @@
-import { AppWindow, EllipsisVertical, Loader2, Play, Unplug, Usb, Wifi } from 'lucide-react'
+import { AppWindow, EllipsisVertical, Info, Loader2, Play, Unplug, Usb, Wifi } from 'lucide-react'
+import { showPhoneDetails } from '@/lib/phone-details'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 import type { DeviceInfo, OpResult, TransportInfo } from '../../../preload/api'
@@ -84,6 +85,9 @@ export function DeviceCard({ device, activeSerial, connecting, onMirror }: Devic
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onSelect={() => void window.mobMirror.openDeviceWindow(t.serial, t.kind)}>
                     <AppWindow /> Mirror in new window
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => showPhoneDetails(t.serial, device.model)}>
+                    <Info /> Phone details
                   </DropdownMenuItem>
                   {t.kind === 'usb' && !hasWifi && (
                     <DropdownMenuItem

@@ -156,7 +156,7 @@ export function CommandPalette({ open, mode, onOpenChange, live, onAction, phone
                       })
                 }
               >
-                <AppWindow />
+                {a.icon ? <img src={a.icon} alt="" className="size-5 shrink-0 rounded-[5px]" /> : <AppWindow />}
                 <span className="truncate">{a.label}</span>
                 <span className="ml-auto truncate pl-2 text-[11px] text-muted-foreground">{a.pkg}</span>
               </CommandItem>
