@@ -19,6 +19,7 @@ import { useDevices } from '@/hooks/use-devices'
 import { useMirror } from '@/hooks/use-mirror'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { PHONE_DETAILS_EVENT } from '@/lib/phone-details'
+import { startUpdate } from '@/lib/update'
 import { DEFAULT_SETTINGS, STREAM_KEYS, useSettings } from '@/hooks/use-settings'
 
 /** Windows opened via "Mirror in new window" carry #connect=<serial>&kind=<usb|wifi>. */
@@ -103,6 +104,10 @@ const SECOND_SCREEN: {
       : {}),
   }
 })()
+
+/** Update versions already offered in this window (the check repeats every 6 hours). */
+const offeredUpdates = new Set<string>()
+
 
 export function App(): ReactNode {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -352,15 +357,32 @@ export function App(): ReactNode {
   useEffect(() => window.mobMirror.onConnectRequest((t) => onMirror({ ...t, state: 'device' })), [onMirror])
   useEffect(
     () =>
-      window.mobMirror.onUpdateAvailable((u) =>
+      window.mobMirror.onUpdateAvailable((u) => {
+        // Once per version per window (the check repeats every 6 hours).
+        if (!u.latest || offeredUpdates.has(u.latest)) return
+        offeredUpdates.add(u.latest)
         notify('info', `Twinglass ${u.latest} is available`, {
-          description: `You have ${u.current}. Download it and drag it into Applications (automatic install needs a signed app).`,
-          action: u.url
-            ? {
-                label: 'Download',
-                run: () => void window.mobMirror.downloadUpdate(u.url!),
-              }
-            : undefined,
+          description: u.canInstall ? `You have ${u.current}. It installs in a few seconds and reopens.` : `You have ${u.current}.`,
+          action: u.canInstall || u.url ? { label: u.canInstall ? 'Update' : 'Download', run: () => startUpdate(u) } : undefined,
+        })
+      }),
+    [],
+  )
+  useEffect(
+    () =>
+      window.mobMirror.onPhoneAppOutdated((ph) =>
+        notify('info', `Phone app update for ${ph.model}`, {
+          description: `Twinglass ${ph.bundled} for the phone is ready. It installs over the cable or wireless debugging and keeps its settings.`,
+          action: {
+            label: 'Update',
+            run: () => {
+              const id = toast.loading(`Updating the phone app on ${ph.model}…`)
+              window.mobMirror.companionInstall(ph.serial).then(
+                () => toast.success(`Phone app updated on ${ph.model}`, { id }),
+                (e: unknown) => toast.error('Couldn’t update the phone app', { id, description: e instanceof Error ? e.message : String(e) }),
+              )
+            },
+          },
         }),
       ),
     [],

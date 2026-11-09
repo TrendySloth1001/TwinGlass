@@ -348,5 +348,15 @@ The dates are when each item was asked for (2026-11-06 unless noted).
 - ✅ Both sides confirm first ("removed on this Mac and on the phone") and report whether the other side was told now or will be later.
 - ✅ **Developer mode:** "Forget this Mac" blocks the Mac's automatic re-link over adb until "Link again", so a forget isn't silently undone.
 - ✅ **Verified with fake phones:** (1) Mac forget → phone received "forget", gone from the list; (2) phone "forget" → gone on the Mac; (3) offline → next hello answered "unknown".
+- 🟡 **Reconnect after a forget is on Home** (2026-11-08, user: "no option to reconnect when devices forget each other on homescreen"): Wi-Fi mode shows FORGOTTEN with the Mac’s name, who forgot whom (or that the Mac hears about it later), and **Pair again** / **Not now**; Developer mode shows **Link again** on the home card. Built; not yet checked on the phone.
 - ✅ **Presence:** while the phone app is open in Wi-Fi mode it stays connected, so the Mac shows "Ready" truthfully. It reconnects after drops and closes when the app goes to the background.
 - ✅ shadcn alert-dialog added with the pinned CLI; the button override was declined and the CLI's stray `cn` npm dependency removed (ADR-7).
+
+## Updates for both apps (2026-11-09, user: "how can users pull new updates on both the apps think and apply that as well")
+- 🟡 **Mac self-update:** checks GitHub Releases (launch + every 6 h), offers Update once per version, installs in place with SHA-256 verification and relaunches; Settings → Advanced → Updates; falls back to the download page when it can't write its folder. Cask `auto_updates true`.
+- 🟡 **Phone app from the Mac (no internet on the phone):** the Mac bundles the newest phone app with its versionCode.
+  - Developer mode: Mac toast "Phone app update for <model>" → adb install; Settings → Phone app shows Update; the phone's Home "Update available" → POST /link/update → Mac installs and reopens the app.
+  - Wi-Fi mode: the phone's hello carries appCode; the Mac answers "update"; Home "Update" → get-update → Mac serves the APK on the LAN (10 min) → browser download → Android installer.
+
+## Link back after a forget (2026-11-09, user: "there is still no way to link back")
+- 🟡 Phone Home: **Link now** (not paired / unreachable) and **Link again** (forgotten) ask the Mac over the adb tunnel (POST /link/request, unauthenticated, rate-limited; the key still only travels over adb to the DUMP-protected receiver). The Mac retries phones that answered "blocked" every 3 s, and Settings → Phone app always offers Pair/Relink.

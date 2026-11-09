@@ -13,11 +13,15 @@ import java.net.URLEncoder
 /** Receives the Mac's link key (sent through adb only; see the manifest). */
 class LinkReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        // The Mac reads the answer from `am broadcast` ("blocked" → it keeps retrying quietly, so
+        // "Link again" on the phone takes effect within seconds while connected).
+        fun answer(s: String) { if (isOrderedBroadcast) resultData = s }
         // Forgotten in the app: don't take a key again until the user links again.
-        if (Link.blocked(context)) return
-        val key = intent.getStringExtra("key") ?: return
-        if (!Regex("^[0-9a-f]{64}$").matches(key)) return
+        if (Link.blocked(context)) return answer("blocked")
+        val key = intent.getStringExtra("key") ?: return answer("bad")
+        if (!Regex("^[0-9a-f]{64}$").matches(key)) return answer("bad")
         Link.save(context, key, intent.getStringExtra("mac") ?: "Mac", intent.getIntExtra("port", Link.DEFAULT_PORT))
+        answer("linked")
     }
 }
 
@@ -41,6 +45,9 @@ object Link {
         val agentsWorkspace: String,
         /** Round trip of this status request (ms). */
         val pingMs: Long,
+        /** The phone app bundled with Twinglass on the Mac (0 = unknown / older Mac). */
+        val phoneAppVersion: String = "",
+        val phoneAppCode: Int = 0,
     ) {
         /** This phone in the Mac's list (matched by model). */
         val me: PhoneOnMac? get() = phones.firstOrNull { it.model == Build.MODEL }
@@ -65,13 +72,20 @@ object Link {
      * the user chooses "Link again" (so a forget isn't silently undone).
      */
     fun forget(ctx: Context) {
-        prefs(ctx).edit().clear().putBoolean("blocked", true).apply()
+        val name = prefs(ctx).getString("mac", null)
+        val port = prefs(ctx).getInt("port", DEFAULT_PORT)
+        prefs(ctx).edit().clear().putBoolean("blocked", true).putInt("port", port).apply {
+            if (name != null) putString("forgottenMac", name) // so Home can say which Mac
+        }.apply()
     }
+
+    /** The name of the Mac forgotten here, while linking is blocked. */
+    fun forgottenName(ctx: Context): String? = if (blocked(ctx)) prefs(ctx).getString("forgottenMac", null) else null
 
     fun blocked(ctx: Context) = prefs(ctx).getBoolean("blocked", false)
 
     /** "Link again": the Mac's next link (cable / Twinglass → Phone app → Relink) is accepted. */
-    fun unblock(ctx: Context) = prefs(ctx).edit().putBoolean("blocked", false).apply()
+    fun unblock(ctx: Context) = prefs(ctx).edit().putBoolean("blocked", false).remove("forgottenMac").apply()
 
     private fun open(ctx: Context, path: String, query: String = ""): HttpURLConnection {
         val p = prefs(ctx)
@@ -107,9 +121,38 @@ object Link {
             phones = phones,
             agentsEnabled = agents?.optBoolean("enabled") ?: false,
             agentsWorkspace = agents?.optString("workspace") ?: "",
+            phoneAppVersion = j.optJSONObject("phoneApp")?.optString("version") ?: "",
+            phoneAppCode = j.optJSONObject("phoneApp")?.optInt("code") ?: 0,
             pingMs = ms,
         )
     }.getOrNull()
+
+    /**
+     * "Link now": asks Twinglass on the Mac (through the adb tunnel) to send this phone its link key.
+     * The key then arrives the usual way, at LinkReceiver over adb. Returns the Mac's name when
+     * it answered, "" when an older Twinglass answered without this request, null when it isn't
+     * reachable (closed, or no USB / wireless debugging).
+     */
+    fun requestLink(ctx: Context): String? {
+        val ports = listOf(prefs(ctx).getInt("port", DEFAULT_PORT), DEFAULT_PORT).distinct()
+        for (port in ports) {
+            val name = runCatching {
+                val c = URL("http://localhost:$port/link/request").openConnection() as HttpURLConnection
+                c.connectTimeout = 1500; c.readTimeout = 3000
+                c.requestMethod = "POST"; c.doOutput = true
+                c.setRequestProperty("X-Twinglass-Phone", Build.MODEL)
+                c.setFixedLengthStreamingMode(0)
+                c.outputStream.close()
+                when (c.responseCode) {
+                    202, 429 -> JSONObject((if (c.responseCode == 202) c.inputStream else c.errorStream).bufferedReader().readText()).optString("mac", "your Mac")
+                    403 -> "" // Twinglass before 0.1.1: it's there but has no /link/request
+                    else -> null
+                }
+            }.getOrNull()
+            if (name != null) return name
+        }
+        return null
+    }
 
     /** POSTs bytes to the Mac; false when it isn't reachable or refuses. */
     fun post(ctx: Context, path: String, query: String, body: ByteArray): Boolean = runCatching {
@@ -122,6 +165,19 @@ object Link {
         val ok = c.responseCode == 200
         c.inputStream.close()
         ok
+    }.getOrDefault(false)
+
+    /**
+     * "Update" in Developer mode: the Mac installs its bundled phone app over adb (this app closes
+     * during the install and the Mac reopens it). True when the Mac started the install.
+     */
+    fun requestUpdate(ctx: Context): Boolean = runCatching {
+        val c = open(ctx, "/link/update")
+        c.connectTimeout = 1500; c.readTimeout = 4000
+        c.requestMethod = "POST"; c.doOutput = true
+        c.setFixedLengthStreamingMode(0)
+        c.outputStream.close()
+        c.responseCode == 202
     }.getOrDefault(false)
 
     /** Share to Mac: text goes onto the Mac's clipboard. */

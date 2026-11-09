@@ -42,8 +42,30 @@ object DirectLink {
         return PairedMac(p.getString("mac", "Mac") ?: "Mac", p.getString("host", "") ?: "", p.getInt("port", 47200), Base64.decode(secret, Base64.NO_WRAP))
     }
 
-    /** Local only (the Mac already forgot us, or told us to). */
-    fun forget(ctx: Context) = prefs(ctx).edit().remove("secret").remove("mac").remove("host").remove("port").apply()
+    /** A Mac this phone was paired with until it was forgotten (shown on Home with "Pair again"). */
+    data class Forgotten(val name: String, val byMac: Boolean, val at: Long)
+
+    /**
+     * Local only. [byMac]: the Mac forgot this phone (it told us, or refused us as unknown);
+     * otherwise the user forgot it here. Remembered so Home can explain it and offer to pair again.
+     */
+    fun forget(ctx: Context, byMac: Boolean = true) {
+        val p = prefs(ctx)
+        val name = p.getString("mac", null)
+        val e = p.edit().remove("secret").remove("mac").remove("host").remove("port")
+        if (name != null) e.putString("last.mac", name).putBoolean("last.byMac", byMac).putLong("last.at", System.currentTimeMillis())
+        e.apply()
+    }
+
+    fun forgotten(ctx: Context): Forgotten? {
+        val p = prefs(ctx)
+        if (p.getString("secret", null) != null) return null
+        val name = p.getString("last.mac", null) ?: return null
+        return Forgotten(name, p.getBoolean("last.byMac", true), p.getLong("last.at", 0))
+    }
+
+    /** "Not now" on Home: stop mentioning the forgotten Mac. */
+    fun dismissForgotten(ctx: Context) = prefs(ctx).edit().remove("last.mac").remove("last.byMac").remove("last.at").apply()
 
     /**
      * Forgets the Mac on both sides: tells it over an authenticated session first, so it drops
@@ -52,7 +74,7 @@ object DirectLink {
      */
     fun forgetEverywhere(ctx: Context): Boolean {
         val mac = paired(ctx) ?: return false
-        forget(ctx)
+        forget(ctx, byMac = false)
         if (tellForget(ctx, mac)) return true
         prefs(ctx).edit()
             .putString("pending.mac", mac.name).putString("pending.host", mac.host).putInt("pending.port", mac.port)
@@ -147,7 +169,8 @@ object DirectLink {
             prefs(ctx).edit()
                 .putString("secret", Base64.encodeToString(DirectCrypto.pairSecret(key), Base64.NO_WRAP))
                 .putString("mac", r1.optString("mac", mac.name)).putString("host", mac.host).putInt("port", mac.port)
-                .putLong("pairedAt", System.currentTimeMillis()).apply()
+                .putLong("pairedAt", System.currentTimeMillis())
+                .remove("last.mac").remove("last.byMac").remove("last.at").apply()
             PairResult.Ok
         }
     }.getOrElse { if (it is java.net.ConnectException || it is java.net.SocketTimeoutException) PairResult.Unreachable else PairResult.Failed }
@@ -192,6 +215,7 @@ object DirectLink {
         val nonce = ByteArray(16).also { SecureRandom().nextBytes(it) }
         DirectCrypto.writePlain(out, JSONObject()
             .put("t", "hello").put("id", phoneId(ctx)).put("name", phoneName()).put("model", Build.MODEL)
+            .put("appCode", com.mobmirror.companion.DeviceInfo.appCode(ctx)).put("appVersion", com.mobmirror.companion.DeviceInfo.appVersion(ctx))
             .put("nonce", Base64.encodeToString(nonce, Base64.NO_WRAP)).toString())
         val r = JSONObject(String(DirectCrypto.readFrame(input)))
         if (r.optString("t") == "error") {

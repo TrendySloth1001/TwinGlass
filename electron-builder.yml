@@ -5,6 +5,9 @@ copyright: Copyright © 2026
 directories:
   output: dist
   buildResources: build
+# Package the Electron that npm installed (same pinned version) instead of downloading it again,
+# so a GitHub outage can't break a build.
+electronDist: node_modules/electron/dist
 files:
   - out/**
   - package.json
@@ -15,6 +18,9 @@ extraResources:
   # The phone app: Add phone serves it over Wi-Fi (QR download); Settings → Phone app installs it over adb.
   - from: companion/app/build/outputs/apk/release/app-release.apk
     to: mob-mirror-companion.apk
+  # Its version (Gradle's output-metadata), so the Mac knows when a phone's app is older.
+  - from: companion/app/build/outputs/apk/release/output-metadata.json
+    to: mob-mirror-companion.json
 asar: true
 mac:
   category: public.app-category.utilities

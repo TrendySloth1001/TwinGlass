@@ -79,6 +79,7 @@ import com.mobmirror.companion.ui.Expandable
 import com.mobmirror.companion.ui.Grouped
 import com.mobmirror.companion.ui.LocalPalette
 import com.mobmirror.companion.ui.PageHeader
+import com.mobmirror.companion.ui.PillButton
 import com.mobmirror.companion.ui.RoundIconButton
 import com.mobmirror.companion.ui.SearchField
 import com.mobmirror.companion.ui.SectionHeader
@@ -112,6 +113,8 @@ class AppModel(
     val sendClipboard: () -> Unit,
     val openAccessibility: () -> Unit,
     val forget: () -> Unit,
+    /** The Mac forgotten here (linking blocked until Link again), for Home. */
+    val forgottenMac: String? = null,
     /** Saves one setting (Prefs key → value) and applies it. */
     val set: (key: String, value: Any) -> Unit,
     val setFeature: (Prefs.Feature, Boolean) -> Unit,
@@ -127,6 +130,9 @@ class AppModel(
     val directMac: String?,
     val forgetDirect: () -> Unit,
     val linkAgain: () -> Unit,
+    /** Ask the Mac to link this phone now (over the adb tunnel). */
+    val linkNow: () -> Unit = {},
+    val linking: Boolean = false,
 )
 
 sealed interface LinkState {
@@ -174,7 +180,7 @@ fun LazyListScope.homeScreen(m: AppModel, direct: (LazyListScope.() -> Unit)? = 
     item { PageHeader("Twinglass", "Phone app · ${m.version}", actions = { RoundIconButton(Icons.Rounded.Refresh, "Refresh", m.refresh) }) }
     // Always first: where this phone stands (full potential / developer mode / Wi-Fi mode).
     if (status != null) item { SpringIn(0) { Column { status(); Spacer(Modifier.height(Space.md)) } } }
-    if (direct != null) direct() else item { SpringIn(0) { LinkHero(m.link, m.openConnection) } }
+    if (direct != null) direct() else item { SpringIn(0) { LinkHero(m.link, m.forgottenMac, m.openConnection, m.linkAgain, m.linkNow, m.linking) } }
     m.snap?.let { s ->
         item { SpringIn(1) { PhoneTitle(s) } }
         if (m.prefs.showMetrics) item { SpringIn(2) { Metrics(s, m.openDevice, m.prefs.units == Prefs.Units.Decimal) } }
@@ -216,7 +222,7 @@ private fun OnOff(on: Boolean, live: Boolean) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun LinkHero(link: LinkState, onOpen: () -> Unit) {
+private fun LinkHero(link: LinkState, forgottenMac: String?, onOpen: () -> Unit, onLinkAgain: () -> Unit, onLinkNow: () -> Unit, linking: Boolean) {
     val p = LocalPalette.current
     val st = (link as? LinkState.Connected)?.status
     val me = st?.me
@@ -241,15 +247,15 @@ private fun LinkHero(link: LinkState, onOpen: () -> Unit) {
                 Arrow()
             }
             Spacer(Modifier.height(Space.md))
-            Text(st?.mac ?: (link as? LinkState.Unreachable)?.mac ?: "Your Mac", style = Type.headline, color = p.textPrimary)
+            Text(st?.mac ?: (link as? LinkState.Unreachable)?.mac ?: (if (link == LinkState.Forgotten) forgottenMac else null) ?: "Your Mac", style = Type.headline, color = p.textPrimary)
             Spacer(Modifier.height(Space.xs))
             Text(
                 when {
                     st != null && me?.mirroring == true -> "Twinglass is mirroring this phone right now."
                     st != null -> "Linked. Open Twinglass on the Mac to mirror and control."
                     link is LinkState.Unreachable -> "Connect by USB or wireless debugging, then open Twinglass on the Mac."
-                    link == LinkState.NotPaired -> "Plug this phone into your Mac with Twinglass open. It pairs by itself."
-                    link == LinkState.Forgotten -> "You forgot this Mac. Open Connected to → Link again to allow it."
+                    link == LinkState.NotPaired -> "Connect this phone to your Mac (USB or wireless debugging) with Twinglass open, then Link now."
+                    link == LinkState.Forgotten -> "You forgot this Mac, so it can’t link by itself. Link again, then reconnect the cable (or Relink in Twinglass on the Mac)."
                     else -> "Looking for Twinglass…"
                 },
                 style = Type.bodySmall,
@@ -262,7 +268,12 @@ private fun LinkHero(link: LinkState, onOpen: () -> Unit) {
                     if (me?.mirroring == true) Chip("Mirroring", inverted = true, leading = { StatusDot(p.accent, live = true) })
                     Chip(linksLabel(me?.links ?: emptyList()))
                     Chip("${st.pingMs} ms")
-                } else Chip("USB or wireless debugging")
+                } else if (link != LinkState.Forgotten) Chip("USB or wireless debugging")
+            }
+            when (link) {
+                LinkState.Forgotten -> { Spacer(Modifier.height(Space.md)); PillButton(if (linking) "Linking…" else "Link again", enabled = !linking, onClick = onLinkAgain) }
+                LinkState.NotPaired, is LinkState.Unreachable -> { Spacer(Modifier.height(Space.md)); PillButton(if (linking) "Linking…" else "Link now", enabled = !linking, onClick = onLinkNow) }
+                else -> {}
             }
         }
     }

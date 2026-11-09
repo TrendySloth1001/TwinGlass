@@ -1,6 +1,6 @@
 {
   "name": "mob-mirror",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Mirror and control Android phones from the desktop over USB or Wi-Fi",
   "main": "./out/main/index.js",
@@ -54,5 +54,8 @@
   "dependencies": {
     "qrcode": "1.5.4"
   },
-  "author": "Mob Mirror"
+  "author": "Mob Mirror",
+  "mobMirror": {
+    "updateRepo": "TrendySloth1001/TwinGlass"
+  }
 }

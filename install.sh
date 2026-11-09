@@ -63,7 +63,7 @@ if [ "$UNINSTALL" = 1 ]; then
   if [ -d "$APP" ]; then step "Removing $APP"; rm -rf "$APP"; else say "Twinglass isn't installed in $APP_DIR."; fi
   if [ "$PURGE" = 1 ]; then
     step "Removing settings and caches"
-    rm -rf "$HOME/Library/Application Support/Twinglass" "$HOME/Library/Preferences/app.twinglass.mac.plist" "$HOME/Library/Caches/app.twinglass.mac"
+    rm -rf "$HOME/Library/Application Support/mob-mirror" "$HOME/Library/Preferences/app.twinglass.mac.plist" "$HOME/Library/Caches/app.twinglass.mac"
   fi
   say "${bold}Done.${reset} Screenshots and recordings in ~/Pictures/Twinglass and ~/Movies/Twinglass were left alone."
   exit 0

@@ -320,6 +320,9 @@ object DeviceInfo {
         Prefs.CopyFormat.Json -> toJson(sections, "").toString(2)
     }
 
+    /** This app's versionCode (compared with the one bundled in Twinglass on the Mac). */
+    fun appCode(ctx: Context): Int = runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).longVersionCode.toInt() }.getOrDefault(0)
+
     fun appVersion(ctx: Context): String = runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: ""
 
     fun toJson(sections: List<Section>, appVersion: String): JSONObject = JSONObject().put("sections", JSONArray().apply {

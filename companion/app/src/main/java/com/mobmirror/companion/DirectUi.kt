@@ -91,6 +91,10 @@ data class DirectState(
     val status: String,
     val controlOn: Boolean,
     val notificationsOn: Boolean,
+    /** The Mac this phone was paired with before a forget (on either side), until paired again or dismissed. */
+    val forgotten: DirectLink.Forgotten? = null,
+    /** Forgotten here while the Mac was away: it hears about it the next time it's reachable. */
+    val pendingForget: Boolean = false,
 )
 
 // ---------------------------------------------------------------- Landing (first run)
@@ -181,8 +185,8 @@ private fun ModeCard(selected: Boolean, icon: ImageVector, title: String, badge:
 // ---------------------------------------------------------------- Home (no-setup mode)
 
 /** [full]: Developer mode is on and the Mac is linked over adb (everything already unlocked). */
-fun LazyListScope.directHome(d: DirectState, onSheet: (Sheet) -> Unit, onMirror: () -> Unit, onStop: () -> Unit, full: Boolean = false) {
-    item { SpringIn(0) { DirectHero(d, onSheet, onMirror, onStop, full) } }
+fun LazyListScope.directHome(d: DirectState, onSheet: (Sheet) -> Unit, onMirror: () -> Unit, onStop: () -> Unit, full: Boolean = false, onDismissForgotten: () -> Unit = {}) {
+    item { SpringIn(0) { DirectHero(d, onSheet, onMirror, onStop, full, onDismissForgotten) } }
     item {
         SpringIn(1) {
             Column {
@@ -219,8 +223,9 @@ private fun State(on: Boolean) {
 private fun Arrow() = Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp), tint = LocalPalette.current.textTertiary)
 
 @Composable
-private fun DirectHero(d: DirectState, onSheet: (Sheet) -> Unit, onMirror: () -> Unit, onStop: () -> Unit, full: Boolean) {
+private fun DirectHero(d: DirectState, onSheet: (Sheet) -> Unit, onMirror: () -> Unit, onStop: () -> Unit, full: Boolean, onDismissForgotten: () -> Unit) {
     val p = LocalPalette.current
+    val gone = if (d.paired == null) d.forgotten else null
     Tile(Modifier.fillMaxWidth()) {
         DotField(Modifier.align(Alignment.TopEnd).size(132.dp), color = if (d.mirroring) p.accent else p.textTertiary)
         Column {
@@ -231,6 +236,7 @@ private fun DirectHero(d: DirectState, onSheet: (Sheet) -> Unit, onMirror: () ->
                     when {
                         d.mirroring -> "MIRRORING TO"
                         d.paired != null -> "PAIRED WITH"
+                        gone != null -> "FORGOTTEN"
                         else -> "NOT PAIRED YET"
                     },
                     style = Type.caption,
@@ -238,10 +244,13 @@ private fun DirectHero(d: DirectState, onSheet: (Sheet) -> Unit, onMirror: () ->
                 )
             }
             Spacer(Modifier.height(Space.md))
-            Text(d.paired?.name ?: "Your Mac", style = Type.headline, color = p.textPrimary)
+            Text(d.paired?.name ?: gone?.name ?: "Your Mac", style = Type.headline, color = p.textPrimary)
             Spacer(Modifier.height(Space.xs))
             Text(
                 when {
+                    gone != null && gone.byMac -> "${gone.name} forgot this phone, so it can’t mirror there. Pair again to reconnect: on the Mac, Twinglass → Add phone, then scan its QR."
+                    gone != null && d.pendingForget -> "You forgot this Mac here. It drops this phone too the next time it’s reachable. Pair again any time with a new code."
+                    gone != null -> "You forgot this Mac on both sides. Pair again any time: on the Mac, Twinglass → Add phone, then scan its QR."
                     d.paired == null && full -> "Optional: you’re already linked through Developer mode. Pairing over Wi-Fi lets you mirror without the cable or debugging."
                     d.paired == null -> "Open Twinglass on your Mac, choose “Add phone”, and pair with the code it shows."
                     d.status.isNotEmpty() && (d.mirroring || d.status.startsWith("Can")) -> d.status
@@ -253,6 +262,10 @@ private fun DirectHero(d: DirectState, onSheet: (Sheet) -> Unit, onMirror: () ->
             )
             Spacer(Modifier.height(Space.lg))
             when {
+                gone != null -> Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
+                    PillButton("Pair again") { onSheet(Sheet.Pair) }
+                    PillButton("Not now", primary = false, onClick = onDismissForgotten)
+                }
                 d.paired == null -> PillButton("Pair with your Mac") { onSheet(Sheet.Pair) }
                 d.mirroring -> PillButton("Stop mirroring", primary = false, onClick = onStop)
                 else -> PillButton("Mirror to Mac", onClick = onMirror)
@@ -449,6 +462,36 @@ private fun PairFlow(onDone: () -> Unit) {
 // ---------------------------------------------------------------- Status card (always on Home)
 
 /**
+ * "Update available": the Mac carries a newer phone app. Developer mode installs it over adb (the
+ * app closes and reopens); Wi-Fi mode downloads it from the Mac and Android's installer takes over.
+ */
+@Composable
+fun UpdateCard(version: String, mac: String, wifi: Boolean, updating: Boolean, onUpdate: () -> Unit) {
+    val p = LocalPalette.current
+    val shape = RoundedCornerShape(Radius.lg)
+    Column(
+        Modifier.fillMaxWidth().clip(shape).background(p.surface).border(1.dp, p.accent, shape).padding(Space.lg),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            StatusDot(p.accent, live = updating)
+            Spacer(Modifier.width(Space.sm))
+            Text("UPDATE AVAILABLE", style = Type.caption, color = p.textSecondary)
+        }
+        Spacer(Modifier.height(Space.sm))
+        Text("Twinglass $version", style = Type.title, color = p.textPrimary)
+        Spacer(Modifier.height(Space.xs))
+        Text(
+            if (wifi) "$mac has a newer phone app. It downloads from your Mac over Wi-Fi; then tap Install. Your settings and pairing stay."
+            else "$mac has a newer phone app and installs it over debugging. Twinglass closes for a moment and reopens, settings and link intact.",
+            style = Type.bodySmall,
+            color = p.textSecondary,
+        )
+        Spacer(Modifier.height(Space.md))
+        PillButton(if (updating) "Updating…" else "Update", enabled = !updating, onClick = onUpdate)
+    }
+}
+
+/**
  * Where this phone stands, always at the top of Home: full potential (Developer mode + linked to
  * the Mac over adb), Developer mode on but not linked yet, or Wi-Fi mode (with the way up).
  */
@@ -457,6 +500,9 @@ fun PotentialCard(
     dev: DeviceInfo.DevState,
     mode: Prefs.Mode,
     adbLinkedTo: String?,
+    /** The Mac was forgotten here: adb linking is blocked until Link again. */
+    forgotten: Boolean = false,
+    onLinkAgain: () -> Unit = {},
     onUnlock: () -> Unit,
     onSwitch: (Prefs.Mode) -> Unit,
 ) {
@@ -465,6 +511,7 @@ fun PotentialCard(
     val full = debugging && adbLinkedTo != null
     val (label, title, body) = when {
         full -> Triple("FULL POTENTIAL", "Running at full potential", "Developer mode is on and $adbLinkedTo is linked: second screens, coding agents, app testing and the lowest latency are all available.")
+        debugging && forgotten -> Triple("DEVELOPER MODE ON", "Almost at full potential", "You forgot your Mac, so it can’t link over adb. Tap Link again below to get second screens, coding agents, app testing and the lowest latency back.")
         debugging -> Triple("DEVELOPER MODE ON", "Almost at full potential", "${if (dev.wirelessDebugging && !dev.usbDebugging) "Wireless" else "USB"} debugging is on. Connect to your Mac (cable or wireless debugging) with Twinglass open to link it.")
         else -> Triple("WI-FI MODE", "Mirroring and basic control", "Turn on Developer mode to unlock second screens, coding agents, app testing and the lowest latency.")
     }

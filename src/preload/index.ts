@@ -39,6 +39,7 @@ function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
 }
 
 type UpdateInfoT = Parameters<Parameters<MobMirrorApi['onUpdateAvailable']>[0]>[0]
+type UpdateProgressT = Parameters<Parameters<MobMirrorApi['onUpdateProgress']>[0]>[0]
 
 const api: MobMirrorApi = {
   adbStatus: () => ipcRenderer.invoke('adb:status'),
@@ -60,9 +61,12 @@ const api: MobMirrorApi = {
   onAppError: (cb: (message: string) => void) => subscribe('app:error', cb),
   checkForUpdate: () => ipcRenderer.invoke('update:check'),
   downloadUpdate: (url: string) => ipcRenderer.invoke('update:download', url),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+  onUpdateProgress: (cb: (p: UpdateProgressT) => void) => subscribe('update:progress', cb),
   onUpdateAvailable: (cb: (u: UpdateInfoT) => void) => subscribe('update:available', cb),
   companionStatus: () => ipcRenderer.invoke('companion:status'),
   companionRelink: () => ipcRenderer.invoke('companion:relink'),
+  onPhoneAppOutdated: (cb: (p: { serial: string; model: string; bundled: string }) => void) => subscribe('companion:outdated', cb),
   companionInstall: (serial: string) => ipcRenderer.invoke('companion:install', serial),
   deviceDetails: (serial: string) => ipcRenderer.invoke('devices:details', serial),
   recentCaptures: (limit?: number) => ipcRenderer.invoke('media:recent', limit),

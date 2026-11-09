@@ -109,6 +109,13 @@ brew install --cask twinglass
 
 Downloaded the DMG in a browser instead? macOS may refuse to open it the first time; clear the quarantine once with `xattr -cr /Applications/Twinglass.app`.
 
+### Updating
+
+- **Twinglass for Mac updates itself.** It checks GitHub Releases shortly after launch and every 6 hours; when there's a new version it offers **Update**, downloads the DMG, verifies its SHA-256, swaps the app in place and reopens. Or check any time in Settings → Advanced → Updates. Running the install command again also updates, and Homebrew knows the app updates itself (`auto_updates`), so `brew upgrade --cask --greedy twinglass` is only needed if you prefer it.
+- **The phone app updates from your Mac**; it never goes online for it. Each Mac release carries the newest phone app:
+  - *Developer mode*: the Mac notices an older phone app when the phone connects and offers **Update** (installed over adb, settings kept). The phone's Home also shows *Update available*; tapping it asks the Mac to install it, and the app reopens.
+  - *Wi-Fi, no setup*: the phone's Home shows *Update available* when its paired Mac carries a newer one. **Update** downloads it from the Mac over your Wi-Fi; tap Install in Android's prompt (allow your browser to install apps the first time).
+
 Then pick a way to connect:
 
 - **Wi-Fi, no setup** — on the Mac: **Add phone**. Scan the QR with the phone's camera to download the phone app straight from your Mac, open it, choose *Wi-Fi, no setup → Pair with your Mac → Scan QR code*, then tap **Mirror to Mac**.

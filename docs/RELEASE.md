@@ -168,3 +168,16 @@ read from the GitHub repo at the `electron-builder@26.18.1` tag.
 Checked on 2026-11-08:
 - `install.sh` piped through bash (file:// DMG, scratch app dir): it installed, left no quarantine flag, and uninstalled.
 - The cask passes `brew style` and `brew audit --strict` (Homebrew 7.0.10, which wants `postflight_steps`, not `postflight`) and installs from a local DMG with no quarantine flag.
+
+## Updates (2026-11-09)
+
+- The Mac app updates itself from the latest GitHub release (`package.json → mobMirror.updateRepo`). It needs
+  both assets: `Twinglass-<v>-arm64.dmg` and `Twinglass-<v>-arm64.dmg.sha256`. Without the `.sha256` it only
+  offers the download page. Install in place: download → SHA-256 check → mount → bundle id must be
+  `app.twinglass.mac` → a detached script waits for the app to exit, swaps the bundle (old one restored if the
+  copy fails) and reopens it. It can't update a copy in a folder it can't write (it opens the page instead).
+- The phone app ships inside the Mac app (`mob-mirror-companion.apk` + `mob-mirror-companion.json`, Gradle's
+  output-metadata with versionCode). **Bump `versionCode` in companion/app/build.gradle.kts for every phone app
+  change** — phones compare versionCode, not the name.
+- Builds use `electronDist: node_modules/electron/dist`, so packaging doesn't download Electron (a GitHub
+  outage broke two builds on 2026-11-08).

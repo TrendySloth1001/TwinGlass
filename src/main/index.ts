@@ -14,6 +14,7 @@ import { registerUpdateIpc } from './update-check'
 import { startCompanionLink, stopCompanionLink } from './companion-link'
 import { agentSummary, registerAgentIpc, stopAgentServer } from './agent-ipc'
 import { closeApkDownload, directServer, openApkDownload } from './direct/server'
+import { bundledPhoneApp } from './bundled-phone-app'
 
 export function serverPath(): string {
   return app.isPackaged
@@ -105,9 +106,8 @@ ipcMain.handle('direct:pairing-state', () => directServer.pairingState())
 // The phone app's APK for "Get the app" (release build in development, bundled when packaged).
 ipcMain.handle('direct:apk', async (_e, open: unknown) => {
   if (open === false) return closeApkDownload(), null
-  const packaged = join(process.resourcesPath, 'mob-mirror-companion.apk')
-  const dev = join(app.getAppPath(), 'companion/app/build/outputs/apk/release/app-release.apk')
-  return openApkDownload(app.isPackaged ? packaged : dev)
+  const b = bundledPhoneApp()
+  return b ? openApkDownload(b.path) : null
 })
 ipcMain.handle('direct:forget', (_e, id: unknown) => (typeof id === 'string' ? { told: directServer.forget(id) } : { told: false }))
 

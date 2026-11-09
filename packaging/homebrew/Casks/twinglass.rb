@@ -2,8 +2,8 @@
 # Install:  brew install --cask TrendySloth1001/tap/twinglass
 # Updated by scripts/update-cask.mjs after each release (version + sha256).
 cask "twinglass" do
-  version "0.1.0"
-  sha256 "fd96a9b55007c3affbdbfdcc6c1697acb59cfc456568893c6059bf445cbd9ece"
+  version "0.1.1"
+  sha256 "e2ba029ff1e7c6d2c3bbac17b5045d7b70a401e0dc1e58b5900c569495811431"
 
   url "https://github.com/TrendySloth1001/TwinGlass/releases/download/v#{version}/Twinglass-#{version}-arm64.dmg"
   name "Twinglass"
@@ -15,6 +15,8 @@ cask "twinglass" do
     strategy :github_latest
   end
 
+  # Twinglass updates itself (Settings → Advanced → Updates, or the notice when one is out).
+  auto_updates true
   depends_on arch: :arm64
   depends_on macos: :ventura
 
@@ -28,7 +30,7 @@ cask "twinglass" do
   uninstall quit: "app.twinglass.mac"
 
   zap trash: [
-    "~/Library/Application Support/Twinglass",
+    "~/Library/Application Support/mob-mirror",
     "~/Library/Caches/app.twinglass.mac",
     "~/Library/Preferences/app.twinglass.mac.plist",
     "~/Library/Saved Application State/app.twinglass.mac.savedState",

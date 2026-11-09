@@ -44,6 +44,14 @@ export interface UpdateInfo {
   available: boolean
   /** A release feed is set in package.json ("mobMirror.updateRepo" / "updateFeed"). */
   configured: boolean
+  /** Can update in place (packaged, writable folder, release has the DMG and its .sha256). */
+  canInstall: boolean
+  error?: string
+}
+
+export interface UpdateProgress {
+  phase: 'downloading' | 'verifying' | 'installing' | 'error'
+  progress?: number
   error?: string
 }
 
@@ -141,12 +149,21 @@ export interface MobMirrorApi {
   onConnectRequest(cb: (t: { serial: string; kind: 'usb' | 'wifi' }) => void): () => void
   /** A background error in the main process (logged; shown as a notification). */
   onAppError(cb: (message: string) => void): () => void
-  /** Notify-only updates (see main/update-check.ts). */
+  /** Updates (see main/update-check.ts): check, install in place (then relaunch), or open the page. */
   checkForUpdate(): Promise<UpdateInfo>
+  installUpdate(): Promise<void>
   downloadUpdate(url: string): Promise<void>
   onUpdateAvailable(cb: (u: UpdateInfo) => void): () => void
+  onUpdateProgress(cb: (p: UpdateProgress) => void): () => void
   /** Companion app: per-phone install / link state; re-pair; install the bundled APK. */
-  companionStatus(): Promise<{ port: number; phones: { id: string; model: string; serial: string; installed: boolean; version: string | null; linked: boolean }[] }>
+  companionStatus(): Promise<{
+    port: number
+    /** The phone app version bundled with this Mac app. */
+    bundled: string | null
+    phones: { id: string; model: string; serial: string; installed: boolean; version: string | null; outdated: boolean; linked: boolean }[]
+  }>
+  /** A connected phone runs an older phone app than the bundled one (sent once per phone per run). */
+  onPhoneAppOutdated(cb: (p: { serial: string; model: string; bundled: string }) => void): () => void
   companionRelink(): Promise<boolean>
   companionInstall(serial: string): Promise<boolean>
   /** Battery, maker, Android version and screen size of one phone (home screen card). */

@@ -11,6 +11,7 @@ import { hostname, networkInterfaces } from 'node:os'
 import QRCode from 'qrcode'
 import { join } from 'node:path'
 import { app } from 'electron'
+import { bundledPhoneApp, phoneAppOutdated } from '../bundled-phone-app'
 import { StreamDemuxer, type StreamEvent } from '@shared/scrcpy/stream'
 import { DIRECT_PORT, FrameReader, hmac, Kind, Opener, pairKey, pairSecret, plainFrame, safeEqual, Sealer, sessionKeys } from './protocol'
 
@@ -193,6 +194,10 @@ class Conn {
       this.state = 'session'
       this.socket.setTimeout(0)
       this.srv.online(this)
+      // The phone runs an older phone app than the one bundled here: tell it (Home shows "Update").
+      const code = Number(msg.appCode)
+      const bundled = bundledPhoneApp()
+      if (bundled && phoneAppOutdated(Number.isInteger(code) ? code : null)) this.send(Kind.JSON, Buffer.from(JSON.stringify({ t: 'update', version: bundled.version, code: bundled.code })))
       return
     }
     this.fail('protocol')
@@ -214,6 +219,14 @@ class Conn {
     } else if (msg.t === 'forget') {
       // Forgotten on the phone (authenticated by this session): forget it here too.
       this.srv.forget(this.phone!.id, false)
+    } else if (msg.t === 'get-update') {
+      // "Update" on the phone: serve the bundled phone app on the LAN for a while and send the URL
+      // (the phone hands it to its browser, then Android's installer takes over).
+      const b = bundledPhoneApp()
+      if (!b) return this.send(Kind.JSON, Buffer.from(JSON.stringify({ t: 'update-url', error: 'no app' })))
+      void openApkDownload(b.path, 10 * 60_000).then((r) =>
+        this.send(Kind.JSON, Buffer.from(JSON.stringify(r ? { t: 'update-url', url: r.url, version: b.version } : { t: 'update-url', error: 'no network' }))),
+      )
     } else if (msg.t === 'ping') this.send(Kind.JSON, Buffer.from(JSON.stringify({ t: 'pong' })))
   }
 }
@@ -379,8 +392,11 @@ function lanAddress(): string | null {
  * One QR does both: the phone's camera opens the URL (downloads the app); Twinglass' own "Scan QR"
  * reads the pairing details from the query (?pair=<code>&port=…&mac=…) and pairs with no typing.
  */
-export async function openApkDownload(apk: string): Promise<{ url: string; qr: string } | null> {
+let apkCloseTimer: ReturnType<typeof setTimeout> | null = null
+
+export async function openApkDownload(apk: string, closeAfterMs = 0): Promise<{ url: string; qr: string } | null> {
   closeApkDownload()
+  if (closeAfterMs > 0) apkCloseTimer = setTimeout(closeApkDownload, closeAfterMs)
   const ip = lanAddress()
   if (!ip || !existsSync(apk)) return null
   const size = statSync(apk).size
@@ -397,6 +413,8 @@ export async function openApkDownload(apk: string): Promise<{ url: string; qr: s
 }
 
 export function closeApkDownload(): void {
+  if (apkCloseTimer) clearTimeout(apkCloseTimer)
+  apkCloseTimer = null
   apkServer?.close()
   apkServer = null
 }

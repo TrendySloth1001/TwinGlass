@@ -10,7 +10,8 @@ import { createWriteStream, existsSync, mkdirSync, readFileSync, unlinkSync, wri
 import { createServer, type Server } from 'node:http'
 import { homedir, hostname } from 'node:os'
 import { basename, extname, join } from 'node:path'
-import { app, clipboard, ipcMain, Notification, shell } from 'electron'
+import { app, BrowserWindow, clipboard, ipcMain, Notification, shell } from 'electron'
+import { bundledPhoneApp, parseVersionCode, phoneAppOutdated } from './bundled-phone-app'
 import type { Adb, DeviceList } from './adb/adb'
 import { beginExport, deviceIdOf, endExport, ICON_MAX_BYTES, receiveIcon } from './app-icons'
 import { onDevicesChanged, trackDevices } from './devices-ipc'
@@ -52,6 +53,29 @@ let server: Server | null = null
 /** Transport serials already linked (reverse + key sent) in this run. */
 const linked = new Set<string>()
 const linkedAt = new Map<string, number>()
+/** Phones that refused the link (forgotten in the phone app); retried until "Link again" there. */
+const blockedLinks = new Set<string>()
+const RELINK_RETRY_MS = 3000
+/** The phone app's versionCode per transport serial (from the last link). */
+const phoneAppCodes = new Map<string, number>()
+/** Phones already offered a phone-app update in this run. */
+const offeredPhoneUpdate = new Set<string>()
+
+/**
+ * Installs the phone app bundled with this Mac app (adb install -r keeps its data), links it
+ * again, and with [reopen] starts it (when the update was asked for on the phone).
+ */
+async function installPhoneApp(adb: Adb, serial: string, reopen = false): Promise<void> {
+  const b = bundledPhoneApp()
+  if (!b) throw new Error('The phone app isn’t built yet: run npm run companion:build')
+  const out = (await adb.runLoose(['install', '-r', b.path], serial, 120_000)).trim()
+  if (!/Success/.test(out)) throw new Error(out.split('\n').pop() ?? 'Install failed')
+  phoneAppCodes.set(serial, b.code)
+  linked.delete(serial)
+  await link(adb, serial, true)
+  if (reopen) await adb.runLoose(['shell', `am start -n ${COMPANION_PKG}/.MainActivity`], serial, 5000).catch(() => '')
+}
+let lastLinkRequest = 0
 
 function loadKey(): string {
   const p = join(app.getPath('userData'), 'companion-link.json')
@@ -93,8 +117,14 @@ function rememberPort(p: number): void {
 /** adb reverse for the link port + hand the key to the companion (if installed). */
 async function link(adb: Adb, serial: string, force = false): Promise<boolean> {
   if (linked.has(serial) && !force) return true
-  const installed = /package:/.test(await adb.runLoose(['shell', `pm path ${COMPANION_PKG}`], serial, 5000))
-  if (!installed) return false
+  const code = parseVersionCode(await adb.runLoose(['shell', `dumpsys package ${COMPANION_PKG} | grep -m1 versionCode`], serial, 5000))
+  if (code === null) return false // not installed
+  phoneAppCodes.set(serial, code)
+  if (phoneAppOutdated(code) && !offeredPhoneUpdate.has(serial)) {
+    offeredPhoneUpdate.add(serial)
+    const model = latestDevices?.devices.find((d) => d.transports.some((t) => t.serial === serial))?.model ?? 'your phone'
+    for (const w of BrowserWindow.getAllWindows()) w.webContents.send('companion:outdated', { serial, model, bundled: bundledPhoneApp()?.version ?? '' })
+  }
   // Drop forwards to ports this instance listened on in earlier runs (they pile up otherwise).
   for (const old of stalePorts) await adb.runLoose(['reverse', '--remove', `tcp:${old}`], serial, 5000).catch(() => '')
   await adb.runLoose(['reverse', `tcp:${port}`, `tcp:${port}`], serial, 5000)
@@ -104,6 +134,13 @@ async function link(adb: Adb, serial: string, force = false): Promise<boolean> {
     serial,
     5000,
   )
+  // The phone app answers "linked", "blocked" (forgotten there until "Link again") or "bad";
+  // versions before 0.7.1 answer nothing.
+  if (/data="(blocked|bad)"/.test(out)) {
+    blockedLinks.add(serial)
+    return false
+  }
+  blockedLinks.delete(serial)
   const ok = /Broadcast completed/.test(out)
   if (ok) {
     linked.add(serial)
@@ -121,6 +158,7 @@ async function linkAll(adb: Adb, list: DeviceList | null): Promise<void> {
     }
   }
   for (const s of [...linked]) if (!live.has(s)) linked.delete(s) // re-link when it comes back
+  for (const s of [...blockedLinks]) if (!live.has(s)) blockedLinks.delete(s)
 }
 
 /** Extra facts for /link/status that live in other modules (sessions, agents); set by index.ts. */
@@ -158,6 +196,21 @@ export function startCompanionLink(getAdb: () => Adb | null, extras?: LinkStatus
     const json = (code: number, body: unknown): void => {
       res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end(JSON.stringify(body))
     }
+    // The phone app's "Link now" (no key yet, so not authenticated): link every connected phone
+    // again. Harmless by design: the key still only travels over adb to the phone app's
+    // DUMP-protected receiver. Rate-limited.
+    if (req.method === 'POST' && url.pathname === '/link/request') {
+      const a = getAdb()
+      if (!a) return json(503, { error: 'no adb' })
+      if (Date.now() - lastLinkRequest < 2000) return json(429, { error: 'busy' })
+      lastLinkRequest = Date.now()
+      linked.clear()
+      blockedLinks.clear()
+      void trackDevices(a)
+        .then((l) => ((latestDevices = l), linkAll(a, l)))
+        .catch(() => {})
+      return json(202, { ok: true, mac: macName() })
+    }
     if (!keyOk(url.searchParams.get('k'))) return json(403, { error: 'not paired' })
     const phoneName = String(req.headers['x-twinglass-phone'] ?? 'Your phone').replace(/[^\w .-]/g, '').slice(0, 40) || 'Your phone'
     if (url.pathname === '/link/status') {
@@ -183,8 +236,23 @@ export function startCompanionLink(getAdb: () => Adb | null, extras?: LinkStatus
         os: `macOS ${process.getSystemVersion()}`,
         phones,
         agents: extras?.agents() ?? null,
+        // The phone app bundled here: the phone shows "Update available" when it's newer.
+        phoneApp: (() => {
+          const b = bundledPhoneApp()
+          return b ? { version: b.version, code: b.code } : null
+        })(),
         time: Date.now(),
       })
+    }
+    // "Update" on the phone (Developer mode): install the bundled phone app over adb on every
+    // connected phone that runs an older one, then reopen it.
+    if (req.method === 'POST' && url.pathname === '/link/update') {
+      const a = getAdb()
+      if (!a) return json(503, { error: 'no adb' })
+      const serials = (latestDevices?.devices ?? []).map((d) => d.transports[0]?.serial).filter((s): s is string => !!s && phoneAppOutdated(phoneAppCodes.get(s)))
+      if (!serials.length) return json(409, { error: 'up to date' })
+      for (const s of serials) void installPhoneApp(a, s, true).catch((e) => console.error('phone app update failed', e))
+      return json(202, { ok: true, version: bundledPhoneApp()?.version })
     }
     // Share to Mac, text: onto the Mac's clipboard.
     if (req.method === 'POST' && url.pathname === '/link/clipboard') {
@@ -289,6 +357,10 @@ export function startCompanionLink(getAdb: () => Adb | null, extras?: LinkStatus
 
   const adb = getAdb()
   if (adb) void trackDevices(adb).then((l) => ((latestDevices = l), linkAll(adb, l)))
+  setInterval(() => {
+    const a = getAdb()
+    if (a) for (const s of [...blockedLinks]) void link(a, s).catch(() => false)
+  }, RELINK_RETRY_MS).unref()
   onDevicesChanged((l) => {
     latestDevices = l
     const a = getAdb()
@@ -302,10 +374,20 @@ export function startCompanionLink(getAdb: () => Adb | null, extras?: LinkStatus
     for (const d of list?.devices ?? []) {
       const t = d.transports[0]
       if (!t || !a) continue
-      const v = /versionName=(\S+)/.exec(await a.runLoose(['shell', `dumpsys package ${COMPANION_PKG} | grep -m1 versionName`], t.serial, 5000))
-      phones.push({ id: d.id, model: d.model, serial: t.serial, installed: !!v, version: v?.[1] ?? null, linked: d.transports.some((x) => linked.has(x.serial)) })
+      const out = await a.runLoose(['shell', `dumpsys package ${COMPANION_PKG} | grep -m2 -E 'versionName|versionCode'`], t.serial, 5000)
+      const v = /versionName=(\S+)/.exec(out)
+      const code = parseVersionCode(out)
+      phones.push({
+        id: d.id,
+        model: d.model,
+        serial: t.serial,
+        installed: !!v,
+        version: v?.[1] ?? null,
+        outdated: phoneAppOutdated(code),
+        linked: d.transports.some((x) => linked.has(x.serial)),
+      })
     }
-    return { port, phones }
+    return { port, phones, bundled: bundledPhoneApp()?.version ?? null }
   })
   ipcMain.handle('companion:relink', async () => {
     const a = getAdb()
@@ -345,16 +427,7 @@ export function startCompanionLink(getAdb: () => Adb | null, extras?: LinkStatus
   ipcMain.handle('companion:install', async (_e, serial: unknown) => {
     const a = getAdb()
     if (!a || typeof serial !== 'string') throw new Error('Connect a phone first.')
-    // Prefer the shrunk release build (~2 MB); the debug build (~22 MB) still works.
-    const release = join(app.getAppPath(), 'companion/app/build/outputs/apk/release/app-release.apk')
-    const dev = existsSync(release) ? release : join(app.getAppPath(), 'companion/app/build/outputs/apk/debug/app-debug.apk')
-    const packaged = join(process.resourcesPath, 'mob-mirror-companion.apk')
-    const apk = app.isPackaged && existsSync(packaged) ? packaged : dev
-    if (!existsSync(apk)) throw new Error('The phone app isn’t built yet: run npm run companion:build')
-    const out = (await a.runLoose(['install', '-r', apk], serial, 120_000)).trim()
-    if (!/Success/.test(out)) throw new Error(out.split('\n').pop() ?? 'Install failed')
-    linked.delete(serial)
-    await link(a, serial, true)
+    await installPhoneApp(a, serial)
     return true
   })
 }

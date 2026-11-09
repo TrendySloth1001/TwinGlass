@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
@@ -118,6 +119,8 @@ class MainActivity : ComponentActivity() {
             status = com.mobmirror.companion.direct.MirrorService.status,
             controlOn = DeviceInfo.agentAccess(this).first,
             notificationsOn = notif,
+            forgotten = com.mobmirror.companion.direct.DirectLink.forgotten(this),
+            pendingForget = com.mobmirror.companion.direct.DirectLink.hasPendingForget(this),
         )
     }
 
@@ -227,7 +230,20 @@ class MainActivity : ComponentActivity() {
             runCatching {
                 presence = com.mobmirror.companion.direct.DirectLink.open(this, object : com.mobmirror.companion.direct.DirectLink.Listener {
                     override fun onJson(msg: org.json.JSONObject) {
-                        if (msg.optString("t") == "forget") main.post { refreshDirect(); notice = "${direct.paired?.name ?: "The Mac"} forgot this phone. Pair again to use it." }
+                        when (msg.optString("t")) {
+                            "forget" -> main.post { refreshDirect(); notice = "${direct.paired?.name ?: "The Mac"} forgot this phone. Pair again to use it." }
+                            // The Mac carries a newer phone app (Home shows "Update").
+                            "update" -> main.post { wifiUpdate = msg.optString("version").ifEmpty { "A new version" } }
+                            "update-url" -> main.post {
+                                updating = false
+                                val url = msg.optString("url")
+                                if (url.startsWith("http://")) {
+                                    runCatching { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
+                                        .onSuccess { notice = "Downloading the update from your Mac. Open it when it’s done and tap Install; your settings stay." }
+                                        .onFailure { notice = "No browser to download the update with" }
+                                } else notice = "The Mac couldn’t share the update (${msg.optString("error")})"
+                            }
+                        }
                     }
                     override fun onControl(msg: ByteArray) {}
                     override fun onClosed(error: String?) {
@@ -276,7 +292,7 @@ class MainActivity : ComponentActivity() {
     ).joinToString("\n")
 
     private fun model() = AppModel(
-        link = link, snap = snap, sections = sections, agent = agent, version = DeviceInfo.appVersion(this),
+        link = link, forgottenMac = Link.forgottenName(this), snap = snap, sections = sections, agent = agent, version = DeviceInfo.appVersion(this),
         prefs = prefs!!, features = features, advanced = advanced!!,
         pairedAt = Link.pairedAt(this), lastSeen = Link.lastSeen(this), port = Link.port(this), keyId = Link.keyId(this),
         refresh = { reload(); pollOnce() },
@@ -286,7 +302,7 @@ class MainActivity : ComponentActivity() {
         },
         sendClipboard = ::sendClipboard,
         openAccessibility = { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
-        forget = { Link.forget(this); link = LinkState.NotPaired; notice = "Forgot the Mac" },
+        forget = { val name = Link.macName(this); Link.forget(this); link = LinkState.Forgotten; notice = "Forgot $name. Link again from Home when you want it back" },
         set = { key, value -> Prefs.put(this, key, value); loadPrefs() },
         setFeature = { f, on -> Prefs.setEnabled(this, f, on); loadPrefs() },
         resetSettings = { Prefs.reset(this); loadPrefs(); notice = "Settings reset" },
@@ -301,7 +317,9 @@ class MainActivity : ComponentActivity() {
         setMode = ::chooseMode,
         directMac = direct.paired?.name,
         forgetDirect = { confirmForgetDirect = true },
-        linkAgain = { Link.unblock(this); link = LinkState.NotPaired; notice = "Linking allowed again: reconnect the cable, or Relink in Twinglass on the Mac" },
+        linkAgain = { Link.unblock(this); link = LinkState.NotPaired; linkNow() },
+        linkNow = ::linkNow,
+        linking = linking,
         openAppInfo = { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", packageName, null))) },
     )
 
@@ -319,6 +337,56 @@ class MainActivity : ComponentActivity() {
         thread {
             val ok = Link.sendText(this, text, Prefs.shareNotifyMac(this))
             main.post { notice = if (ok) "Sent to ${Link.macName(this)}’s clipboard" else "Can’t reach ${Link.macName(this)}" }
+        }
+    }
+
+    private var linking by mutableStateOf(false)
+
+    // ---- updates: the Mac carries the newest phone app; the phone never goes online for it ----
+    /** Wi-Fi mode: the version the paired Mac offered. */
+    private var wifiUpdate by mutableStateOf<String?>(null)
+    private var updating by mutableStateOf(false)
+    private val myCode by lazy { DeviceInfo.appCode(this) }
+
+    /** The newer phone app version the Mac has, if any (Developer mode: from /link/status). */
+    private fun availableUpdate(): String? =
+        (link as? LinkState.Connected)?.status?.takeIf { it.phoneAppCode > myCode }?.phoneAppVersion ?: wifiUpdate
+
+    private fun updateNow() {
+        if (updating) return
+        val adb = (link as? LinkState.Connected)?.status?.takeIf { it.phoneAppCode > myCode }
+        updating = true
+        if (adb != null) thread {
+            val ok = Link.requestUpdate(this)
+            main.post {
+                updating = ok // stays "Updating…" until Android closes the app for the install
+                notice = if (ok) "Updating to ${adb.phoneAppVersion}. Twinglass closes for a moment and reopens." else "Can’t reach Twinglass on ${adb.mac}"
+            }
+        } else {
+            val s = presence
+            if (s == null) { updating = false; notice = "Can’t reach your Mac. Open Twinglass there, on the same Wi-Fi."; return }
+            thread { runCatching { s.json(org.json.JSONObject().put("t", "get-update")) }.onFailure { main.post { updating = false; notice = "Can’t reach your Mac" } } }
+        }
+    }
+
+    /** Asks Twinglass on the Mac to link this phone now, then waits a few seconds for the key. */
+    private fun linkNow() {
+        if (linking) return
+        linking = true
+        thread {
+            val mac = Link.requestLink(this)
+            var ok = false
+            if (!mac.isNullOrEmpty()) for (i in 0 until 20) { if (Link.paired(this)) { ok = true; break }; Thread.sleep(250) }
+            main.post {
+                linking = false
+                pollOnce()
+                notice = when {
+                    ok -> "Linked to ${Link.macName(this)}"
+                    mac == "" -> "Twinglass on the Mac needs an update to link from here. Meanwhile: Settings → Phone app → Relink on the Mac, or reconnect the cable."
+                    mac != null -> "$mac answered but didn’t link. Update Twinglass on the Mac, or use Settings → Phone app → Relink there."
+                    else -> "Can’t reach Twinglass on the Mac. Open it, with this phone connected by USB or wireless debugging."
+                }
+            }
         }
     }
 
@@ -394,13 +462,19 @@ class MainActivity : ComponentActivity() {
                         n.tab == Tab.Home -> homeScreen(
                             m,
                             if (mode == Prefs.Mode.NoSetup) {
-                                { directHome(direct, { sheet = it }, ::mirror, full = (dev.usbDebugging || dev.wirelessDebugging) && link is LinkState.Connected, onStop = { startService(Intent(this@MainActivity, com.mobmirror.companion.direct.MirrorService::class.java).setAction(com.mobmirror.companion.direct.MirrorService.ACTION_STOP)) }) }
+                                { directHome(direct, { sheet = it }, ::mirror, full = (dev.usbDebugging || dev.wirelessDebugging) && link is LinkState.Connected, onStop = { startService(Intent(this@MainActivity, com.mobmirror.companion.direct.MirrorService::class.java).setAction(com.mobmirror.companion.direct.MirrorService.ACTION_STOP)) }, onDismissForgotten = { com.mobmirror.companion.direct.DirectLink.dismissForgotten(this@MainActivity); refreshDirect() }) }
                             } else null,
                             {
+                                availableUpdate()?.let { v ->
+                                    UpdateCard(v, (link as? LinkState.Connected)?.status?.mac ?: direct.paired?.name ?: "your Mac", wifi = (link as? LinkState.Connected)?.status?.takeIf { it.phoneAppCode > myCode } == null, updating, ::updateNow)
+                                    Spacer(Modifier.height(Space.md))
+                                }
                                 PotentialCard(
                                     dev = dev,
                                     mode = mode,
                                     adbLinkedTo = (link as? LinkState.Connected)?.status?.mac,
+                                    forgotten = link == LinkState.Forgotten,
+                                    onLinkAgain = m.linkAgain,
                                     onUnlock = { sheet = Sheet.DevSetup },
                                     onSwitch = ::chooseMode,
                                 )

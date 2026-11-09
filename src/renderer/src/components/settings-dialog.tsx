@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils'
 import { FRAME_COLORS, FRAME_LABELS, type FrameColor, type FrameStyle } from '@/lib/phone-frames'
 import { MiniPhone } from '@/components/mini-phone'
 import { SectionHeader } from '@/components/section-header'
+import { startUpdate } from '@/lib/update'
 
 
 type Page = 'general' | 'window' | 'mirroring' | 'input' | 'unlock' | 'companion' | 'agents' | 'advanced'
@@ -130,7 +131,12 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
   type CompanionPhone = Awaited<ReturnType<typeof window.mobMirror.companionStatus>>['phones'][number]
   const [companion, setCompanion] = useState<CompanionPhone[] | null>(null)
   const [installing, setInstalling] = useState<string | null>(null)
-  const loadCompanion = (): void => void window.mobMirror.companionStatus().then((st) => setCompanion(st.phones), () => setCompanion([]))
+  const [bundledPhoneApp, setBundledPhoneApp] = useState<string | null>(null)
+  const loadCompanion = (): void =>
+    void window.mobMirror.companionStatus().then(
+      (st) => (setCompanion(st.phones), setBundledPhoneApp(st.bundled)),
+      () => setCompanion([]),
+    )
   useEffect(() => {
     if (p.open && page === 'companion') loadCompanion()
   }, [p.open, page])
@@ -502,20 +508,22 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
                     hint={
                       !ph.installed
                         ? 'App not installed.'
-                        : ph.linked
-                          ? `App ${ph.version ?? ''} · paired: start sharing from the phone.`
-                          : `App ${ph.version ?? ''} · not paired yet.`
+                        : ph.outdated
+                          ? `App ${ph.version ?? ''} · ${bundledPhoneApp ?? 'a newer version'} is available.`
+                          : ph.linked
+                            ? `App ${ph.version ?? ''} · paired: start sharing from the phone.`
+                            : `App ${ph.version ?? ''} · not paired yet.`
                     }
                   >
                     <div className="flex items-center gap-2">
-                      {ph.installed && !ph.linked && (
+                      {ph.installed && (
                         <Button size="sm" variant="outline" onClick={() => void window.mobMirror.companionRelink().then(loadCompanion)}>
-                          Pair
+                          {ph.linked ? 'Relink' : 'Pair'}
                         </Button>
                       )}
                       <Button
                         size="sm"
-                        variant={ph.installed ? 'outline' : 'default'}
+                        variant={ph.installed && !ph.outdated ? 'outline' : 'default'}
                         disabled={installing === ph.serial}
                         onClick={() => {
                           setInstalling(ph.serial)
@@ -532,7 +540,7 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
                         }}
                       >
                         {installing === ph.serial ? <RefreshCw className="animate-spin" /> : null}
-                        {ph.installed ? 'Update' : 'Install'}
+                        {!ph.installed ? 'Install' : ph.outdated ? 'Update' : 'Reinstall'}
                       </Button>
                     </div>
                   </Row>
@@ -678,13 +686,15 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
                         : update.error
                           ? `Couldn’t check: ${update.error}`
                           : update.available
-                            ? `${update.latest} is available. Automatic install needs a signed app, so this opens the download.`
+                            ? update.canInstall
+                              ? `${update.latest} is available. It installs in place and Twinglass reopens.`
+                              : `${update.latest} is available. Twinglass can’t replace itself here, so this opens the download.`
                             : 'You’re up to date.'
                   }
                 >
-                  {update?.available && update.url ? (
-                    <Button size="sm" onClick={() => void window.mobMirror.downloadUpdate(update.url!)}>
-                      Download {update.latest}
+                  {update?.available && (update.canInstall || update.url) ? (
+                    <Button size="sm" onClick={() => startUpdate(update)}>
+                      {update.canInstall ? 'Update to' : 'Download'} {update.latest}
                     </Button>
                   ) : (
                     <Button size="sm" variant="outline" onClick={() => void window.mobMirror.checkForUpdate().then(setUpdate)}>
