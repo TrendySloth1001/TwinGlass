@@ -148,11 +148,7 @@
   }
 }
 
-/* Hero collage details: the fingerprint pad's scanning line and the agent transcript's caret. */
-@keyframes scan {
-  0%, 100% { top: 14%; }
-  50% { top: 84%; }
-}
+/* Hero collage detail: the agent transcript's caret. */
 @keyframes caret {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }

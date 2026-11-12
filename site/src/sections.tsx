@@ -21,6 +21,7 @@ import {
   Laptop,
   Layers,
   Lock,
+  LockKeyhole,
   Keyboard,
   MonitorSmartphone,
   MousePointerClick,
@@ -212,6 +213,18 @@ function Guides() {
   )
 }
 
+/** A card's icon: a framed tile with the icon, and a small badge on its corner for what it means. */
+function IconTile({ icon: Icon, badge: Badge }: { icon: LucideIcon; badge: LucideIcon }) {
+  return (
+    <span className="relative flex size-12 items-center justify-center rounded-[12px] border border-input-border bg-input shadow-[inset_0_1px_0_rgb(255_255_255/0.06)]">
+      <Icon className="size-6 text-mark" strokeWidth={1.6} />
+      <span className="absolute -right-2 -bottom-2 flex size-6 items-center justify-center rounded-full border border-input-border bg-tile">
+        <Badge className="size-3 text-heading" strokeWidth={2} />
+      </span>
+    </span>
+  )
+}
+
 /** A "+" registration mark centred on a card corner. */
 function Cross({ className }: { className: string }) {
   return (
@@ -282,19 +295,12 @@ function HeroCollage() {
         </p>
       </BlurFade>
 
-      {/* The Mac app on a violet glow, with a live chip breaking out of its bottom edge. */}
+      {/* The Mac app on a violet glow. */}
       <Piece
         at="mac"
         tag="01 · Mac"
         delay={0.15}
         className="min-h-[360px] overflow-hidden sm:min-h-[460px] lg:min-h-0"
-        overlay={
-          <div className="absolute -bottom-4 left-6 z-30 hidden items-center gap-2 border border-input-border bg-tile px-3 py-1.5 font-mono text-[11px] shadow-xl sm:flex">
-            <span className="size-1.5 rounded-full bg-ok motion-safe:animate-pulse" />
-            <span className="text-heading">Mirroring A024</span>
-            <span className="text-muted-foreground">· Wi-Fi · 12 ms · 120 Hz</span>
-          </div>
-        }
       >
         <Glow className="inset-0 opacity-90 [background:radial-gradient(ellipse_90%_80%_at_50%_100%,rgb(124_92_255/0.8),rgb(70_60_200/0.35)_45%,transparent_75%)]" />
         {/* Fine dot texture over the glow. */}
@@ -363,38 +369,23 @@ function HeroCollage() {
 
       {/* Unlock. */}
       <Piece at="unlock" tag="04 · Unlock" delay={0.3}>
-        <div className="flex h-full items-end justify-between gap-4 p-5">
+        <div className="flex h-full flex-col justify-between p-5">
+          <IconTile icon={Fingerprint} badge={LockKeyhole} />
           <div>
             <p className="text-[15px] font-medium text-heading">Unlock with Touch ID</p>
             <p className="mt-1 text-[13px] leading-snug">Your PIN stays in the Mac’s keychain. Agents can’t unlock without your finger.</p>
           </div>
-          {/* A fingerprint pad with a scanning line. */}
-          <span className="relative flex size-[88px] shrink-0 items-center justify-center self-center overflow-hidden rounded-[20px] border border-input-border bg-input">
-            <Fingerprint className="size-10 text-mark" strokeWidth={1.3} />
-            <span aria-hidden className="absolute inset-x-2 h-px bg-mark shadow-[0_0_10px_2px_rgb(124_92_255/0.6)] motion-safe:animate-[scan_2.4s_ease-in-out_infinite]" />
-          </span>
         </div>
       </Piece>
 
       {/* Wi-Fi, no setup. */}
-      <Piece at="wifi" tag="05 · Wi-Fi" delay={0.35} className="overflow-hidden">
-        <div className="relative flex h-[130px] items-center justify-center">
-          {[0, 1, 2].map((k) => (
-            <span
-              key={k}
-              aria-hidden
-              className="absolute size-16 rounded-full border border-mark/40 motion-safe:animate-ping"
-              style={{ animationDelay: `${k * 0.6}s`, animationDuration: '2.4s' }}
-            />
-          ))}
-          <span className="relative flex size-11 items-center justify-center rounded-full bg-mark/15">
-            <Wifi className="size-5 text-mark" />
-          </span>
-          <span className="absolute right-3 bottom-2 font-mono text-[10px] text-muted-foreground">AES-256-GCM</span>
-        </div>
-        <div className="border-t border-dashed border-border px-5 pt-3 pb-5">
-          <p className="text-[15px] font-medium text-heading">Wi-Fi, no setup</p>
-          <p className="mt-1 text-[13px] leading-snug">Scan a code once. No cable, no developer options.</p>
+      <Piece at="wifi" tag="05 · Wi-Fi" delay={0.35}>
+        <div className="flex h-full flex-col justify-between p-5">
+          <IconTile icon={Wifi} badge={QrCode} />
+          <div>
+            <p className="text-[15px] font-medium text-heading">Wi-Fi, no setup</p>
+            <p className="mt-1 text-[13px] leading-snug">Scan a code once. No cable, no developer options.</p>
+          </div>
         </div>
       </Piece>
 

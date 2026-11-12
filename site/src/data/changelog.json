@@ -2,6 +2,23 @@
   "repo": "https://github.com/TrendySloth1001/TwinGlass",
   "releases": [
     {
+      "version": "0.1.5",
+      "date": "2026-11-13",
+      "phone": "0.9.0",
+      "title": "Tabs for every phone",
+      "summary": "Open as many phones and second screens as you like as tabs in one window, pop any of them out into a phone-shaped window, and find Settings in a tab of its own. The phone app gets the same VS Code look.",
+      "mac": [
+        "Every phone and second screen you mirror opens as a tab in the main window, with no limit. Each tab keeps its own connection, so switching tabs never restarts a mirror.",
+        "Mobile view (⇧⌘M) pops a tab out into its own phone-shaped window. New window still opens separate windows.",
+        "Device shortcuts, ⌘K and clipboard history act on the tab in front.",
+        "Settings opens as a tab next to your phones, like VS Code's Settings editor."
+      ],
+      "phoneApp": [
+        "A VS Code look to match the Mac: Dark and Light Modern colours, the system font, small corners and blue buttons and switches.",
+        "Home, Device and Settings sit in a tab bar at the bottom, above a blue status bar that shows which Mac you're linked to."
+      ]
+    },
+    {
       "version": "0.1.4",
       "date": "2026-11-12",
       "phone": "0.8.2",
