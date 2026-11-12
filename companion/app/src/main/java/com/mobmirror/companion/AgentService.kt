@@ -19,23 +19,67 @@ class AgentService : AccessibilityService() {
     override fun onServiceConnected() { instance = this }
     override fun onDestroy() { if (instance === this) instance = null; super.onDestroy() }
     override fun onUnbind(intent: android.content.Intent?): Boolean { if (instance === this) instance = null; return super.onUnbind(intent) }
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
+    /** Last UI change per window id (content, state, scroll, text): what "idle" waits on. */
+    private val lastChange = java.util.concurrent.ConcurrentHashMap<Int, Long>()
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        val e = event ?: return
+        if (e.windowId != -1) lastChange[e.windowId] = android.os.SystemClock.uptimeMillis()
+    }
+
+    /**
+     * Waits until no window on [display] has changed for [quietMs] (animations, transitions and
+     * loading done), at most [maxMs]. Like UiAutomator's waitForIdle, but per display.
+     */
+    fun idle(display: Int, quietMs: Long, maxMs: Long): JSONObject {
+        val start = android.os.SystemClock.uptimeMillis()
+        while (true) {
+            val now = android.os.SystemClock.uptimeMillis()
+            val ids = windows(display).map { it.id }
+            val last = ids.maxOfOrNull { lastChange[it] ?: 0L } ?: 0L
+            if (now - last >= quietMs) return JSONObject().put("ok", true).put("idle", true).put("waited", now - start)
+            if (now - start >= maxMs) return JSONObject().put("ok", true).put("idle", false).put("waited", now - start)
+            Thread.sleep(40)
+        }
+    }
     override fun onInterrupt() {}
 
     private fun windows(display: Int): List<AccessibilityWindowInfo> =
         if (Build.VERSION.SDK_INT >= 30) windowsOnAllDisplays.get(display)?.toList().orEmpty()
         else if (display == 0) windows.orEmpty() else emptyList()
 
-    /** Top window first (Android lists them in z-order, top first). */
-    fun tree(display: Int, limit: Int): JSONObject {
+    /**
+     * Top window first (Android lists them in z-order, top first). Without [system] the keyboard
+     * and the status / navigation bars are left out (they're noise for an agent and used to eat
+     * the element budget); the windows list still says they're there ("skipped").
+     */
+    fun tree(display: Int, limit: Int, system: Boolean = false): JSONObject {
         val out = JSONArray()
         val wins = JSONArray()
-        windows(display).forEachIndexed { wi, w ->
+        val all = windows(display)
+        val tallest = all.maxOfOrNull { Rect().also { r -> it.getBoundsInScreen(r) }.height() } ?: 0
+        all.forEachIndexed { wi, w ->
             val root = w.root ?: return@forEachIndexed
-            wins.put(JSONObject().put("index", wi).put("type", w.type).put("title", w.title?.toString() ?: "").put("pkg", root.packageName?.toString() ?: "").put("active", w.isActive).put("focused", w.isFocused))
-            walk(root, "$wi", out, limit)
+            val wr = Rect().also { w.getBoundsInScreen(it) }
+            val bar = w.type == AccessibilityWindowInfo.TYPE_SYSTEM && wr.height() < tallest / 6
+            val skip = !system && (w.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD || bar)
+            wins.put(JSONObject().put("index", wi).put("type", w.type).put("title", w.title?.toString() ?: "").put("pkg", root.packageName?.toString() ?: "")
+                .put("active", w.isActive).put("focused", w.isFocused).put("keyboard", w.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD).put("skipped", skip))
+            if (!skip) walk(root, "$wi", out, limit)
         }
         return JSONObject().put("display", display).put("windows", wins).put("nodes", out)
+    }
+
+    /** Text of [n]'s descendants, stopping at clickable ones (they're elements of their own). */
+    private fun innerText(n: AccessibilityNodeInfo, sb: StringBuilder, depth: Int = 0) {
+        if (depth > 6 || sb.length > 120) return
+        for (i in 0 until n.childCount) {
+            val c = n.getChild(i) ?: continue
+            if (!c.isVisibleToUser || c.isClickable) continue
+            val t = c.text?.toString()?.takeIf { it.isNotBlank() } ?: c.contentDescription?.toString()?.takeIf { it.isNotBlank() }
+            if (t != null) { if (sb.isNotEmpty()) sb.append(" · "); sb.append(t.trim()) }
+            innerText(c, sb, depth + 1)
+        }
     }
 
     private fun walk(n: AccessibilityNodeInfo, ref: String, out: JSONArray, limit: Int) {
@@ -49,6 +93,11 @@ class AgentService : AccessibilityService() {
             if (r.width() > 0 && r.height() > 0) out.put(JSONObject().apply {
                 put("ref", ref)
                 put("text", text); put("desc", desc); if (hint.isNotEmpty()) put("hint", hint)
+                // A clickable row/card with no text of its own: name it by what it shows.
+                if (text.isEmpty() && desc.isEmpty() && (n.isClickable || n.isLongClickable)) {
+                    val sb = StringBuilder().also { innerText(n, it) }
+                    if (sb.isNotEmpty()) put("inner", sb.toString().take(160))
+                }
                 put("id", n.viewIdResourceName ?: "")
                 put("cls", n.className?.toString()?.substringAfterLast('.') ?: "View")
                 put("pkg", n.packageName?.toString() ?: "")

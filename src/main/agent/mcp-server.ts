@@ -182,13 +182,18 @@ function buildServer(ctl: DeviceController): McpServer {
     'get_ui_tree',
     {
       description:
-        'List on-screen elements (label, id, type, flags like editable/checked, ref) with centre coordinates in screenshot space. Press one with tap_element {ref} or tap its `center`.',
-      inputSchema: z.object({ device: deviceArg, screen: screenArg, only_interactive: z.boolean().optional().describe('Only clickable / editable / scrollable elements') }),
+        'List on-screen elements (label, id, type, flags like editable/checked, ref) with centre coordinates in screenshot space. Press one with tap_element {ref} or tap its `center`. Clickable rows without their own text are labelled with the text inside them. The keyboard and the status / navigation bars are left out unless system=true (keyboardOpen says whether a keyboard is up).',
+      inputSchema: z.object({
+        device: deviceArg,
+        screen: screenArg,
+        only_interactive: z.boolean().optional().describe('Only clickable / editable / scrollable elements'),
+        system: z.boolean().optional().describe('Also list the keyboard and the status / navigation bars'),
+      }),
     },
-    async ({ device, screen, only_interactive }) => {
-      const r = await ctl.uiTree(device, screen)
+    async ({ device, screen, only_interactive, system }) => {
+      const r = await ctl.uiTree(device, screen, system ?? false)
       const nodes = only_interactive ? r.nodes.filter((n) => n.clickable || n.flags?.match(/editable|scrollable/)) : r.nodes
-      return text(JSON.stringify({ screen: r.screen, via: r.via, space: r.space, count: nodes.length, nodes }))
+      return text(JSON.stringify({ screen: r.screen, via: r.via, space: r.space, ...(r.keyboard !== undefined ? { keyboardOpen: r.keyboard } : {}), count: nodes.length, nodes }))
     },
   )
 
@@ -208,7 +213,7 @@ function buildServer(ctl: DeviceController): McpServer {
     'tap_element',
     {
       description:
-        'Press an element found by text, id or ref (no coordinates needed). Uses the accessibility action when available, so it works even if the layout shifts; else taps its centre.',
+        'Press an element found by text, id or ref (no coordinates needed). Waits up to 2.5 s for it to appear (menus still opening). A plain label presses the row / button around it. Uses the accessibility action when available; else taps its centre. Returns after the screen settles.',
       inputSchema: z.object({ ...elementArgs, long: z.boolean().optional().describe('Long-press instead'), device: deviceArg, screen: screenArg }),
     },
     async ({ device, screen, long, ...q }) => text(await ctl.tapElement(q, long ?? false, device, screen)),
@@ -218,7 +223,7 @@ function buildServer(ctl: DeviceController): McpServer {
     'set_text',
     {
       description:
-        'Replace the text of a field (any language, emoji included; no keyboard needed). Picks the field by text/hint/id/ref, else the focused field. submit presses Enter afterwards.',
+        'Replace the text of a field (any language, emoji included; no keyboard needed). Picks the field by text/hint/id/ref, else the focused field. Reads the field back: if it doesn\'t show the text it clears and types instead, and fails with what the field shows rather than reporting success. submit presses Enter afterwards.',
       inputSchema: z.object({ value: z.string().max(5000), ...elementArgs, submit: z.boolean().optional(), device: deviceArg, screen: screenArg }),
     },
     async ({ value, submit, device, screen, ...q }) => text(await ctl.setText(value, q, submit ?? false, device, screen)),
@@ -274,7 +279,7 @@ function buildServer(ctl: DeviceController): McpServer {
   s.registerTool(
     'scroll',
     {
-      description: 'Scroll the content in the middle of the screen. "down" reveals what is below.',
+      description: 'Scroll the content in the middle of the screen. "down" reveals what is below. Says whether the content actually moved (if the drag did nothing it scrolls the biggest scrollable element directly).',
       inputSchema: z.object({
         direction: z.enum(['up', 'down', 'left', 'right']),
         amount: z.number().min(0.1).max(0.9).optional().describe('Fraction of the screen, default 0.5'),

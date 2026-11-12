@@ -19,7 +19,7 @@ export function parseBroadcastResult(out: string): Record<string, unknown> | nul
   }
 }
 
-export type BridgeOp = 'ping' | 'tree' | 'map' | 'click' | 'long_click' | 'set_text' | 'focus' | 'scroll_forward' | 'scroll_backward'
+export type BridgeOp = 'ping' | 'tree' | 'idle' | 'map' | 'click' | 'long_click' | 'set_text' | 'focus' | 'scroll_forward' | 'scroll_backward'
 
 export class BridgeError extends Error {
   constructor(
@@ -34,7 +34,7 @@ export async function bridgeCall(
   adb: Adb,
   serial: string,
   op: BridgeOp,
-  args: { display?: number; ref?: string; text?: string; limit?: number; rendering?: boolean } = {},
+  args: { display?: number; ref?: string; text?: string; limit?: number; rendering?: boolean; system?: boolean; quiet?: number; max?: number } = {},
 ): Promise<Record<string, unknown>> {
   const parts = [`am broadcast -n ${COMPANION_PKG}/.AgentReceiver --es op ${op}`]
   if (args.display !== undefined) parts.push(`--ei display ${Math.trunc(args.display)}`)
@@ -45,6 +45,9 @@ export async function bridgeCall(
   if (args.text !== undefined) parts.push(`--es text ${shellQuote(args.text)}`)
   if (args.limit !== undefined) parts.push(`--ei limit ${Math.trunc(args.limit)}`)
   if (args.rendering !== undefined) parts.push(`--ez rendering ${args.rendering}`)
+  if (args.system !== undefined) parts.push(`--ez system ${args.system}`)
+  if (args.quiet !== undefined) parts.push(`--el quiet ${Math.trunc(args.quiet)}`)
+  if (args.max !== undefined) parts.push(`--el max ${Math.trunc(args.max)}`)
   const out = await adb.runLoose(['shell', parts.join(' ')], serial, 15_000)
   const res = parseBroadcastResult(out)
   if (!res) throw new BridgeError('no-app', 'The Twinglass phone app (0.4.0 or newer) is not installed on this phone.')

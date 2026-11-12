@@ -9,7 +9,7 @@ import org.json.JSONObject
 /**
  * Agent requests from Twinglass on the Mac, through `am broadcast` (adb only: DUMP permission).
  * The answer goes back as the broadcast's result data (base64 JSON), which `am broadcast` prints:
- * no network round trip. Extras: op (tree | click | long_click | set_text | focus | scroll_*),
+ * no network round trip. Extras: op (tree | idle | click | long_click | set_text | focus | scroll_*),
  * display (int), ref (node ref from tree), text (set_text), limit (tree).
  */
 class AgentReceiver : BroadcastReceiver() {
@@ -24,7 +24,8 @@ class AgentReceiver : BroadcastReceiver() {
             when {
                 op == "ping" -> JSONObject().put("ok", true).put("service", svc != null)
                 svc == null -> JSONObject().put("ok", false).put("error", "a11y-off")
-                op == "tree" -> svc.tree(display, intent.getIntExtra("limit", 400).coerceIn(10, cap(context))).put("ok", true)
+                op == "tree" -> svc.tree(display, intent.getIntExtra("limit", 400).coerceIn(10, cap(context)), intent.getBooleanExtra("system", false)).put("ok", true)
+                op == "idle" -> svc.idle(display, intent.getLongExtra("quiet", 300).coerceIn(50, 2000), intent.getLongExtra("max", 2000).coerceIn(100, 8000))
                 op == "map" -> svc.map(
                     display,
                     intent.getIntExtra("limit", 800).coerceIn(10, cap(context)),

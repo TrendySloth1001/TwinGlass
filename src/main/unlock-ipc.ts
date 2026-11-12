@@ -461,7 +461,12 @@ async function unlockOnce(
  */
 export async function unlockForAgent(adb: Adb, session: ScrcpySession): Promise<{ ok: boolean; message: string }> {
   const id = await deviceId(adb, session.serial)
-  if ((await isLocked(adb, session.serial)) === false) return { ok: true, message: 'The phone is already unlocked.' }
+  // Unlocked, but an app may be asking for the phone's credential (Android's fingerprint prompt,
+  // an app lock): that's what the agent needs typed, so only "nothing in front" is "already unlocked".
+  const st = await status(adb, session.serial)
+  if (st.locked === false && !st.credentialPrompt) {
+    return { ok: true, message: 'The phone is already unlocked and no app is asking for the PIN. (A prompt on the agent screen can’t be answered from here: open that app on the phone’s own screen.)' }
+  }
   if (!(id in readStore())) {
     return { ok: false, message: 'No PIN is saved for this phone. Ask the user to unlock it once in Twinglass (⌘L) with "Remember".' }
   }

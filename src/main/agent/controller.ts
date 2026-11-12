@@ -32,7 +32,7 @@ import { parseCpuinfo, parseGfxinfo, parseLaunchTime, parseMeminfoPss, parsePack
 import { bridgeCall, BridgeError, parseNotifications, type PhoneNotification } from './phone-bridge'
 import { buildScreenMap, sampleColors, type ScreenMap } from './screen-map'
 import { parseKeyguardShowing } from '../adb/lock'
-import { escapeInputText, matchNodes, parseA11yTree, parseUiDump, type NodeQuery, type UiNode } from './ui-tree'
+import { clickableAround, escapeInputText, fieldText, matchNodes, parseA11yTree, parseUiDump, sameFieldText, screenSignature, type NodeQuery, type UiNode } from './ui-tree'
 
 const execFileP = promisify(execFile)
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
@@ -352,12 +352,14 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
   }
 
   /** UI elements, through the phone app's accessibility service when on, else uiautomator (phone screen). */
-  private async readTree(t: Target): Promise<{ nodes: UiNode[]; space: Size; via: 'phone-app' | 'uiautomator' }> {
+  private async readTree(t: Target, system = false): Promise<{ nodes: UiNode[]; space: Size; via: 'phone-app' | 'uiautomator'; keyboard?: boolean }> {
     const screen = await this.screenSize(t)
     const space = agentSpace(screen)
     try {
-      const res = await bridgeCall(t.adb, t.serial, 'tree', { display: t.displayId, limit: 600 })
-      return { nodes: parseA11yTree(res, screen, space), space, via: 'phone-app' }
+      // Without `system`, the phone app leaves out the keyboard and the status / navigation bars.
+      const res = await bridgeCall(t.adb, t.serial, 'tree', { display: t.displayId, limit: 600, system })
+      const wins = Array.isArray(res.windows) ? (res.windows as { keyboard?: boolean }[]) : []
+      return { nodes: parseA11yTree(res, screen, space), space, via: 'phone-app', keyboard: wins.some((w) => w.keyboard === true) }
     } catch (e) {
       if (!(e instanceof BridgeError) || t.screen === 'agent') throw e
     }
@@ -371,9 +373,9 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
     return { nodes: parseUiDump(xml, screen, space), space, via: 'uiautomator' }
   }
 
-  async uiTree(device?: string, screen?: ScreenChoice): Promise<{ nodes: UiNode[]; space: Size; via: string; screen: ScreenChoice }> {
+  async uiTree(device?: string, screen?: ScreenChoice, system = false): Promise<{ nodes: UiNode[]; space: Size; via: string; screen: ScreenChoice; keyboard?: boolean }> {
     const t = await this.target(device, screen)
-    const r = await this.readTree(t)
+    const r = await this.readTree(t, system)
     this.log(`read the screen’s elements${this.where(t)}`)
     return { ...r, screen: t.screen }
   }
@@ -402,45 +404,118 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
   }
 
   /** Presses an element: through the accessibility service (exact, needs no coordinates), else a tap on its centre. */
-  async tapElement(q: NodeQuery, long: boolean, device?: string, screen?: ScreenChoice): Promise<string> {
+  /** Elements matching `q`, re-reading for up to `timeoutMs` (menus and pages still opening). */
+  private async findNodes(t: Target, q: NodeQuery, timeoutMs: number): Promise<{ hit: UiNode[]; nodes: UiNode[] }> {
+    const until = Date.now() + timeoutMs
+    for (;;) {
+      const nodes = await this.readTree(t)
+        .then((r) => r.nodes)
+        .catch((e: unknown) => {
+          if (e instanceof BridgeError && e.code !== 'failed') throw e
+          return [] as UiNode[]
+        })
+      const hit = matchNodes(nodes, q)
+      if (hit.length || Date.now() >= until) return { hit, nodes }
+      await sleep(250)
+    }
+  }
+
+  /**
+   * Waits until the screen stops changing (the phone app's idle: no window change for 300 ms,
+   * at most 2.5 s), so the next action doesn't land mid-transition. Returns a note for the result.
+   */
+  private async settle(t: Target): Promise<string> {
+    const r = await bridgeCall(t.adb, t.serial, 'idle', { display: t.displayId, quiet: 300, max: 2500 }).catch(() => null)
+    if (r?.ok === true && typeof r.waited === 'number') return r.idle === true ? ` · screen settled (${r.waited} ms)` : ` · screen still changing after ${r.waited} ms (animation, video or loading)`
+    await sleep(400) // older phone app or no accessibility: a short pause instead
+    return ''
+  }
+
+  async tapElement(q: NodeQuery, long: boolean, device?: string, screen?: ScreenChoice, timeoutMs = 2500): Promise<string> {
     const t = await this.target(device, screen)
-    const { nodes } = await this.readTree(t)
-    const hit = matchNodes(nodes, q)
-    if (!hit.length) throw new Error(`No element matches ${describeQuery(q)}. Call get_ui_tree or find_elements to see what is on screen.`)
-    const n = hit[Math.min(q.index ?? 0, hit.length - 1)]!
+    const { hit: found, nodes } = await this.findNodes(t, q, timeoutMs)
+    if (!found.length) throw new Error(`No element matches ${describeQuery(q)} (looked for ${timeoutMs} ms). Call get_ui_tree or find_elements to see what is on screen.`)
+    // Several matches: pressable ones first (a row and the label inside it both match its text).
+    const hit = [...found.filter((n) => n.clickable), ...found.filter((n) => !n.clickable)]
+    const label = hit[Math.min(q.index ?? 0, hit.length - 1)]!
+    // A plain label: press what's around it (its row / card / button).
+    const n = clickableAround(nodes, label) ?? label
+    const name = label.label || n.label || n.id || n.kind
     if (n.ref) {
       const r = await bridgeCall(t.adb, t.serial, long ? 'long_click' : 'click', { display: t.displayId, ref: n.ref }).catch(() => null)
       if (r?.ok === true) {
-        this.log(`${long ? 'long-pressed' : 'pressed'} “${n.label || n.id || n.kind}”${this.where(t)}`)
-        return `${long ? 'Long-pressed' : 'Pressed'} “${n.label || n.id || n.kind}” at (${n.center[0]}, ${n.center[1]})`
+        this.log(`${long ? 'long-pressed' : 'pressed'} “${name}”${this.where(t)}`)
+        return `${long ? 'Long-pressed' : 'Pressed'} “${name}” at (${n.center[0]}, ${n.center[1]})${await this.settle(t)}`
       }
     }
-    return this.tapOn(t, n.center[0], n.center[1], long ? 700 : 60)
+    return (await this.tapOn(t, n.center[0], n.center[1], long ? 700 : 60)) + (await this.settle(t))
   }
 
-  /** Replaces a text field's content (accessibility set_text: any language, no keyboard needed). */
-  async setText(value: string, q: NodeQuery, submit: boolean, device?: string, screen?: ScreenChoice): Promise<string> {
+  /**
+   * Replaces a text field's content (accessibility set_text: any language, no keyboard needed),
+   * then reads the field back. If it doesn't show the text, it clears the field and types instead;
+   * if it still doesn't, it fails with what the field shows (never a false "done").
+   */
+  async setText(value: string, q: NodeQuery, submit: boolean, device?: string, screen?: ScreenChoice, timeoutMs = 2500): Promise<string> {
     const t = await this.target(device, screen)
-    const { nodes } = await this.readTree(t)
-    const edits = nodes.filter((n) => n.flags?.includes('editable'))
-    const want = q.text || q.id || q.ref ? matchNodes(edits, q) : edits.filter((n) => n.flags?.includes('focused')).concat(edits)
-    const n = want[Math.min(q.index ?? 0, Math.max(want.length - 1, 0))]
+    const pick = (nodes: UiNode[]): UiNode | undefined => {
+      const edits = nodes.filter((n) => n.flags?.includes('editable'))
+      const want = q.text || q.id || q.ref ? matchNodes(edits, q) : edits.filter((n) => n.flags?.includes('focused')).concat(edits)
+      return want[Math.min(q.index ?? 0, Math.max(want.length - 1, 0))]
+    }
+    const until = Date.now() + timeoutMs
+    let n = pick((await this.readTree(t)).nodes)
+    while (!n && Date.now() < until) {
+      await sleep(250)
+      n = pick((await this.readTree(t)).nodes)
+    }
     if (!n) throw new Error('No text field matches. Tap one first, or check get_ui_tree for fields (flags: editable).')
-    const r = n.ref ? await bridgeCall(t.adb, t.serial, 'set_text', { display: t.displayId, ref: n.ref, text: value }).catch(() => null) : null
-    if (r?.ok !== true) {
-      // Fallback: focus it with a tap, select everything, type over it.
-      await this.tapOn(t, n.center[0], n.center[1], 60)
-      await sleep(150)
-      if (t.session) {
-        t.session.sendControl(injectKeycode(KeyAction.DOWN, 113)) // ctrl
-        this.key(t, 29) // a
-        t.session.sendControl(injectKeycode(KeyAction.UP, 113))
-      }
+    const field = n
+    const name = field.hint || field.id || 'the field'
+    const secret = !!field.flags?.includes('password')
+    // The same field after the change: same ref, else the editable one at (about) the same place.
+    const readBack = async (): Promise<UiNode | undefined> => {
+      const nodes = (await this.readTree(t)).nodes
+      const near = (a: UiNode): boolean => Math.abs(a.center[0] - field.center[0]) < 40 && Math.abs(a.center[1] - field.center[1]) < 40
+      return (field.ref ? nodes.find((x) => x.ref === field.ref && x.flags?.includes('editable')) : undefined) ?? nodes.find((x) => x.flags?.includes('editable') && near(x))
+    }
+    const shows = async (): Promise<string | null> => {
+      await this.settle(t)
+      const x = await readBack()
+      return x ? fieldText(x) : null
+    }
+
+    let how = 'set'
+    const r = field.ref ? await bridgeCall(t.adb, t.serial, 'set_text', { display: t.displayId, ref: field.ref, text: value }).catch(() => null) : null
+    let now = r?.ok === true ? await shows() : null
+    if (secret && r?.ok === true) now = value // password fields read back as dots: trust the action
+    if (now === null || !sameFieldText(now, value)) {
+      // Fallback: focus it, clear what's there key by key, type the value.
+      how = 'typed'
+      const current = now ?? fieldText((await readBack()) ?? field)
+      await this.tapOn(t, field.center[0], field.center[1], 60)
+      await sleep(200)
+      await this.clearField(t, current.length)
       await this.typeOn(t, value)
+      now = secret ? value : await shows()
+      if (now === null) throw new Error(`Typed the text, but the field is gone from the screen, so it can’t be checked. Look with get_ui_tree.`)
+      if (!sameFieldText(now, value)) throw new Error(`The field “${name}” shows “${now.slice(0, 200)}” instead of the text. Tap it and try again, or use type_text.`)
     }
     if (submit) await this.keyOn(t, AGENT_KEYS.enter)
-    this.log(`filled “${n.label || n.id || 'a text field'}”${this.where(t)}`)
-    return `Set the text of “${n.label || n.id || 'the field'}”${submit ? ' and pressed Enter' : ''}`
+    this.log(`filled “${name}”${this.where(t)}`)
+    return `Set the text of “${name}” (${how}, checked: the field shows it)${submit ? ' and pressed Enter' + (await this.settle(t)) : ''}`
+  }
+
+  /** Clears the focused field: cursor to the end, then Delete once per character (and a few more). */
+  private async clearField(t: Target, length: number): Promise<void> {
+    const n = Math.min(length + 4, 2000)
+    if (t.session) {
+      this.key(t, 123) // MOVE_END
+      for (let i = 0; i < n; i++) this.key(t, 67) // DEL
+      await sleep(Math.min(50 + n * 2, 1500))
+    } else {
+      await t.adb.runLoose(['shell', 'input', 'keyevent', '123', ...Array<string>(n).fill('67')], t.serial)
+    }
   }
 
   async info(device?: string, screen?: ScreenChoice): Promise<Record<string, unknown>> {
@@ -548,7 +623,8 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
   }
 
   async tap(x: number, y: number, device?: string, holdMs = 60, screen?: ScreenChoice): Promise<string> {
-    return this.tapOn(await this.target(device, screen), x, y, holdMs)
+    const t = await this.target(device, screen)
+    return (await this.tapOn(t, x, y, holdMs)) + (await this.settle(t))
   }
 
   async swipe(from: Point, to: Point, durationMs = 300, device?: string, screen?: ScreenChoice): Promise<string> {
@@ -571,7 +647,7 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
       await t.adb.runLoose(['shell', 'input', 'swipe', `${a.x}`, `${a.y}`, `${b.x}`, `${b.y}`, `${ms}`], t.serial)
     }
     this.log(`swiped (${from.x}, ${from.y}) → (${to.x}, ${to.y})${this.where(t)}`)
-    return `Swiped (${from.x}, ${from.y}) → (${to.x}, ${to.y}) in ${ms} ms`
+    return `Swiped (${from.x}, ${from.y}) → (${to.x}, ${to.y}) in ${ms} ms${await this.settle(t)}`
   }
 
   /** Scrolls the content by dragging in the middle of the screen. `amount` = fraction of the screen. */
@@ -592,8 +668,27 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
           : direction === 'right'
             ? [{ x: cx + dx, y: cy }, { x: cx - dx, y: cy }]
             : [{ x: cx - dx, y: cy }, { x: cx + dx, y: cy }]
+    // Did anything move? Compare what's on screen before and after (needs the element tree).
+    const sig = async (): Promise<string | null> =>
+      this.readTree(t)
+        .then((r) => screenSignature(r.nodes))
+        .catch(() => null)
+    const before = await sig()
     await this.swipe(from, to, 350, device, t.screen)
-    return `Scrolled ${direction}`
+    if (before === null) return `Scrolled ${direction} (can’t tell whether the content moved without the element tree)`
+    if ((await sig()) !== before) return `Scrolled ${direction}: the content moved.`
+    // The drag didn't move anything (e.g. it started on something that isn't scrollable): ask the
+    // biggest scrollable element to scroll instead.
+    const forward = direction === 'down' || direction === 'right'
+    const scrollables = (await this.readTree(t)).nodes.filter((n) => n.flags?.includes('scrollable') && n.ref)
+    const area = (n: UiNode): number => (n.bounds[2] - n.bounds[0]) * (n.bounds[3] - n.bounds[1])
+    const big = scrollables.sort((a, b) => area(b) - area(a))[0]
+    if (big) {
+      await bridgeCall(t.adb, t.serial, forward ? 'scroll_forward' : 'scroll_backward', { display: t.displayId, ref: big.ref }).catch(() => null)
+      await this.settle(t)
+      if ((await sig()) !== before) return `Scrolled ${direction}: the content moved (scrolled “${big.label || big.id || big.kind}” directly).`
+    }
+    return `Scrolled ${direction}, but nothing moved: probably already at the ${forward ? 'end' : 'start'}${scrollables.length ? '' : ', or nothing here scrolls'}. Check with screenshot or get_ui_tree.`
   }
 
   private async typeOn(t: Target, text: string): Promise<void> {
@@ -616,7 +711,7 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
       await this.keyOn(t, AGENT_KEYS.enter)
     }
     this.log(`typed ${text.length} character(s)${this.where(t)}`)
-    return `Typed ${text.length} character(s)${submit ? ' and pressed Enter' : ''}`
+    return `Typed ${text.length} character(s)${submit ? ' and pressed Enter' + (await this.settle(t)) : ''}`
   }
 
   private key(t: Target, code: number): void {
@@ -633,7 +728,7 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
     const t = await this.target(device, screen)
     await this.keyOn(t, AGENT_KEYS[key])
     this.log(`pressed ${key}${this.where(t)}`)
-    return `Pressed ${key}`
+    return `Pressed ${key}${await this.settle(t)}`
   }
 
   /** `app`: a package name or an app's label ("WhatsApp"). */

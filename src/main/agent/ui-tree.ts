@@ -31,6 +31,43 @@ export interface NodeQuery {
   index?: number
 }
 
+/**
+ * The nearest clickable ancestor of `n` (refs are paths: "0.3.1" is inside "0.3"), else the
+ * smallest clickable element whose bounds contain its centre. For pressing a plain label.
+ */
+export function clickableAround(nodes: UiNode[], n: UiNode): UiNode | null {
+  if (n.clickable) return n
+  if (n.ref) {
+    let best: UiNode | null = null
+    for (const c of nodes) if (c.clickable && c.ref && n.ref.startsWith(c.ref + '.') && (!best || c.ref.length > best.ref!.length)) best = c
+    if (best) return best
+  }
+  const [x, y] = n.center
+  let best: UiNode | null = null
+  const area = (b: UiNode['bounds']): number => (b[2] - b[0]) * (b[3] - b[1])
+  for (const c of nodes) {
+    const [l, t, r, b] = c.bounds
+    if (c.clickable && x >= l && x <= r && y >= t && y <= b && (!best || area(c.bounds) < area(best.bounds))) best = c
+  }
+  return best
+}
+
+/** What a text field shows, ignoring its placeholder (some apps report the hint as the text). */
+export function fieldText(n: UiNode): string {
+  return n.hint && n.label === n.hint ? '' : n.label
+}
+
+/** Same text for a field: ignores spacing, punctuation and case (fields format phone numbers etc.). */
+export function sameFieldText(a: string, b: string): boolean {
+  const k = (s: string): string => s.normalize('NFC').replace(/[^\p{L}\p{N}]/gu, '').toLowerCase()
+  return k(a) === k(b)
+}
+
+/** A cheap fingerprint of what's on screen (labels + positions), to tell whether anything moved. */
+export function screenSignature(nodes: UiNode[]): string {
+  return nodes.map((n) => `${n.label}@${n.bounds.join(',')}`).join('|')
+}
+
 export function matchNodes(nodes: UiNode[], q: NodeQuery): UiNode[] {
   const norm = (s: string): string => s.toLowerCase().replace(/\s+/g, ' ').trim()
   const t = q.text ? norm(q.text) : null
@@ -78,7 +115,8 @@ export function parseA11yTree(res: Record<string, unknown>, device: Size, agent:
     const id = str(r.id).split(':id/')[1] ?? (str(r.id) || undefined)
     const hint = str(r.hint)
     out.push({
-      label: (str(r.text) || str(r.desc)).trim(),
+      // A clickable row with no text of its own is named by the text inside it ("inner").
+      label: (str(r.text) || str(r.desc) || str(r.inner)).trim(),
       ...(id ? { id } : {}),
       kind: str(r.cls) || 'View',
       clickable: f.has('click') || f.has('long'),

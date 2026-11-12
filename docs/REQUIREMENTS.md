@@ -360,3 +360,6 @@ The dates are when each item was asked for (2026-11-06 unless noted).
 
 ## Link back after a forget (2026-11-09, user: "there is still no way to link back")
 - 🟡 Phone Home: **Link now** (not paired / unreachable) and **Link again** (forgotten) ask the Mac over the adb tunnel (POST /link/request, unauthenticated, rate-limited; the key still only travels over adb to the DUMP-protected receiver). The Mac retries phones that answered "blocked" every 3 s, and Settings → Phone app always offers Pair/Relink.
+
+## MCP reliability (2026-11-12, an agent's field report relayed by the user)
+- 🟡 Actions wait for the screen to settle (phone app `idle`, per display); element lookups retry for 2.5 s; plain labels press their clickable row; text-less clickable rows are named by their children; `set_text` verifies (clear + type fallback, fails honestly); `scroll` reports movement; `get_ui_tree` hides keyboard / system bars by default; `unlock_phone` handles in-app credential prompts. Unit-tested; phone ops checked on the locked phone only (idle, inner labels). Needs Mac 0.1.2 + phone app 0.8.1 to reach the user's agents.
