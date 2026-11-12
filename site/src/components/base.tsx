@@ -111,6 +111,30 @@ export function CopyCommand({ command, label, disabled = false }: { command: str
   )
 }
 
+/** A command inside a sentence, with a copy button right next to it. */
+export function CopyInline({ command }: { command: string }) {
+  const [done, setDone] = useState(false)
+  return (
+    <span className="mx-0.5 inline-flex max-w-full items-center gap-1 rounded-[4px] border border-input-border bg-input py-px pr-0.5 pl-1.5 align-middle">
+      <code className="min-w-0 truncate font-mono text-[0.92em] text-heading">{command}</code>
+      <button
+        type="button"
+        aria-label={`Copy ${command}`}
+        title={done ? 'Copied' : 'Copy'}
+        onClick={() =>
+          void navigator.clipboard.writeText(command).then(() => {
+            setDone(true)
+            setTimeout(() => setDone(false), 1400)
+          })
+        }
+        className="flex size-5 shrink-0 items-center justify-center rounded-[3px] text-muted-foreground transition-colors hover:bg-muted hover:text-heading"
+      >
+        {done ? <Check className="size-3 text-mark" /> : <Copy className="size-3" />}
+      </button>
+    </span>
+  )
+}
+
 /** Section heading: a code-comment label, then the title. */
 export function SectionHead({ n, label, title, children }: { n: string; label: string; title: ReactNode; children?: ReactNode }) {
   return (

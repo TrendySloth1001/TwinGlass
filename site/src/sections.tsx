@@ -69,7 +69,7 @@ import {
   siZod,
   type SimpleIcon,
 } from 'simple-icons'
-import { Chip, FrameCorners, GhostLink, HoverButton, REPO, RELEASES, Tag } from './components/base'
+import { Chip, CopyInline, FrameCorners, GhostLink, HoverButton, REPO, RELEASES, Tag } from './components/base'
 import { DownloadPanel, useDownload } from './components/download'
 import { BlurFade, Typewriter } from './components/fx'
 import { TOOL_INFO } from './pages/Tools'
@@ -930,7 +930,7 @@ const FAQ: [Topic, string, ReactNode][] = [
   ['Setup', 'Is it free?', 'Yes. No trial, no account, no in-app purchases.'],
   ['Setup', 'Which Macs and phones?', 'Macs with Apple Silicon on macOS 13 or newer, and phones on Android 10 or newer. Intel Macs, Windows and Linux aren’t supported yet.'],
   ['Setup', 'Do I need developer options on my phone?', 'No. Wi-Fi, no setup mode only needs the phone app. Developer mode adds second screens, full multi-touch, PIN unlock and all the agent tools.'],
-  ['Setup', 'Why does macOS warn me when I open it?', 'Twinglass isn’t notarized yet. Installing from the terminal or Homebrew avoids the warning. If you downloaded the DMG in a browser, run xattr -cr /Applications/Twinglass.app once.'],
+  ['Setup', 'Why does macOS warn me when I open it?', <>Twinglass isn’t notarized yet. Installing from the terminal or Homebrew avoids the warning. If you downloaded the DMG in a browser, run <CopyInline command="xattr -cr /Applications/Twinglass.app" /> once.</>],
   ['Setup', 'How does it update?', 'The Mac app checks GitHub for new releases, verifies the download’s SHA-256, swaps itself in place and reopens. It then offers the matching phone app to your phones.'],
   ['Setup', 'Does it work with iPhone?', 'No. Twinglass is built on Android’s own tools: adb, scrcpy and the accessibility service.'],
   ['Privacy', 'Does the phone app need the internet?', 'No. It only talks to your paired Mac, and it gets its updates from your Mac too.'],

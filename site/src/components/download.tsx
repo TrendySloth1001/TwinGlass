@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { AppWindow, Check, ChevronDown, Copy, Lock, Plus, QrCode, X, type LucideIcon } from 'lucide-react'
 import { siHomebrew, type SimpleIcon } from 'simple-icons'
 import { createContext, useCallback, useContext, useEffect, useId, useState, type ReactNode } from 'react'
-import { Chip, FrameCorners, HoverButton, INSTALL, REPO, Tag } from './base'
+import { Chip, CopyInline, FrameCorners, HoverButton, INSTALL, REPO, Tag } from './base'
 import { BorderBeam } from './fx'
 import release from '../data/release.json'
 
@@ -216,7 +216,7 @@ export function DownloadFlow() {
           {agreed ? (
             <>
               DMG: open it and drag Twinglass into Applications. It isn’t notarized yet, so if macOS refuses to open it, run{' '}
-              <code className="font-mono">xattr -cr /Applications/Twinglass.app</code> once.
+              <CopyInline command="xattr -cr /Applications/Twinglass.app" /> once.
             </>
           ) : (
             <span className="inline-flex items-center gap-1.5">
