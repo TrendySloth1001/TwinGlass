@@ -6,14 +6,16 @@ plugins {
 
 android {
     namespace = "com.mobmirror.companion"
+    // Release notes shared with the Mac app (changelog/changelog.json at the repo root).
+    sourceSets["main"].assets.srcDir("../../changelog")
     compileSdk = 35
 
     defaultConfig {
         applicationId = "com.mobmirror.companion"
         minSdk = 29
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.8.1"
+        versionCode = 13
+        versionName = "0.8.2"
     }
     buildTypes {
         release {

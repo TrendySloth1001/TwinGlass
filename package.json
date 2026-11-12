@@ -1,6 +1,6 @@
 {
   "name": "mob-mirror",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Mirror and control Android phones from the desktop over USB or Wi-Fi",
   "main": "./out/main/index.js",
@@ -15,7 +15,7 @@
     "fetch-server": "node scripts/fetch-server.mjs",
     "postinstall": "node scripts/fetch-server.mjs",
     "dist:mac": "electron-vite build && electron-builder --mac --arm64",
-    "release": "npm run companion:build && npm run dist:mac && node scripts/update-cask.mjs",
+    "release": "npm run companion:build && node scripts/changelog.mjs && npm run dist:mac && node scripts/update-cask.mjs",
     "ui:add": "node scripts/ui-add.mjs",
     "companion:build": "cd companion && ./gradlew assembleRelease -q",
     "companion:install": "npm run companion:build && adb install -r companion/app/build/outputs/apk/release/app-release.apk"

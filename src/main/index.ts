@@ -11,6 +11,7 @@ import { registerPhoneAppsIpc } from './phone-apps'
 import { registerClipboardHistoryIpc, startClipboardHistory } from './clipboard-history'
 import { setTrayVisible, startTrayUpdates } from './tray'
 import { registerUpdateIpc } from './update-check'
+import { registerAboutIpc } from './about'
 import { startCompanionLink, stopCompanionLink } from './companion-link'
 import { agentSummary, registerAgentIpc, stopAgentServer } from './agent-ipc'
 import { closeApkDownload, directServer, openApkDownload } from './direct/server'
@@ -131,6 +132,7 @@ registerWindowLayoutIpc()
 registerPhoneAppsIpc(getAdb, serverPath, getSession)
 registerClipboardHistoryIpc()
 void app.whenReady().then(registerUpdateIpc)
+registerAboutIpc()
 
 /** Menu bar icon actions: mirror in an idle window (or a new one), show the app. */
 const trayDeps = {

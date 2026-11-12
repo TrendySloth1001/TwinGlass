@@ -40,6 +40,7 @@ import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Laptop
@@ -123,6 +124,8 @@ class AppModel(
     val openConnection: () -> Unit,
     val openDevice: () -> Unit,
     val openAdvanced: () -> Unit,
+    val openAbout: () -> Unit = {},
+    val openChangelog: () -> Unit = {},
     val openAppInfo: () -> Unit,
     val mode: Prefs.Mode,
     val setMode: (Prefs.Mode) -> Unit,
@@ -475,7 +478,7 @@ private fun <T> androidx.compose.foundation.layout.ColumnScope.ChoiceCell(pos: c
     }
 }
 
-fun LazyListScope.settingsScreen(m: AppModel, licencesOpen: Boolean, onLicences: () -> Unit, onForget: () -> Unit, onReset: () -> Unit, licences: String) {
+fun LazyListScope.settingsScreen(m: AppModel, onForget: () -> Unit, onReset: () -> Unit) {
     val s = m.prefs
     val f = m.features
     item { PageHeader("Settings", "Twinglass phone app") }
@@ -577,18 +580,13 @@ fun LazyListScope.settingsScreen(m: AppModel, licencesOpen: Boolean, onLicences:
     item {
         Grouped(3) { pos ->
             when (pos.index) {
-                0 -> Cell(pos) { CellRow("Version", m.version, Icons.Rounded.Info) }
-                1 -> Cell(pos, onClick = onLicences) {
-                    CellRow("Open-source licences", "Space Grotesk (SIL Open Font License 1.1).", Icons.Rounded.Description, trailing = { Chevron(licencesOpen, Icons.Rounded.KeyboardArrowDown) })
-                    Expandable(licencesOpen) {
-                        Text(licences, style = Type.caption, color = LocalPalette.current.textSecondary, modifier = Modifier.padding(start = 72.dp, end = Space.lg, bottom = Space.lg))
-                    }
-                }
+                0 -> Cell(pos, onClick = m.openAbout) { CellRow("About Twinglass", "Version ${m.version} · GitHub, privacy, licences", Icons.Rounded.Info, trailing = { Arrow() }) }
+                1 -> Cell(pos, onClick = m.openChangelog) { CellRow("What’s new", "Release notes for this app and Twinglass for Mac", Icons.Rounded.NewReleases, trailing = { Arrow() }) }
                 else -> Cell(pos, onClick = onReset) { CellRow("Reset settings", "Everything on this page back to defaults (the Mac link stays).", Icons.Rounded.RestartAlt) }
             }
         }
     }
-    item { Footnote("Made to work with Twinglass for Mac") }
+    item { Footnote("Twinglass · github.com/TrendySloth1001/TwinGlass") }
 }
 
 // ---------------------------------------------------------------- Advanced (pushed from Settings)

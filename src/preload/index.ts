@@ -62,6 +62,8 @@ const api: MobMirrorApi = {
   checkForUpdate: () => ipcRenderer.invoke('update:check'),
   downloadUpdate: (url: string) => ipcRenderer.invoke('update:download', url),
   installUpdate: () => ipcRenderer.invoke('update:install'),
+  aboutInfo: () => ipcRenderer.invoke('about:info'),
+  openAboutLink: (which: string) => ipcRenderer.invoke('about:open', which),
   onUpdateProgress: (cb: (p: UpdateProgressT) => void) => subscribe('update:progress', cb),
   onUpdateAvailable: (cb: (u: UpdateInfoT) => void) => subscribe('update:available', cb),
   companionStatus: () => ipcRenderer.invoke('companion:status'),

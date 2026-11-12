@@ -49,6 +49,21 @@ export interface UpdateInfo {
   error?: string
 }
 
+export interface AboutInfo {
+  version: string
+  electron: string
+  chrome: string
+  node: string
+  macos: string
+  arch: string
+  scrcpy: string
+  /** The phone app bundled with this Mac app. */
+  phoneApp: string | null
+  packaged: boolean
+}
+
+export type AboutLink = 'repo' | 'releases' | 'issues' | 'new-issue' | 'changelog' | 'scrcpy'
+
 export interface UpdateProgress {
   phase: 'downloading' | 'verifying' | 'installing' | 'error'
   progress?: number
@@ -151,6 +166,10 @@ export interface MobMirrorApi {
   onAppError(cb: (message: string) => void): () => void
   /** Updates (see main/update-check.ts): check, install in place (then relaunch), or open the page. */
   checkForUpdate(): Promise<UpdateInfo>
+  /** Settings → About. */
+  aboutInfo(): Promise<AboutInfo>
+  /** Opens one of the project's links in the browser (fixed set). */
+  openAboutLink(which: AboutLink): Promise<void>
   installUpdate(): Promise<void>
   downloadUpdate(url: string): Promise<void>
   onUpdateAvailable(cb: (u: UpdateInfo) => void): () => void

@@ -181,3 +181,9 @@ Checked on 2026-11-08:
   change** — phones compare versionCode, not the name.
 - Builds use `electronDist: node_modules/electron/dist`, so packaging doesn't download Electron (a GitHub
   outage broke two builds on 2026-11-08).
+
+## Release notes (2026-11-12)
+
+Add the release to `changelog/changelog.json` first (Mac version, the phone app version it carries, date, title,
+summary, Mac and phone lines). Both apps show it (Settings → What's new; the phone app bundles the file as an
+asset) and `npm run release` regenerates `CHANGELOG.md` from it. Use the summary as the GitHub release text.

@@ -157,6 +157,10 @@ Video always travels in scrcpy's framing — from scrcpy-server over adb, or fro
 
 ---
 
+## Changelog
+
+Every release of both apps is in [CHANGELOG.md](CHANGELOG.md), also shown in each app (Mac: Settings → What's new; phone: Settings → What's new). Releases: [github.com/TrendySloth1001/TwinGlass/releases](https://github.com/TrendySloth1001/TwinGlass/releases).
+
 ## Status
 
 Working and used daily on a Nothing Phone (3) with Android 17. Not yet: notarized releases, Intel Macs, Windows/Linux, live drag feedback in Wi-Fi mode (gestures are sent when the finger lifts). The product name is Twinglass; internal identifiers keep the original `mob-mirror` name so saved settings carry over.

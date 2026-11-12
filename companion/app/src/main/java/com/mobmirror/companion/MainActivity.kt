@@ -313,6 +313,8 @@ class MainActivity : ComponentActivity() {
         openConnection = { nav = Nav(nav.tab, page = Page.Connection) },
         openDevice = { nav = Nav(Tab.Device) },
         openAdvanced = { nav = Nav(nav.tab, page = Page.Advanced) },
+        openAbout = { nav = Nav(nav.tab, page = Page.About) },
+        openChangelog = { nav = Nav(nav.tab, page = Page.Changelog) },
         mode = mode,
         setMode = ::chooseMode,
         directMac = direct.paired?.name,
@@ -326,7 +328,7 @@ class MainActivity : ComponentActivity() {
     // Navigation: three tabs, plus the "Connected to" page pushed on top.
     enum class Tab { Home, Device, Settings }
     /** A page pushed over the tabs. */
-    enum class Page { Connection, Advanced }
+    enum class Page { Connection, Advanced, About, Changelog }
     data class Nav(val tab: Tab, val page: Page? = null)
     private var nav by mutableStateOf(Nav(Tab.Home))
 
@@ -459,6 +461,8 @@ class MainActivity : ComponentActivity() {
                     when {
                         n.page == Page.Connection -> connectionScreen(m, onBack = { nav = nav.copy(page = null) }, onForget = { confirmForget = true })
                         n.page == Page.Advanced -> advancedScreen(m, onBack = { nav = nav.copy(page = null) })
+                        n.page == Page.About -> aboutScreen(m, licencesOpen, { licencesOpen = !licencesOpen }, licences, onChangelog = { nav = nav.copy(page = Page.Changelog) }, onBack = { nav = nav.copy(page = null) })
+                        n.page == Page.Changelog -> changelogScreen(m, About.releases(this@MainActivity), onBack = { nav = nav.copy(page = null) })
                         n.tab == Tab.Home -> homeScreen(
                             m,
                             if (mode == Prefs.Mode.NoSetup) {
@@ -481,7 +485,7 @@ class MainActivity : ComponentActivity() {
                             },
                         )
                         n.tab == Tab.Device -> deviceScreen(m, query, { query = it }, open) { t -> open = if (t in open) open - t else open + t }
-                        else -> settingsScreen(m, licencesOpen, { licencesOpen = !licencesOpen }, { confirmForget = true }, { confirmReset = true }, licences)
+                        else -> settingsScreen(m, { confirmForget = true }, { confirmReset = true })
                     }
                 }
             }
