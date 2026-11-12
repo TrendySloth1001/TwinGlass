@@ -160,6 +160,36 @@ function Header() {
   )
 }
 
+/** The recording: plays like a GIF (silent, looping, inline); a still for people who asked for less motion. */
+function DemoVideo() {
+  const [still, setStill] = useState(false)
+  useEffect(() => {
+    const q = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setStill(q.matches)
+    const on = (e: MediaQueryListEvent) => setStill(e.matches)
+    q.addEventListener('change', on)
+    return () => q.removeEventListener('change', on)
+  }, [])
+  if (still) return <img src="/demo-poster.jpg" alt="Twinglass on a Mac, mirroring an Android phone" className="w-full" width={1440} height={1098} />
+  return (
+    <video
+      className="w-full"
+      width={1440}
+      height={1098}
+      poster="/demo-poster.jpg"
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="auto"
+      aria-label="Twinglass on a Mac, mirroring an Android phone while moving through the Twinglass phone app"
+    >
+      <source src="/demo.webm" type="video/webm" />
+      <source src="/demo.mp4" type="video/mp4" />
+    </video>
+  )
+}
+
 function Hero({ latest }: { latest: { version: string; dmg: string } }) {
   return (
     <section id="top" className="mx-auto flex max-w-6xl flex-col items-center px-4 pt-32 text-center sm:px-6 lg:px-10 lg:pt-40">
@@ -183,7 +213,7 @@ function Hero({ latest }: { latest: { version: string; dmg: string } }) {
 
       <div className="relative mt-16 w-full border border-border bg-tile p-2 sm:p-3">
         <FrameCorners />
-        <img src="/screenshot.png" alt="Twinglass on a Mac, mirroring an Android phone" className="w-full" width={1800} height={1373} />
+        <DemoVideo />
       </div>
     </section>
   )
