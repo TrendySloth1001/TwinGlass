@@ -1,8 +1,17 @@
-import { ArrowUpRight, Bot, ChevronDown, Download, ShieldCheck } from 'lucide-react'
+import { ArrowLeftRight, ArrowUpRight, Bot, ChevronDown, Command, Download, Fingerprint, KeyRound, Keyboard, Laptop, Layers, Lock, MonitorSmartphone, RefreshCw, ShieldCheck, SlidersHorizontal, Smartphone, Wifi, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Chip, FrameCorners, GhostLink, GithubMark, HoverButton, illo, REPO, RELEASES, SectionHead } from './components/base'
+import { Chip, FrameCorners, GhostLink, GithubMark, HoverButton, REPO, RELEASES, SectionHead } from './components/base'
 import { DownloadPanel, useDownload } from './components/download'
-import { AnimatedBeam, BlurFade, DotPattern, Floaty, Marquee, NumberTicker, SpotlightCard, Typewriter, WordRotate } from './components/fx'
+import { AnimatedBeam, BlurFade, DotPattern, Marquee, NumberTicker, SpotlightCard, Typewriter, WordRotate } from './components/fx'
+
+/** A thin line icon in a hairline circle: the site's only illustration style. */
+function Glyph({ icon: Icon, size = 'size-10' }: { icon: LucideIcon; size?: string }) {
+  return (
+    <span className={`flex ${size} shrink-0 items-center justify-center rounded-full border border-border bg-background text-foreground`}>
+      <Icon className="size-[42%]" strokeWidth={1.6} />
+    </span>
+  )
+}
 
 const WRAP = 'mx-auto max-w-6xl px-4 sm:px-6 lg:px-10'
 
@@ -70,10 +79,6 @@ export function Hero() {
   return (
     <section className="relative overflow-hidden">
       <DotPattern className="[mask-image:radial-gradient(ellipse_at_top,black_20%,transparent_70%)]" />
-      <Floaty src={illo('mobile_phone')} className="absolute top-36 left-[6%] hidden w-24 -rotate-12 lg:block" />
-      <Floaty src={illo('laptop')} delay={1.5} className="absolute top-44 right-[6%] hidden w-28 rotate-6 lg:block" />
-      <Floaty src={illo('sparkles')} delay={0.8} className="absolute top-[26rem] left-[12%] hidden w-14 lg:block" />
-      <Floaty src={illo('robot')} delay={2.2} className="absolute top-[24rem] right-[12%] hidden w-20 -rotate-6 lg:block" />
 
       <div className={`relative flex flex-col items-center pt-32 text-center lg:pt-40 ${WRAP}`}>
         <BlurFade>
@@ -161,11 +166,11 @@ export function Numbers() {
 
 // ---------------------------------------------------------------- how it connects (animated beams)
 
-function Node({ refEl, src, title, sub }: { refEl: React.RefObject<HTMLDivElement | null>; src: string; title: string; sub: string }) {
+function Node({ refEl, icon: Icon, title, sub }: { refEl: React.RefObject<HTMLDivElement | null>; icon: LucideIcon; title: string; sub: string }) {
   return (
     <div className="relative z-10 flex flex-col items-center gap-2 text-center">
       <div ref={refEl} className="flex size-20 items-center justify-center rounded-2xl border border-border bg-background shadow-sm sm:size-24">
-        <img src={src} alt="" className="size-12 sm:size-14" loading="lazy" />
+        <Icon className="size-8 sm:size-9" strokeWidth={1.4} />
       </div>
       <p className="text-sm font-semibold">{title}</p>
       <p className="max-w-[9rem] font-mono text-[11px] text-muted-foreground">{sub}</p>
@@ -190,9 +195,9 @@ export function HowItWorks() {
       </SectionHead>
       <div ref={box} className="relative mt-12 flex items-center justify-between gap-4 overflow-hidden rounded-3xl border border-border bg-tile px-4 py-12 text-foreground sm:px-16">
         <DotPattern className="opacity-60" />
-        <Node refEl={phone} src={illo('mobile_phone')} title="Your phone" sub="Android 10+" />
-        <Node refEl={mac} src={illo('laptop')} title="Twinglass for Mac" sub="decodes, draws, controls" />
-        <Node refEl={agent} src={illo('robot')} title="Your agent" sub="any MCP client" />
+        <Node refEl={phone} icon={Smartphone} title="Your phone" sub="Android 10+" />
+        <Node refEl={mac} icon={Laptop} title="Twinglass for Mac" sub="decodes, draws, controls" />
+        <Node refEl={agent} icon={Bot} title="Your agent" sub="any MCP client" />
         <AnimatedBeam container={box} from={phone} to={mac} curvature={60} />
         <AnimatedBeam container={box} from={phone} to={mac} curvature={-60} reverse delay={1.2} />
         <AnimatedBeam container={box} from={agent} to={mac} curvature={0} reverse duration={2.6} />
@@ -213,15 +218,15 @@ export function HowItWorks() {
 
 // ---------------------------------------------------------------- features (bento)
 
-const FEATURES: { img: string; title: string; body: string; span?: string }[] = [
-  { img: 'desktop_computer', title: 'Mirror and control', body: 'Hardware-decoded H.265 or H.264 at the phone’s refresh rate. Your mouse and keyboard become touch and keys; right-click is Back, the wheel scrolls.', span: 'lg:col-span-2' },
-  { img: 'mobile_phone_with_arrow', title: 'Second screens', body: 'Open another screen of the same phone in its own window, with its own home screen. Test one app while you use another.' },
-  { img: 'satellite_antenna', title: 'Wi-Fi, no setup', body: 'Scan a QR with your phone. It downloads the phone app from your Mac, pairs, and mirrors. No cables, no developer options.' },
-  { img: 'locked_with_key', title: 'Unlock with Touch ID', body: 'Save your PIN once. Twinglass types it after Touch ID, on the lock screen and in apps that ask for it.' },
-  { img: 'magic_wand', title: '⌘K for your phone', body: 'Open any phone app by name, send a link that opens on the phone, or paste from clipboard history.' },
-  { img: 'link', title: 'Both directions', body: 'Clipboard sync, drag files onto the mirror, and share from any phone app straight to your Mac.', span: 'lg:col-span-2' },
-  { img: 'keyboard', title: 'Built for keyboards', body: 'Shortcuts for volume, power, rotate, notifications and quick settings. Non-English text goes through the clipboard.' },
-  { img: 'rocket', title: 'Keeps itself current', body: 'Twinglass checks for new versions, verifies each download, swaps itself in place and reopens. Then it brings your phone the matching phone app, so neither side needs a store.', span: 'lg:col-span-3' },
+const FEATURES: { icon: LucideIcon; title: string; body: string; span?: string }[] = [
+  { icon: MonitorSmartphone, title: 'Mirror and control', body: 'Hardware-decoded H.265 or H.264 at the phone’s refresh rate. Your mouse and keyboard become touch and keys; right-click is Back, the wheel scrolls.', span: 'lg:col-span-2' },
+  { icon: Layers, title: 'Second screens', body: 'Open another screen of the same phone in its own window, with its own home screen. Test one app while you use another.' },
+  { icon: Wifi, title: 'Wi-Fi, no setup', body: 'Scan a QR with your phone. It downloads the phone app from your Mac, pairs, and mirrors. No cables, no developer options.' },
+  { icon: Fingerprint, title: 'Unlock with Touch ID', body: 'Save your PIN once. Twinglass types it after Touch ID, on the lock screen and in apps that ask for it.' },
+  { icon: Command, title: '⌘K for your phone', body: 'Open any phone app by name, send a link that opens on the phone, or paste from clipboard history.' },
+  { icon: ArrowLeftRight, title: 'Both directions', body: 'Clipboard sync, drag files onto the mirror, and share from any phone app straight to your Mac.', span: 'lg:col-span-2' },
+  { icon: Keyboard, title: 'Built for keyboards', body: 'Shortcuts for volume, power, rotate, notifications and quick settings. Non-English text goes through the clipboard.' },
+  { icon: RefreshCw, title: 'Keeps itself current', body: 'Twinglass checks for new versions, verifies each download, swaps itself in place and reopens. Then it brings your phone the matching phone app, so neither side needs a store.', span: 'lg:col-span-3' },
 ]
 
 export function Features() {
@@ -234,7 +239,7 @@ export function Features() {
         {FEATURES.map((f, i) => (
           <BlurFade key={f.title} delay={(i % 4) * 0.05} className={f.span}>
             <SpotlightCard className="h-full rounded-3xl border border-border bg-background p-6 sm:p-7">
-              <img src={illo(f.img)} alt="" loading="lazy" className="size-14 transition-transform duration-500 group-hover:-translate-y-1 group-hover:rotate-[-6deg]" />
+              <span className="inline-flex transition-transform duration-500 group-hover:-translate-y-0.5"><Glyph icon={f.icon} size="size-11" /></span>
               <h3 className="mt-6 text-lg font-semibold tracking-tight">{f.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.body}</p>
             </SpotlightCard>
@@ -274,12 +279,12 @@ export function PhoneApp() {
           </div>
         </div>
         <BlurFade className="relative flex justify-center">
-          <div className="relative flex aspect-square w-full max-w-md items-center justify-center rounded-[2.5rem] border border-border bg-tile">
-            <DotPattern className="rounded-[2.5rem] [mask-image:radial-gradient(circle,black,transparent_75%)]" />
-            <Floaty src={illo('mobile_phone')} className="relative w-44 sm:w-52" />
-            <Floaty src={illo('package')} delay={1} className="absolute top-10 left-10 w-16" />
-            <Floaty src={illo('high_voltage')} delay={2} className="absolute right-12 bottom-14 w-14" />
-            <Floaty src={illo('puzzle_piece')} delay={0.5} className="absolute top-14 right-14 w-12" />
+          {/* The real phone app, in a plain phone outline on the dot sheet. */}
+          <div className="relative flex w-full max-w-md items-center justify-center overflow-hidden rounded-[2.5rem] border border-border bg-tile py-10">
+            <DotPattern className="[mask-image:radial-gradient(circle,black,transparent_75%)]" />
+            <div className="relative w-[15.5rem] rounded-[2.6rem] border border-foreground/15 bg-background p-2 shadow-[0_30px_60px_-30px_rgb(0_0_0/0.35)] sm:w-[17rem]">
+              <img src="/phone-app.webp" alt="The Twinglass phone app's Home screen" className="w-full rounded-[2.1rem]" width={565} height={1256} loading="lazy" />
+            </div>
           </div>
         </BlurFade>
       </div>
@@ -323,7 +328,7 @@ export function Agents() {
             <span className="flex items-center gap-2 text-sm font-medium">
               <Bot className="size-4" /> Connect Claude Code in one line
             </span>
-            <img src={illo('robot')} alt="" className="size-9" loading="lazy" />
+            <Glyph icon={Bot} size="size-9" />
           </div>
           <div className="mt-4 overflow-hidden rounded-xl border border-border bg-foreground text-background">
             <div className="flex gap-1.5 border-b border-background/10 px-4 py-2.5">
@@ -362,11 +367,11 @@ export function Agents() {
 // ---------------------------------------------------------------- privacy
 
 export function PrivacyBlock() {
-  const items: [string, string, string][] = [
-    ['shield', 'No accounts, no analytics', 'Nothing to sign up for and nothing that phones home. The only internet request is the update check.'],
-    ['locked_with_key', 'Encrypted Wi-Fi link', 'P-256 key exchange confirmed by a 6-digit code, then AES-256-GCM on every frame.'],
-    ['key', 'Your PIN behind Touch ID', 'Saved PINs are encrypted with your keychain and typed only after you approve.'],
-    ['gear', 'You decide what the Mac reads', 'Device details, app icons and agent access each switch off on the phone.'],
+  const items: [LucideIcon, string, string][] = [
+    [ShieldCheck, 'No accounts, no analytics', 'Nothing to sign up for and nothing that phones home. The only internet request is the update check.'],
+    [Lock, 'Encrypted Wi-Fi link', 'P-256 key exchange confirmed by a 6-digit code, then AES-256-GCM on every frame.'],
+    [KeyRound, 'Your PIN behind Touch ID', 'Saved PINs are encrypted with your keychain and typed only after you approve.'],
+    [SlidersHorizontal, 'You decide what the Mac reads', 'Device details, app icons and agent access each switch off on the phone.'],
   ]
   return (
     <section className={`pt-28 ${WRAP}`}>
@@ -377,7 +382,7 @@ export function PrivacyBlock() {
         <FrameCorners />
         {items.map(([img, t, b], i) => (
           <BlurFade key={t} delay={i * 0.05} className="border-r border-b border-border p-6">
-            <img src={illo(img)} alt="" className="size-11" loading="lazy" />
+            <Glyph icon={img} />
             <h3 className="mt-5 font-semibold tracking-tight">{t}</h3>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{b}</p>
           </BlurFade>
@@ -537,11 +542,7 @@ export function Footer() {
           <a href="https://github.com/Genymobile/scrcpy" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">
             scrcpy
           </a>
-          . 3D illustrations from Microsoft’s{' '}
-          <a href="https://github.com/microsoft/fluentui-emoji" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">
-            Fluent Emoji
-          </a>{' '}
-          (MIT). Not affiliated with Google, Microsoft or Genymobile. Android is a trademark of Google LLC.
+          . Not affiliated with Google or Genymobile. Android is a trademark of Google LLC.
         </p>
         <div aria-hidden className="overflow-hidden">
           <p className="-mb-[0.2em] text-center text-[clamp(2.5rem,13vw,12rem)] leading-none font-semibold tracking-tighter whitespace-nowrap text-muted select-none">

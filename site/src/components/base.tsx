@@ -7,7 +7,6 @@ export const REPO = release.repo
 export const RELEASES = changelog.releases
 export const INSTALL = 'curl -fsSL https://raw.githubusercontent.com/TrendySloth1001/TwinGlass/master/install.sh | bash'
 export const BREW = 'brew tap TrendySloth1001/tap && brew trust TrendySloth1001/tap\nbrew install --cask twinglass'
-export const illo = (name: string) => `/illustrations/${name}.webp`
 
 /** Corner marks on a framed box, drawn on its hairlines (as on Credoodle). */
 export function FrameCorners() {

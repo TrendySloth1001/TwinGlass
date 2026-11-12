@@ -49,10 +49,6 @@
 @keyframes border-beam {
   to { offset-distance: 100%; }
 }
-@keyframes floaty {
-  0%, 100% { translate: 0 0; }
-  50% { translate: 0 -10px; }
-}
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 }

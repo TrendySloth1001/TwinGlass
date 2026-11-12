@@ -224,17 +224,3 @@ export function Typewriter({ text, className, speed = 22 }: { text: string; clas
     </pre>
   )
 }
-
-/** A 3D illustration that drifts gently. */
-export function Floaty({ src, className, delay = 0, alt = '' }: { src: string; className?: string; delay?: number; alt?: string }) {
-  return (
-    <img
-      src={src}
-      alt={alt}
-      loading="lazy"
-      draggable={false}
-      className={`animate-[floaty_6s_ease-in-out_infinite] select-none motion-reduce:animate-none ${className ?? ''}`}
-      style={{ animationDelay: `${delay}s` }}
-    />
-  )
-}
