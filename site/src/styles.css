@@ -1,27 +1,23 @@
 @import 'tailwindcss';
 
-/* Dark, editor-inspired palette (VS Code's design language, not its UI): #1f1f1f page, #181818
-   cards, #2b2b2b hairlines, #cccccc text, one blue (#0078d4) for actions and highlights. */
+/* Near-black, one violet accent, hairline grids and grainy glows (inspired by Render's landing). */
 @theme {
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
-  --font-mono: 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-  --color-background: #1f1f1f;
-  --color-foreground: #cccccc;
-  --color-heading: #ffffff;
-  --color-tile: #181818;
-  --color-muted: #2a2d2e;
-  --color-muted-foreground: #9d9d9d;
-  --color-border: #2b2b2b;
-  --color-input: #313131;
-  --color-input-border: #3c3c3c;
-  --color-primary: #0078d4;
-  --color-primary-hover: #026ec1;
-  --color-mark: #3794ff;
-  --color-comment: #6a9955;
-  --color-keyword: #569cd6;
-  --color-string: #ce9178;
-  --color-func: #dcdcaa;
-  --color-var: #9cdcfe;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  --color-background: #0a0a0c;
+  --color-foreground: #a1a1aa;
+  --color-heading: #fafafa;
+  --color-tile: #111115;
+  --color-muted: #1c1c22;
+  --color-muted-foreground: #8b8b95;
+  --color-border: #222228;
+  --color-input: #18181d;
+  --color-input-border: #2c2c34;
+  /* Twinglass violet (from the app icon), in Render's role for purple. */
+  --color-primary: #7c5cff;
+  --color-primary-hover: #6a48ff;
+  --color-mark: #9d85ff;
+  --color-ok: #3ecf8e;
 }
 
 @layer base {
@@ -40,7 +36,7 @@
     @apply text-heading;
   }
   ::selection {
-    background: #264f78;
+    background: rgb(124 92 255 / 0.35);
   }
   :focus-visible {
     outline: 1px solid var(--color-primary);
@@ -51,7 +47,19 @@
 /* Headlines: the system face, tight and bold, as on VS Code's own site. */
 .font-soft {
   font-family: var(--font-sans);
-  letter-spacing: -0.025em;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+
+/* Film grain over the violet glows. */
+.grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 
 @keyframes marquee {
@@ -64,6 +72,10 @@
 }
 @keyframes border-beam {
   to { offset-distance: 100%; }
+}
+@keyframes floaty {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -8px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

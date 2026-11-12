@@ -99,6 +99,7 @@ export function AnimatedBeam({
   reverse = false,
   duration = 3.2,
   delay = 0,
+  color = '#9d85ff',
 }: {
   container: RefObject<HTMLElement | null>
   from: RefObject<HTMLElement | null>
@@ -107,6 +108,8 @@ export function AnimatedBeam({
   reverse?: boolean
   duration?: number
   delay?: number
+  /** The travelling light's colour. */
+  color?: string
 }) {
   const [d, setD] = useState('')
   const [box, setBox] = useState({ w: 0, h: 0 })
@@ -144,7 +147,7 @@ export function AnimatedBeam({
       <path
         d={d}
         pathLength={1}
-        stroke="#3794ff"
+        stroke={color}
         strokeWidth="2.5"
         strokeLinecap="round"
         strokeDasharray="0.18 0.82"
@@ -163,7 +166,7 @@ export function BorderBeam({ seconds = 8 }: { seconds?: number }) {
       className="pointer-events-none absolute inset-0 rounded-[inherit] [mask:linear-gradient(#000,#000)_content-box_exclude,linear-gradient(#000,#000)] p-px motion-reduce:hidden"
     >
       <span
-        className="absolute aspect-square w-40 animate-[border-beam_var(--bb)_linear_infinite] bg-[linear-gradient(to_left,#0078d4,#4fc1ff,transparent)] [offset-anchor:90%_50%] [offset-path:rect(0_auto_auto_0_round_0)]"
+        className="absolute aspect-square w-40 animate-[border-beam_var(--bb)_linear_infinite] bg-[linear-gradient(to_left,#7c5cff,#b8a6ff,transparent)] [offset-anchor:90%_50%] [offset-path:rect(0_auto_auto_0_round_0)]"
         style={{ ['--bb' as string]: `${seconds}s` }}
       />
     </span>
@@ -197,7 +200,7 @@ export function SpotlightCard({ children, className }: { children: ReactNode; cl
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-        style={pos ? { background: `radial-gradient(320px circle at ${pos.x}px ${pos.y}px, rgb(0 120 212 / 0.14), transparent 70%)` } : undefined}
+        style={pos ? { background: `radial-gradient(320px circle at ${pos.x}px ${pos.y}px, rgb(124 92 255 / 0.14), transparent 70%)` } : undefined}
       />
       {children}
     </div>

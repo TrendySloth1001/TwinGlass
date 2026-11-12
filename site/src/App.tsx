@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { SiteHeader } from './components/chrome'
 import { DownloadProvider } from './components/download'
 import { Privacy } from './pages/Privacy'
-import { Agents, DownloadSection, Faq, Features, Footer, Hero, HowItWorks, Numbers, PhoneApp, PrivacyBlock, Strip, WhatsNew } from './sections'
+import { Agents, Capabilities, Connect, DownloadSection, Faq, Features, Footer, Hero, PhoneApp, PrivacyBlock, Steps, Strip, WhatsNew } from './sections'
 
 export function App() {
   const path = window.location.pathname.replace(/\/+$/, '') || '/'
@@ -22,11 +22,12 @@ export function App() {
           <main>
             <Hero />
             <Strip />
+            <Steps />
             <Features />
-            <Numbers />
-            <HowItWorks />
+            <Connect />
             <PhoneApp />
             <Agents />
+            <Capabilities />
             <PrivacyBlock />
             <WhatsNew />
             <Faq />

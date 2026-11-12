@@ -1,6 +1,8 @@
 // Building blocks in VS Code's design language (Dark Modern): badges, buttons, editor tabs.
-import { ArrowRight, ArrowUpRight, Check, Copy } from 'lucide-react'
+import { ArrowUpRight, Check, ChevronRight, Copy } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
+import type { SimpleIcon } from 'simple-icons'
 import changelog from '../data/changelog.json'
 import release from '../data/release.json'
 
@@ -27,14 +29,33 @@ export function Chip({ children, dot = false, className }: { children: ReactNode
   )
 }
 
-/** VS Code's primary button. A button, or a link with href. */
+/**
+ * A chip that sits inside a sentence, with a small icon or a brand logo (Simple Icons, CC0;
+ * the brands stay their owners' marks and are only used to say what Twinglass works with).
+ */
+export function Tag({ icon: Icon, logo, children }: { icon?: LucideIcon; logo?: SimpleIcon; children: ReactNode }) {
+  return (
+    <span className="mx-0.5 inline-flex items-center gap-[0.3em] rounded-[4px] border border-input-border bg-input px-[0.4em] py-[0.15em] align-[-0.12em] text-[0.88em] leading-none font-medium whitespace-nowrap text-heading">
+      {logo ? (
+        <svg viewBox="0 0 24 24" aria-hidden className="size-[0.95em] shrink-0" fill="currentColor">
+          <path d={logo.path} />
+        </svg>
+      ) : Icon ? (
+        <Icon aria-hidden className="size-[0.95em] shrink-0 text-mark" strokeWidth={2} />
+      ) : null}
+      {children}
+    </span>
+  )
+}
+
+/** Primary button: white, square, with a chevron. A button, or a link with href. */
 export function HoverButton({ children, onClick, disabled, href }: { children: ReactNode; onClick?: () => void; disabled?: boolean; href?: string }) {
   const cls =
-    'group inline-flex h-10 items-center gap-2 rounded-[4px] bg-primary px-5 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-input disabled:text-muted-foreground'
+    'group inline-flex h-10 items-center gap-1.5 rounded-[4px] bg-heading pr-3 pl-4 text-sm font-medium text-black transition-colors hover:bg-white/85 disabled:cursor-not-allowed disabled:bg-input disabled:text-muted-foreground'
   const inner = (
     <>
       {children}
-      <ArrowRight className="size-4 transition-transform group-enabled:group-hover:translate-x-0.5 group-[:is(a)]:group-hover:translate-x-0.5" />
+      <ChevronRight className="size-4 transition-transform group-enabled:group-hover:translate-x-0.5 group-[:is(a)]:group-hover:translate-x-0.5" />
     </>
   )
   return href ? (
@@ -48,14 +69,14 @@ export function HoverButton({ children, onClick, disabled, href }: { children: R
   )
 }
 
-/** VS Code's secondary button. */
+/** Secondary button: outlined. */
 export function GhostLink({ href, children }: { href: string; children: ReactNode }) {
   const external = href.startsWith('http')
   return (
     <a
       href={href}
       {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-      className="inline-flex h-10 items-center gap-1.5 rounded-[4px] bg-input px-5 text-sm font-medium text-foreground transition-colors hover:bg-input-border"
+      className="inline-flex h-10 items-center gap-1.5 rounded-[4px] border border-heading/70 px-4 text-sm font-medium text-heading transition-colors hover:bg-white/5"
     >
       {children}
       {external && <ArrowUpRight className="size-4" />}
