@@ -48,6 +48,9 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
+import '@fontsource-variable/fraunces/full.css'
+import '@fontsource-variable/source-serif-4/opsz.css'
+import '@fontsource-variable/source-serif-4/opsz-italic.css'
 import { useEffect, useState, type ReactNode } from 'react'
 import { siAndroid, siApple, siClaude, siCursor, siGithub, siHomebrew, siJetpackcompose, siKotlin, type SimpleIcon } from 'simple-icons'
 import { FrameCorners, REPO, Tag } from '../components/base'
@@ -229,20 +232,20 @@ function Sequence({ title, left, right, steps }: { title: string; left: Node; ri
 
 // ---------------------------------------------------------------- the table of contents
 
-const TOC: { id: string; label: string; icon: LucideIcon; sub?: [string, string][] }[] = [
-  { id: 'overview', label: 'Overview', icon: Eye },
-  { id: 'install', label: 'Install', icon: Download, sub: [['requirements', 'Requirements'], ['updating', 'Updating'], ['uninstall', 'Uninstall']] },
-  { id: 'connect', label: 'Connect a phone', icon: Plug, sub: [['wifi', 'Wi-Fi, no setup'], ['developer', 'Developer mode'], ['wireless', 'Wireless debugging']] },
-  { id: 'using', label: 'Using the mirror', icon: MousePointerClick, sub: [['gestures', 'Mouse & trackpad'], ['shortcuts', 'Shortcuts'], ['clipboard', 'Clipboard & files'], ['capture', 'Screenshots & recordings'], ['windows', 'Windows']] },
-  { id: 'second-screens', label: 'Second screens', icon: Layers },
-  { id: 'unlock', label: 'Unlock with Touch ID', icon: Fingerprint },
-  { id: 'palette', label: '⌘K and the menu bar', icon: Command },
-  { id: 'phone-app', label: 'The phone app', icon: Smartphone, sub: [['phone-screens', 'Screens'], ['share', 'Share to Mac'], ['permissions', 'Permissions']] },
-  { id: 'agents', label: 'Coding agents (MCP)', icon: Bot, sub: [['agents-setup', 'Setup'], ['agent-screen', 'The agent screen'], ['tools', 'Tools'], ['reliability', 'How actions run'], ['agent-settings', 'Settings']] },
-  { id: 'architecture', label: 'How it works', icon: Cpu },
-  { id: 'security', label: 'Security & privacy', icon: ShieldCheck },
-  { id: 'troubleshooting', label: 'Troubleshooting', icon: Wrench },
-  { id: 'build', label: 'Build from source', icon: Hammer },
+const TOC: { id: string; label: string; icon: LucideIcon; kicker?: string; dek?: string; sub?: [string, string][] }[] = [
+  { id: 'overview', label: 'Overview', icon: Eye, kicker: 'The big picture', dek: 'Two apps, one idea: the phone stops being the thing you keep picking up.' },
+  { id: 'install', label: 'Install', icon: Download, kicker: 'Getting started', dek: 'One line in the terminal, and it keeps itself current after that.', sub: [['requirements', 'Requirements'], ['updating', 'Updating'], ['uninstall', 'Uninstall']] },
+  { id: 'connect', label: 'Connect a phone', icon: Plug, kicker: 'Setup', dek: 'Wi-Fi in a minute, or Developer mode for everything. Switch any time.', sub: [['wifi', 'Wi-Fi, no setup'], ['developer', 'Developer mode'], ['wireless', 'Wireless debugging']] },
+  { id: 'using', label: 'Using the mirror', icon: MousePointerClick, kicker: 'Everyday', dek: 'Your mouse and keyboard become the phone’s fingers.', sub: [['gestures', 'Mouse & trackpad'], ['shortcuts', 'Shortcuts'], ['clipboard', 'Clipboard & files'], ['capture', 'Screenshots & recordings'], ['windows', 'Windows']] },
+  { id: 'second-screens', label: 'Second screens', icon: Layers, kicker: 'Feature', dek: 'A second, independent screen of the same phone, in its own window.' },
+  { id: 'unlock', label: 'Unlock with Touch ID', icon: Fingerprint, kicker: 'Feature', dek: 'Your PIN, typed for you, behind Touch ID.' },
+  { id: 'palette', label: '⌘K and the menu bar', icon: Command, kicker: 'Feature', dek: 'Open any phone app by name without touching the phone.' },
+  { id: 'phone-app', label: 'The phone app', icon: Smartphone, kicker: 'The other half', dek: 'A 2.9 MB companion that makes the link two-way.', sub: [['phone-screens', 'Screens'], ['share', 'Share to Mac'], ['permissions', 'Permissions']] },
+  { id: 'agents', label: 'Coding agents (MCP)', icon: Bot, kicker: 'Cover story', dek: 'Let your agent test the app while you keep your phone.', sub: [['agents-setup', 'Setup'], ['agent-screen', 'The agent screen'], ['tools', 'Tools'], ['reliability', 'How actions run'], ['agent-settings', 'Settings']] },
+  { id: 'architecture', label: 'How it works', icon: Cpu, kicker: 'Under the hood', dek: 'One video pipeline, three ways in.' },
+  { id: 'security', label: 'Security & privacy', icon: ShieldCheck, kicker: 'Trust', dek: 'Your phone stays between your phone and your Mac.' },
+  { id: 'troubleshooting', label: 'Troubleshooting', icon: Wrench, kicker: 'Help desk', dek: 'The seven things people run into, and the fix for each.' },
+  { id: 'build', label: 'Build from source', icon: Hammer, kicker: 'For tinkerers', dek: 'Clone it, run it, change it.' },
 ]
 
 function useActive(ids: string[]) {
@@ -262,22 +265,68 @@ function useActive(ids: string[]) {
   return active
 }
 
+const SERIF = { fontFamily: "'Fraunces Variable', Georgia, serif", fontVariationSettings: "'SOFT' 50, 'WONK' 0" }
+
+/** A chapter opener: a big numeral, a kicker, the headline in the display serif, and a dek. */
 function H2({ id, icon: Icon, children }: { id: string; icon: LucideIcon; children: ReactNode }) {
+  const k = TOC.findIndex((t) => t.id === id)
+  const t = TOC[k]
   return (
-    <h2 id={id} className="group mt-20 flex scroll-mt-24 items-center gap-3 border-t border-border pt-10 text-[1.9rem] font-medium tracking-tight first:mt-0 first:border-0 first:pt-0">
-      <span className="flex size-9 items-center justify-center border border-primary/40 bg-primary/12 text-mark">
-        <Icon className="size-[18px]" strokeWidth={1.7} />
-      </span>
-      <a href={`#${id}`} className="hover:underline">
-        {children}
-      </a>
-    </h2>
+    <header id={id} className="mt-28 scroll-mt-20 border-t border-heading/80 pt-6">
+      <div className="flex items-center gap-3 font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase">
+        <span className="text-mark">Chapter {String(k + 1).padStart(2, '0')}</span>
+        <span aria-hidden className="h-px w-6 bg-border" />
+        <Icon className="size-3.5 text-mark" strokeWidth={1.8} />
+        {t?.kicker}
+      </div>
+      <div className="mt-5 flex items-start gap-5">
+        <span aria-hidden className="hidden text-[5.5rem] leading-[0.8] font-light text-transparent [-webkit-text-stroke:1px_var(--color-input-border)] sm:block" style={SERIF}>
+          {String(k + 1).padStart(2, '0')}
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-[2.5rem] leading-[1.05] font-medium tracking-[-0.02em] text-heading sm:text-[3.1rem]" style={SERIF}>
+            <a href={`#${id}`} className="hover:text-mark">
+              {children}
+            </a>
+          </h2>
+          {t?.dek && <p className="mt-4 text-xl leading-snug text-foreground italic" style={{ fontFamily: "'Source Serif 4 Variable', Georgia, serif" }}>{t.dek}</p>}
+        </div>
+      </div>
+    </header>
+  )
+}
+
+/** A pull quote: a line worth lifting out of the text. */
+function Quote({ children, by }: { children: ReactNode; by?: string }) {
+  return (
+    <blockquote className="relative my-12 border-l-2 border-mark py-1 pl-6">
+      <p className="text-[1.75rem] leading-[1.25] font-normal tracking-[-0.01em] text-heading italic" style={SERIF}>
+        “{children}”
+      </p>
+      {by && <footer className="mt-3 font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">— {by}</footer>}
+    </blockquote>
+  )
+}
+
+/** A strip of big numbers. */
+function Numbers({ items }: { items: [string, string][] }) {
+  return (
+    <div className="relative my-10 grid grid-cols-2 border-y border-border sm:grid-cols-4">
+      {items.map(([v, l]) => (
+        <div key={l} className="border-border px-4 py-5 not-first:border-l max-sm:[&:nth-child(3)]:border-l-0">
+          <p className="text-4xl font-medium tracking-tight text-heading" style={SERIF}>
+            {v}
+          </p>
+          <p className="mt-1 text-xs leading-snug text-muted-foreground">{l}</p>
+        </div>
+      ))}
+    </div>
   )
 }
 
 function H3({ id, children }: { id: string; children: ReactNode }) {
   return (
-    <h3 id={id} className="mt-10 scroll-mt-24 text-xl font-medium tracking-tight text-heading">
+    <h3 id={id} className="mt-12 scroll-mt-24 text-[1.55rem] font-medium tracking-[-0.01em] text-heading" style={SERIF}>
       <a href={`#${id}`} className="hover:underline">
         {children}
       </a>
@@ -285,8 +334,15 @@ function H3({ id, children }: { id: string; children: ReactNode }) {
   )
 }
 
-const P = ({ children }: { children: ReactNode }) => <p className="mt-4 leading-[1.85]">{children}</p>
-const UL = ({ children }: { children: ReactNode }) => <ul className="mt-4 flex flex-col gap-2.5 leading-[1.75] [&>li]:relative [&>li]:pl-5 [&>li]:before:absolute [&>li]:before:top-[0.7em] [&>li]:before:left-0.5 [&>li]:before:size-1.5 [&>li]:before:rounded-full [&>li]:before:bg-mark/70">{children}</ul>
+const P = ({ children, drop = false }: { children: ReactNode; drop?: boolean }) => (
+  <p
+    className={`mt-5 text-[1.12rem] leading-[1.8] text-foreground ${drop ? 'first-letter:float-left first-letter:mt-1.5 first-letter:mr-3 first-letter:text-[4.6rem] first-letter:leading-[0.8] first-letter:font-medium first-letter:text-heading' : ''}`}
+    style={{ fontFamily: "'Source Serif 4 Variable', Georgia, serif" }}
+  >
+    {children}
+  </p>
+)
+const UL = ({ children }: { children: ReactNode }) => <ul style={{ fontFamily: "'Source Serif 4 Variable', Georgia, serif" }} className="mt-5 flex flex-col gap-3 text-[1.08rem] leading-[1.75] [&>li]:relative [&>li]:pl-5 [&>li]:before:absolute [&>li]:before:top-[0.7em] [&>li]:before:left-0.5 [&>li]:before:size-1.5 [&>li]:before:rounded-full [&>li]:before:bg-mark/70">{children}</ul>
 
 // ---------------------------------------------------------------- the page
 
@@ -306,7 +362,7 @@ export function Docs() {
         {/* Contents, following you down the page. */}
         <nav aria-label="Contents" className="hidden lg:block">
           <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 pb-8">
-            <p className="mb-3 font-mono text-[11px] text-muted-foreground uppercase">Documentation</p>
+            <p className="mb-3 font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase">In this issue</p>
             <ol className="flex flex-col gap-0.5 text-sm">
               {TOC.map((t) => (
                 <li key={t.id}>
@@ -314,7 +370,7 @@ export function Docs() {
                     href={`#${t.id}`}
                     className={`flex items-center gap-2 rounded-[4px] px-2 py-1.5 transition-colors ${activeTop === t.id ? 'bg-primary/12 text-heading' : 'hover:text-heading'}`}
                   >
-                    <t.icon className={`size-4 shrink-0 ${activeTop === t.id ? 'text-mark' : 'text-muted-foreground'}`} strokeWidth={1.7} />
+                    <span className={`w-5 shrink-0 font-mono text-[11px] ${activeTop === t.id ? 'text-mark' : 'text-muted-foreground'}`}>{String(TOC.indexOf(t) + 1).padStart(2, '0')}</span>
                     {t.label}
                   </a>
                   {t.sub && activeTop === t.id && (
@@ -335,13 +391,61 @@ export function Docs() {
         </nav>
 
         <article className="min-w-0 max-w-3xl text-[15.5px]">
-          <p className="font-mono text-[11px] text-muted-foreground uppercase">Docs · Twinglass {latest.version}</p>
-          <h1 className="font-soft mt-3 text-5xl sm:text-6xl">The Twinglass guide</h1>
-          <p className="mt-5 text-lg leading-relaxed">
-            Everything about using your <Tag logo={siAndroid}>Android</Tag> phone from your <Tag logo={siApple}>Mac</Tag>: installing, connecting, the controls,
-            second screens, the phone app, coding agents, and how it all works underneath. Read it top to bottom, or jump around with the contents.
+          {/* The cover. */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-y border-heading/80 py-2.5 font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase">
+            <span>The Twinglass Guide</span>
+            <span>Issue {latest.version} · November 2026 · 15 min read</span>
+          </div>
+          <h1 className="mt-10 text-[3.4rem] leading-[0.95] font-medium tracking-[-0.035em] text-heading sm:text-[5.2rem]" style={SERIF}>
+            Your phone,
+            <br />
+            <span className="italic text-mark">on your Mac.</span>
+          </h1>
+          <p className="mt-6 max-w-2xl text-[1.35rem] leading-snug italic" style={{ fontFamily: "'Source Serif 4 Variable', Georgia, serif" }}>
+            A field guide to mirroring your <Tag logo={siAndroid}>Android</Tag> phone on your <Tag logo={siApple}>Mac</Tag>, opening second screens of it, and letting
+            coding agents test your apps, all in one sitting.
           </p>
-          <details className="mt-6 border border-border bg-tile p-4 lg:hidden">
+          <div className="mt-8 flex items-center gap-3">
+            <img src="/nikhil.webp" alt="" width={40} height={40} className="size-10 rounded-full border border-input-border" />
+            <div className="text-sm">
+              <p className="text-heading">
+                By{' '}
+                <a href="https://github.com/TrendySloth1001" target="_blank" rel="noopener noreferrer" className="hover:text-mark">
+                  Nikhil Kumawat
+                </a>
+              </p>
+              <p className="font-mono text-[11px] text-muted-foreground">Maker of Twinglass · @TrendySloth1001</p>
+            </div>
+          </div>
+          <figure className="relative mt-10 border border-border bg-tile p-2 sm:p-3">
+            <FrameCorners />
+            <img src="/demo-poster.jpg" alt="Twinglass mirroring a phone on a Mac" width={1440} height={1098} className="w-full [clip-path:inset(1px_round_12px)]" />
+            <figcaption className="mt-3 px-1 text-sm italic" style={{ fontFamily: "'Source Serif 4 Variable', Georgia, serif" }}>
+              <span className="not-italic font-mono text-[11px] text-mark uppercase">On the cover</span> · Twinglass mirroring a Nothing Phone over Wi-Fi, with the phone
+              app open on its Home screen.
+            </figcaption>
+          </figure>
+
+          {/* In this issue: the contents as a magazine index. */}
+          <section className="mt-14">
+            <p className="font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase">In this issue</p>
+            <ol className="mt-4 grid border-t border-border sm:grid-cols-2">
+              {TOC.map((t, k) => (
+                <li key={t.id} className="border-b border-border sm:odd:border-r sm:odd:pr-6 sm:even:pl-6">
+                  <a href={`#${t.id}`} className="group flex items-baseline gap-4 py-4">
+                    <span className="font-mono text-xs text-mark">{String(k + 1).padStart(2, '0')}</span>
+                    <span>
+                      <span className="block text-lg leading-tight text-heading group-hover:text-mark" style={SERIF}>
+                        {t.label}
+                      </span>
+                      <span className="mt-1 block text-[13px] leading-snug">{t.dek}</span>
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </section>
+          <details className="mt-6 hidden">
             <summary className="cursor-pointer text-sm font-medium text-heading">Contents</summary>
             <ol className="mt-3 grid gap-1 text-sm sm:grid-cols-2">
               {TOC.map((t) => (
@@ -359,13 +463,13 @@ export function Docs() {
             <H2 id="overview" icon={Eye}>
               Overview
             </H2>
-            <P>
+            <P drop>
               Twinglass is two apps that work together. <Tag icon={Laptop}>Twinglass for Mac</Tag> shows and controls the phone, opens second screens, and runs a
               server for coding agents. The <Tag icon={Smartphone}>phone app</Tag> links the phone to your Mac, mirrors it over Wi-Fi without developer options, and
               gives the Mac what adb alone can’t: real app icons, rich device details, sharing from any app, and reading buttons on any screen.
             </P>
             <Flow
-              title="The big picture"
+              title="Fig. 1 · The big picture"
               nodes={[
                 { logo: siAndroid, title: 'Your phone', sub: 'Android 10+ · phone app' },
                 { icon: MonitorSmartphone, title: 'Twinglass for Mac', sub: 'decode · draw · control', tone: 'brand' },
@@ -377,13 +481,21 @@ export function Docs() {
               The Mac app works on its own over adb: it pushes the open-source <Tag icon={Terminal}>scrcpy</Tag> server to the phone and speaks its protocol directly.
               Nothing goes through a server on the internet, there are no accounts, and the only thing Twinglass fetches online is its own update check.
             </P>
+            <Numbers
+              items={[
+                ['~12 ms', 'from a frame arriving to it being on your screen'],
+                ['42', 'tools for coding agents'],
+                ['2.9 MB', 'the whole phone app'],
+                ['0', 'accounts, servers or analytics'],
+              ]}
+            />
           </div>
 
           {/* ------------------------------------------------ install */}
           <H2 id="install" icon={Download}>
             Install
           </H2>
-          <P>Three ways, all the same app. The terminal is the quickest and opens without any macOS warning.</P>
+          <P drop>Three ways, all the same app. The terminal is the quickest and opens without any macOS warning.</P>
           <CodeBlock lines={[INSTALL]} />
           <P>
             Or with <Tag logo={siHomebrew}>Homebrew</Tag> (Homebrew 7 asks you to trust a third-party tap once):
@@ -431,7 +543,7 @@ export function Docs() {
           <H3 id="updating">Updating</H3>
           <P>Both apps keep themselves current, and the phone app never goes online for it.</P>
           <Flow
-            title="How updates travel"
+            title="Fig. 2 · How updates travel"
             nodes={[
               { logo: siGithub, title: 'GitHub Releases', sub: 'DMG + SHA-256' },
               { icon: MonitorSmartphone, title: 'Twinglass for Mac', sub: 'verifies, swaps, reopens', tone: 'brand' },
@@ -461,7 +573,7 @@ export function Docs() {
           <H2 id="connect" icon={Plug}>
             Connect a phone
           </H2>
-          <P>There are two ways in, and you can switch any time. Start with Wi-Fi in a minute; switch to Developer mode when you want everything.</P>
+          <P drop>There are two ways in, and you can switch any time. Start with Wi-Fi in a minute; switch to Developer mode when you want everything.</P>
           <Table
             head={['', 'Wi-Fi, no setup', 'Developer mode']}
             rows={[
@@ -505,7 +617,7 @@ export function Docs() {
             </li>
           </UL>
           <Flow
-            title="Developer mode, one tunnel"
+            title="Fig. 3 · Developer mode, one tunnel"
             nodes={[
               { icon: Terminal, title: 'scrcpy-server', sub: 'pushed by the Mac' },
               { icon: Cable, title: 'adb', sub: 'USB or wireless' },
@@ -529,7 +641,7 @@ export function Docs() {
           <H2 id="using" icon={MousePointerClick}>
             Using the mirror
           </H2>
-          <P>Click the mirror once so it has keyboard focus. From then on your mouse and keyboard are the phone’s touch screen and keys.</P>
+          <P drop>Click the mirror once so it has keyboard focus. From then on your mouse and keyboard are the phone’s touch screen and keys.</P>
 
           <H3 id="gestures">Mouse & trackpad</H3>
           <Table
@@ -570,6 +682,7 @@ export function Docs() {
                 ['⇧⌘R', 'Start / stop recording'],
                 ['⌘D', 'Disconnect'],
                 ['⌘K', 'Command palette'],
+                ['⌘V', 'Paste the Mac’s clipboard'],
               ] as [string, string][]
             ).map(([k, l]) => (
               <div key={l} className="flex items-center justify-between gap-4 bg-background px-4 py-2.5 text-sm">
@@ -614,13 +727,13 @@ export function Docs() {
           <H2 id="second-screens" icon={Layers}>
             Second screens
           </H2>
-          <P>
+          <P drop>
             A second screen is a real, independent display of the same phone, in its own Mac window. Keep chatting on the phone in your hand while you test another app
             on the Mac. Each one has Twinglass’s own home screen (an app grid with real icons), an app switcher, and keyboard input that stays on that screen.
           </P>
           <figure className="relative my-8 border border-border bg-tile p-4 sm:p-6">
             <FrameCorners />
-            <figcaption className="mb-4 font-mono text-[11px] text-muted-foreground uppercase">One phone, several screens</figcaption>
+            <figcaption className="mb-4 font-mono text-[11px] text-muted-foreground uppercase">Fig. · One phone, several screens</figcaption>
             <div className="grid gap-3 sm:grid-cols-3">
               {(
                 [
@@ -641,13 +754,14 @@ export function Docs() {
             </div>
             <p className="mt-3 text-xs text-muted-foreground">Apps run where you open them. Closing a screen moves its apps back to the phone, in the background.</p>
           </figure>
+          <Quote>Chat on the phone in your hand while you test your app on the Mac.</Quote>
           <P>Open one from the sidebar or the toolbar. Choose phone, tablet or landscape size in Settings → Advanced. Second screens need Developer mode.</P>
 
           {/* ------------------------------------------------ unlock */}
           <H2 id="unlock" icon={Fingerprint}>
             Unlock with Touch ID
           </H2>
-          <P>
+          <P drop>
             Save your phone’s PIN once (<Kbd>⌘L</Kbd> the first time, with <em>Remember</em>). After that <Kbd>⌘L</Kbd> types it for you, after{' '}
             <Tag icon={Fingerprint}>Touch ID</Tag> if you turned that on. <Kbd>⌥⌘L</Kbd> lets you type one by hand.
           </P>
@@ -678,7 +792,7 @@ export function Docs() {
           <H2 id="phone-app" icon={Smartphone}>
             The phone app
           </H2>
-          <P>
+          <P drop>
             A 2.9 MB app built with <Tag logo={siKotlin}>Kotlin</Tag> and <Tag logo={siJetpackcompose}>Jetpack Compose</Tag>. It talks only to your paired Mac and
             never uses the internet.
           </P>
@@ -717,10 +831,11 @@ export function Docs() {
           <H2 id="agents" icon={Bot}>
             Coding agents (MCP)
           </H2>
-          <P>
+          <P drop>
             Twinglass runs a local MCP server so <Tag logo={siClaude}>Claude Code</Tag>, <Tag logo={siCursor}>Cursor</Tag>, <Tag icon={Code2}>VS Code</Tag> and any
             other MCP client can see and operate the phone, and test the app you’re building.
           </P>
+          <Quote by="The idea behind the agent screen">Your agent gets its own screen and real tools, and you keep your phone.</Quote>
           <H3 id="agents-setup">Setup</H3>
           <UL>
             <li>
@@ -744,7 +859,7 @@ export function Docs() {
             watch, and nothing the agent does shows on the phone in your hand. Pass <Code>screen: "phone"</Code> to work on the real screen instead.
           </P>
           <Flow
-            title="One agent step"
+            title="Fig. 4 · One agent step"
             nodes={[
               { logo: siClaude, title: 'Agent', sub: 'calls a tool' },
               { icon: Server, title: 'MCP server', sub: 'localhost · token', tone: 'brand' },
@@ -815,12 +930,12 @@ export function Docs() {
           <H2 id="architecture" icon={Cpu}>
             How it works
           </H2>
-          <P>
+          <P drop>
             Whichever way the phone connects, its screen arrives in the same format, scrcpy’s stream framing, so one demuxer, one hardware decoder, one recorder and one
             screenshot path serve every mode.
           </P>
           <Flow
-            title="One video pipeline"
+            title="Fig. 5 · One video pipeline"
             nodes={[
               { logo: siAndroid, title: 'Phone', sub: 'scrcpy-server or phone app' },
               { icon: Film, title: 'Demuxer', sub: 'codec · size · frames' },
@@ -830,7 +945,7 @@ export function Docs() {
             links={['adb or encrypted Wi-Fi', 'H.265 / H.264', '~12 ms total']}
           />
           <Sequence
-            title="Wi-Fi pairing and an encrypted session"
+            title="Fig. 6 · Wi-Fi pairing and an encrypted session"
             left={{ logo: siAndroid, title: 'Phone app', sub: 'scans the QR' }}
             right={{ logo: siApple, title: 'Mac', sub: 'port 47200 · mDNS' }}
             steps={[
@@ -877,6 +992,7 @@ export function Docs() {
               <span className="font-mono text-[10.5px]">no server</span>
             </div>
           </figure>
+          <Quote>No servers in the middle. Your phone stays between your phone and your Mac.</Quote>
           <UL>
             <li>
               <span className="text-heading">Wi-Fi link:</span> a P-256 key exchange confirmed by the 6-digit code (codes expire after 5 minutes or 3 tries), then
@@ -932,7 +1048,7 @@ export function Docs() {
               </div>
             ))}
           </div>
-          <P>
+          <P drop>
             Still stuck?{' '}
             <a href={`${REPO}/issues/new`} target="_blank" rel="noopener noreferrer" className="text-mark hover:underline">
               Open an issue
@@ -944,7 +1060,7 @@ export function Docs() {
           <H2 id="build" icon={Hammer}>
             Build from source
           </H2>
-          <P>
+          <P drop>
             The Mac app is <Tag icon={Code2}>Electron</Tag> with React and TypeScript; the phone app is <Tag logo={siKotlin}>Kotlin</Tag>. Source:{' '}
             <a href={REPO} target="_blank" rel="noopener noreferrer" className="text-mark hover:underline">
               github.com/TrendySloth1001/TwinGlass
@@ -972,7 +1088,18 @@ export function Docs() {
             ]}
           />
 
-          <div className="relative mt-16 flex flex-col items-start gap-4 border border-border bg-tile p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-24 border-t border-heading/80 pt-8">
+            <p className="text-[2rem] leading-tight font-medium tracking-[-0.02em] text-heading" style={SERIF}>
+              That’s the issue.
+            </p>
+            <p className="mt-3 max-w-xl text-[1.12rem] leading-[1.8] italic" style={{ fontFamily: "'Source Serif 4 Variable', Georgia, serif" }}>
+              Thanks for reading. If something here didn’t match what you saw on your phone, tell me and the next issue will fix it.
+            </p>
+            <p className="mt-4 flex items-center gap-2 text-sm">
+              <img src="/nikhil.webp" alt="" width={24} height={24} className="size-6 rounded-full" /> Nikhil
+            </p>
+          </div>
+          <div className="relative mt-12 flex flex-col items-start gap-4 border border-border bg-tile p-6 sm:flex-row sm:items-center sm:justify-between">
             <FrameCorners />
             <div>
               <p className="font-medium text-heading">Ready to try it?</p>
