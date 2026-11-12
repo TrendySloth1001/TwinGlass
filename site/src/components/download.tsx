@@ -124,7 +124,7 @@ function Step({ n, state, last, title, children }: { n: number; state: 'done' | 
 function CommandBox({ lines, disabled }: { lines: string[]; disabled: boolean }) {
   const [done, setDone] = useState(false)
   return (
-    <div className="flex items-start gap-3 border border-input-border bg-[#0d0d10] p-3 pl-3.5">
+    <div className="flex items-start gap-3 border border-input-border bg-input p-3 pl-3.5">
       <pre className="min-w-0 flex-1 font-mono text-[12.5px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-heading">
         {lines.map((l) => (
           <span key={l} className="block">
@@ -252,14 +252,14 @@ export function DownloadPanel() {
         <DownloadFlow />
       </div>
       <p className="mt-8 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <a href={`${REPO}/releases`} target="_blank" rel="noopener noreferrer" className="hover:text-heading">
-          All releases ↗
+        <a href="/releases" className="hover:text-heading">
+          All releases
         </a>
         <a href="/privacy" className="hover:text-heading">
           Privacy policy
         </a>
-        <a href={`${REPO}/blob/master/CHANGELOG.md`} target="_blank" rel="noopener noreferrer" className="hover:text-heading">
-          Changelog ↗
+        <a href="/changelog" className="hover:text-heading">
+          Changelog
         </a>
       </p>
     </div>

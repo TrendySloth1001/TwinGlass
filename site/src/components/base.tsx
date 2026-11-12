@@ -51,7 +51,7 @@ export function Tag({ icon: Icon, logo, children }: { icon?: LucideIcon; logo?: 
 /** Primary button: white, square, with a chevron. A button, or a link with href. */
 export function HoverButton({ children, onClick, disabled, href }: { children: ReactNode; onClick?: () => void; disabled?: boolean; href?: string }) {
   const cls =
-    'group inline-flex h-10 items-center gap-1.5 rounded-[4px] bg-heading pr-3 pl-4 text-sm font-medium text-black transition-colors hover:bg-white/85 disabled:cursor-not-allowed disabled:bg-input disabled:text-muted-foreground'
+    'group inline-flex h-10 items-center gap-1.5 rounded-[4px] bg-heading pr-3 pl-4 text-sm font-medium text-background transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:bg-input disabled:text-muted-foreground'
   const inner = (
     <>
       {children}
@@ -76,7 +76,7 @@ export function GhostLink({ href, children }: { href: string; children: ReactNod
     <a
       href={href}
       {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-      className="inline-flex h-10 items-center gap-1.5 rounded-[4px] border border-heading/70 px-4 text-sm font-medium text-heading transition-colors hover:bg-white/5"
+      className="inline-flex h-10 items-center gap-1.5 rounded-[4px] border border-heading/70 px-4 text-sm font-medium text-heading transition-colors hover:bg-muted"
     >
       {children}
       {external && <ArrowUpRight className="size-4" />}

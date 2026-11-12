@@ -178,7 +178,7 @@ export function DotPattern({ className }: { className?: string }) {
   return (
     <div
       aria-hidden
-      className={`pointer-events-none absolute inset-0 bg-[radial-gradient(circle,rgb(255_255_255/0.07)_1px,transparent_1.2px)] [background-size:18px_18px] ${className ?? ''}`}
+      className={`pointer-events-none absolute inset-0 bg-[radial-gradient(circle,var(--color-dot)_1px,transparent_1.2px)] [background-size:18px_18px] ${className ?? ''}`}
     />
   )
 }

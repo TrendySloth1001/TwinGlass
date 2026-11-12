@@ -2,22 +2,33 @@ import { MotionConfig } from 'motion/react'
 import { useEffect } from 'react'
 import { SiteHeader } from './components/chrome'
 import { DownloadProvider } from './components/download'
+import { Changelog } from './pages/Changelog'
 import { Privacy } from './pages/Privacy'
-import { Agents, Capabilities, Connect, DownloadSection, Faq, Features, Footer, Hero, PhoneApp, PrivacyBlock, Steps, Strip, WhatsNew } from './sections'
+import { Releases } from './pages/Releases'
+import { Agents, Capabilities, Connect, DownloadSection, Faq, Features, Footer, Hero, PhoneApp, PrivacyBlock, Steps, Story, Strip, WhatsNew } from './sections'
 
 export function App() {
   const path = window.location.pathname.replace(/\/+$/, '') || '/'
-  const privacy = path === '/privacy'
+  const page = path === '/privacy' ? 'privacy' : path === '/changelog' ? 'changelog' : path === '/releases' ? 'releases' : 'home'
   useEffect(() => {
-    document.title = privacy ? 'Privacy Policy · Twinglass' : 'Twinglass · Your Android phone, on your Mac'
-  }, [privacy])
+    document.title = {
+      privacy: 'Privacy Policy · Twinglass',
+      changelog: 'Changelog · Twinglass',
+      releases: 'Releases · Twinglass',
+      home: 'Twinglass · Your Android phone, on your Mac',
+    }[page]
+  }, [page])
   return (
     // "user": animations follow the visitor's reduced-motion setting.
     <MotionConfig reducedMotion="user">
       <DownloadProvider>
         <SiteHeader />
-        {privacy ? (
+        {page === 'privacy' ? (
           <Privacy />
+        ) : page === 'changelog' ? (
+          <Changelog />
+        ) : page === 'releases' ? (
+          <Releases />
         ) : (
           <main>
             <Hero />
@@ -27,6 +38,7 @@ export function App() {
             <Connect />
             <PhoneApp />
             <Agents />
+            <Story />
             <Capabilities />
             <PrivacyBlock />
             <WhatsNew />

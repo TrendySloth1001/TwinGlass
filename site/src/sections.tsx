@@ -11,14 +11,18 @@ import {
   Code2,
   QrCode,
   Clipboard,
+  CloudOff,
   Command,
   Cpu,
   Download,
   FileDown,
   Fingerprint,
   KeyRound,
+  Laptop,
   Layers,
   Lock,
+  Keyboard,
+  MonitorSmartphone,
   MousePointerClick,
   Plus,
   RefreshCw,
@@ -32,12 +36,12 @@ import {
   Wifi,
   type LucideIcon,
 } from 'lucide-react'
-import { motion, useMotionValue, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react'
+import { AnimatePresence, motion, useMotionValue, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { siAndroid, siApple, siClaude, siCursor, siHomebrew, siJetpackcompose, siKotlin } from 'simple-icons'
 import { Chip, FrameCorners, GhostLink, HoverButton, REPO, RELEASES, Tag } from './components/base'
 import { DownloadPanel, useDownload } from './components/download'
-import { BlurFade, Typewriter, WordRotate } from './components/fx'
+import { BlurFade, Typewriter } from './components/fx'
 
 const WRAP = 'mx-auto max-w-6xl px-4 sm:px-6 lg:px-10'
 const DOCS = `${REPO}/blob/master/docs`
@@ -49,6 +53,20 @@ function Glow({ className }: { className?: string }) {
       aria-hidden
       className={`grain pointer-events-none absolute overflow-hidden bg-[radial-gradient(ellipse_70%_60%_at_50%_100%,rgb(124_92_255/0.55),rgb(91_108_255/0.18)_45%,transparent_75%)] ${className ?? ''}`}
     />
+  )
+}
+
+/** A brand logo set inside a headline: a small tile sized to the letters, sitting on the baseline. */
+function HeadLogo({ logo, color }: { logo: { path: string; title: string }; color: string }) {
+  return (
+    <span
+      aria-hidden
+      className="mx-[0.04em] inline-flex size-[0.82em] -translate-y-[0.06em] items-center justify-center rounded-[0.16em] border border-input-border bg-input align-middle shadow-[0_0.1em_0.4em_-0.1em_rgb(124_92_255/0.5)]"
+    >
+      <svg viewBox="0 0 24 24" className="size-[0.52em]" fill={color}>
+        <path d={logo.path} />
+      </svg>
+    </span>
   )
 }
 
@@ -99,25 +117,68 @@ function DemoVideo() {
   )
 }
 
+const HERO_LINES: [LucideIcon, string][] = [
+  [MonitorSmartphone, 'Mirror it.'],
+  [Keyboard, 'Control it from your keyboard.'],
+  [Layers, 'Open a second screen.'],
+  [Fingerprint, 'Unlock it with Touch ID.'],
+  [Bot, 'Let agents test on it.'],
+]
+const HERO_STEP_MS = 2800
+
+/** What Twinglass does, one line at a time: an icon and a phrase slide in together. Hovering pauses; still for reduced motion. */
+function HeroRotator() {
+  const [i, setI] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const still = useReducedMotion()
+  useEffect(() => {
+    if (paused || still) return
+    const t = setTimeout(() => setI((n) => (n + 1) % HERO_LINES.length), HERO_STEP_MS)
+    return () => clearTimeout(t)
+  }, [i, paused, still])
+  const [Icon, line] = HERO_LINES[i]!
+  return (
+    <span className="mb-4 block" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+      <span className="relative flex h-9 items-center overflow-hidden" aria-live="polite">
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.span
+            key={line}
+            initial={{ y: 24, opacity: 0, filter: 'blur(4px)' }}
+            animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
+            exit={{ y: -24, opacity: 0, filter: 'blur(4px)' }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="flex items-center gap-2.5"
+          >
+            <Icon className="size-5 shrink-0 text-mark" strokeWidth={1.8} />
+            <span className="text-xl font-medium text-heading">{line}</span>
+          </motion.span>
+        </AnimatePresence>
+      </span>
+    </span>
+  )
+}
+
 export function Hero() {
   const { openDownload, latest } = useDownload()
   return (
     <section className={`pt-24 sm:pt-28 ${WRAP}`}>
       <BlurFade>
-        <a href="#changelog" className="inline-flex items-center gap-2 text-sm text-foreground hover:text-heading">
+        <a href={`/changelog#v${latest.version}`} className="inline-flex items-center gap-2 text-sm text-foreground hover:text-heading">
           <Chip dot>New</Chip>
           {RELEASES[0]?.title} in {latest.version}
           <ChevronRight className="size-3.5" />
         </a>
       </BlurFade>
       <BlurFade delay={0.05}>
-        <h1 className="font-soft mt-6 max-w-4xl text-[2.9rem] leading-[1.02] text-balance sm:text-6xl lg:text-[4.5rem]">Your Android phone, on your Mac.</h1>
+        <h1 className="font-soft mt-6 max-w-5xl text-[2.9rem] leading-[1.08] text-balance sm:text-6xl lg:text-[4.5rem]">
+          Your <HeadLogo logo={siAndroid} color="#3ddc84" /> Android phone, on your <HeadLogo logo={siApple} color="currentColor" /> Mac.
+        </h1>
       </BlurFade>
       <BlurFade delay={0.1}>
         <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <p className="max-w-xl text-lg text-pretty">
-            <WordRotate className="text-heading" words={['Mirror it.', 'Control it from your keyboard.', 'Open a second screen.', 'Unlock it with Touch ID.', 'Let agents test on it.']} />
-            <br />
+            <HeroRotator />
+
             Any <Tag logo={siAndroid}>Android</Tag> phone on your <Tag logo={siApple}>Mac</Tag>, over a <Tag icon={Usb}>USB</Tag> cable, wireless debugging, or
             plain <Tag icon={Wifi}>Wi-Fi</Tag> with no developer options. Free.
           </p>
@@ -138,8 +199,8 @@ export function Hero() {
             <DemoVideo />
           </div>
           {/* Small live-looking cards over the product, as Render does with its dashboard. */}
-          <div className="pointer-events-none absolute bottom-10 left-6 hidden w-64 lg:block">
-            <Mock className="bg-[#141418]/95 p-3 shadow-2xl backdrop-blur">
+          <div className="pointer-events-none absolute bottom-[20%] left-[8%] hidden w-64 lg:block">
+            <Mock className="bg-tile/95 p-3 shadow-2xl backdrop-blur">
               <FrameCorners />
               <p className="flex items-center justify-between text-heading">
                 A024{' '}
@@ -151,8 +212,8 @@ export function Hero() {
               <p className="mt-1 font-mono text-[11px] text-muted-foreground">Wi-Fi · 10 ms · 120 Hz · H.265</p>
             </Mock>
           </div>
-          <div className="pointer-events-none absolute top-16 right-6 hidden w-72 lg:block">
-            <Mock className="bg-[#141418]/95 p-3 font-mono text-[11px] shadow-2xl backdrop-blur">
+          <div className="pointer-events-none absolute top-[30%] right-[8%] hidden w-72 lg:block">
+            <Mock className="bg-tile/95 p-3 font-mono text-[11px] shadow-2xl backdrop-blur">
               <FrameCorners />
               <p className="text-muted-foreground">agent · second screen</p>
               <p className="mt-1.5 text-heading">tap_element “Sign in”</p>
@@ -308,7 +369,7 @@ export function Features() {
               <p className="font-mono text-[10.5px] text-muted-foreground">phone</p>
               <div className="mt-2 grid grid-cols-4 gap-1.5">
                 {Array.from({ length: 12 }, (_, k) => (
-                  <span key={k} className="aspect-square rounded-[4px] bg-white/10" />
+                  <span key={k} className="aspect-square rounded-[4px] bg-foreground/10" />
                 ))}
               </div>
             </Mock>
@@ -318,8 +379,8 @@ export function Features() {
                 second screen <Layers className="size-3" />
               </p>
               <div className="mt-2 space-y-1.5">
-                <span className="block h-2 w-3/4 rounded-sm bg-white/15" />
-                <span className="block h-2 w-1/2 rounded-sm bg-white/10" />
+                <span className="block h-2 w-3/4 rounded-sm bg-foreground/15" />
+                <span className="block h-2 w-1/2 rounded-sm bg-foreground/10" />
                 <span className="block h-14 rounded-sm bg-primary/20" />
               </div>
             </Mock>
@@ -328,9 +389,9 @@ export function Features() {
         <Cell title="Wi-Fi, with no setup" body={<>Scan the <Tag icon={QrCode}>QR</Tag> on your Mac. The phone app downloads straight from the Mac, pairs with a code and mirrors, encrypted with <Tag icon={Lock}>AES-256-GCM</Tag>.</>} link={['Pairing and encryption', `${DOCS}/ARCHITECTURE.md`]}>
           <Mock className="flex w-full items-center gap-5 p-4">
             <FrameCorners />
-            <div className="grid size-16 shrink-0 grid-cols-6 gap-px bg-heading p-1">
+            <div className="grid size-16 shrink-0 grid-cols-6 gap-px bg-white p-1">
               {'101101011010110011001101101001011101101100110110'.split('').map((b, k) => (
-                <span key={k} className={b === '1' ? 'bg-black' : 'bg-heading'} />
+                <span key={k} className={b === '1' ? 'bg-black' : 'bg-white'} />
               ))}
             </div>
             <div>
@@ -451,27 +512,41 @@ export function PhoneApp() {
   ]
   return (
     <section id="phone" className={`pt-28 ${WRAP}`}>
-      <div className="grid items-center gap-12 lg:grid-cols-2">
-        <div className="min-w-0">
+      <div className="grid items-stretch gap-12 lg:grid-cols-2">
+        <div className="flex min-w-0 flex-col">
           <H2>A small phone app that makes it two-way.</H2>
           <p className="mt-4 max-w-lg text-lg leading-relaxed">
             2.9 MB, built with <Tag logo={siKotlin}>Kotlin</Tag> and <Tag logo={siJetpackcompose}>Jetpack Compose</Tag>. It powers Wi-Fi mode and adds what adb can’t do alone.
           </p>
-          <div className="mt-10 grid gap-x-8 gap-y-7 sm:grid-cols-2">
+          <div className="relative mt-10 grid border-t border-l border-border sm:grid-cols-2 lg:mt-auto">
+            <FrameCorners />
             {points.map(([I, t, b], k) => (
-              <BlurFade key={t} delay={k * 0.05}>
-                <I className="size-5 text-mark" strokeWidth={1.6} />
-                <p className="mt-3 font-medium text-heading">{t}</p>
+              <BlurFade key={t} delay={k * 0.05} className="border-r border-b border-border p-5 sm:p-6">
+                <span className="flex size-9 items-center justify-center border border-input-border bg-input text-mark">
+                  <I className="size-[17px]" strokeWidth={1.6} />
+                </span>
+                <p className="mt-4 font-medium text-heading">{t}</p>
                 <p className="mt-1.5 text-sm leading-relaxed">{b}</p>
               </BlurFade>
             ))}
           </div>
         </div>
-        <BlurFade className="relative flex justify-center overflow-hidden border border-border bg-tile pt-12">
-          <Glow className="inset-0" />
-          <div className="relative w-[15.5rem] rounded-t-[2.6rem] border border-b-0 border-input-border bg-[#050506] px-2 pt-2 shadow-[0_-20px_80px_-20px_rgb(124_92_255/0.6)] sm:w-[17rem]">
-            <img src="/phone-app.webp" alt="The Twinglass phone app's Home screen" className="w-full rounded-t-[2.1rem]" width={565} height={1256} loading="lazy" />
+        <BlurFade className="relative flex min-h-[34rem] border border-border bg-tile">
+          <FrameCorners />
+          {/* The phone rises from the bottom and fades out there, inside its own clipped area. */}
+          <div className="relative flex flex-1 items-end justify-center overflow-hidden pt-12">
+            <Glow className="inset-0" />
+            <div className="relative w-[15.5rem] rounded-t-[2.6rem] border border-b-0 border-input-border bg-[#050506] px-2 pt-2 shadow-[0_-20px_80px_-20px_rgb(124_92_255/0.6)] [mask-image:linear-gradient(to_bottom,black_70%,transparent)] sm:w-[17rem]">
+              <img src="/phone-app.webp" alt="The Twinglass phone app's Home screen" className="w-full rounded-t-[2.1rem]" width={565} height={1256} loading="lazy" />
+            </div>
           </div>
+          {/* What you're looking at, pointed out. */}
+          <span className="absolute top-[30%] left-4 hidden items-center gap-2 border border-input-border bg-tile/95 px-2.5 py-1.5 text-xs text-heading shadow-lg backdrop-blur sm:flex">
+            <span className="size-1.5 animate-pulse rounded-full bg-ok" /> Live link status
+          </span>
+          <span className="absolute right-4 bottom-[22%] hidden items-center gap-2 border border-input-border bg-tile/95 px-2.5 py-1.5 text-xs text-heading shadow-lg backdrop-blur sm:flex">
+            <Cpu className="size-3.5 text-mark" /> 12 detail groups
+          </span>
         </BlurFade>
       </div>
     </section>
@@ -507,13 +582,14 @@ export function Agents() {
         <BlurFade className="relative flex min-w-0 flex-col border border-border bg-tile p-3 sm:p-6">
           <FrameCorners />
           <Glow className="inset-0 opacity-70" />
-          <div className="relative flex flex-1 flex-col border border-input-border bg-[#0d0d10]">
+          {/* A terminal stays dark in both themes. */}
+          <div className="relative flex flex-1 flex-col border border-term-border bg-term">
             <FrameCorners />
-            <div className="flex items-center gap-2 border-b border-input-border px-4 py-2.5 font-mono text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-2 border-b border-term-border px-4 py-2.5 font-mono text-[11px] text-term-fg/55">
               <Terminal className="size-3.5" /> Terminal
             </div>
             <Typewriter
-              className="min-h-[16rem] flex-1 overflow-x-auto p-4 font-mono text-[12.5px] leading-relaxed whitespace-pre-wrap text-heading"
+              className="min-h-[16rem] flex-1 overflow-x-auto p-4 font-mono text-[12.5px] leading-relaxed whitespace-pre-wrap text-term-fg [&_span[aria-hidden]]:bg-term-fg/70"
               speed={14}
               text={'$ claude mcp add --transport http --scope user \\\n    mob-mirror http://127.0.0.1:38297/mcp \\\n    --header "Authorization: Bearer <token>"\n✓ Added mob-mirror\n\n> open my app and sign in as the test user\n\n  agent_screen   open              ✓ 1080×2400\n  launch_app     “Your app”        ✓ 1.2 s\n  set_text       email, password   ✓ read back\n  tap_element    “Sign in”         ✓ settled 320 ms\n  wait_for       “Welcome”         ✓ found\n\nSigned in as test@example.com. The home screen loaded\nin 1.8 s with no crashes in logcat.'}
             />
@@ -525,62 +601,220 @@ export function Agents() {
   )
 }
 
-// ---------------------------------------------------------------- more, as an icon grid
+// ---------------------------------------------------------------- a story of Nikhil
+
+/** An MCP tool name inside the story. */
+function T({ children }: { children: string }) {
+  return (
+    <code className="mx-px rounded-[3px] border border-primary/35 bg-primary/10 px-[0.35em] py-[0.08em] font-mono text-[0.84em] whitespace-nowrap text-mark">{children}</code>
+  )
+}
+
+const STORY_TOOLS = [
+  'list_devices', 'agent_screen', 'install_apk', 'app_info', 'launch_app', 'get_ui_tree', 'find_elements', 'set_text', 'tap_element', 'wait_for',
+  'screen_map', 'set_device_state', 'scroll', 'swipe', 'screenshot', 'record_screen', 'get_crashes', 'logcat', 'app_performance', 'start_activity',
+  'clear_app_data', 'set_permission', 'reverse_port', 'unlock_phone', 'get_notifications', 'pull_file', 'press_key', 'stop_app', 'device_info', 'type_text', 'run_steps',
+]
+
+export function Story() {
+  const [open, setOpen] = useState(false)
+  return (
+    <section id="story" className={`pt-28 ${WRAP}`}>
+      <BlurFade className="relative grid gap-10 border border-border bg-tile p-7 sm:p-10 lg:grid-cols-[15rem_1fr]">
+        <FrameCorners />
+        <div className="flex flex-row items-center gap-4 lg:flex-col lg:items-start">
+          <img src="/nikhil.webp" alt="Nikhil Kumawat" width={96} height={96} className="size-16 rounded-full border border-input-border lg:size-24" loading="lazy" />
+          <div>
+            <p className="font-mono text-[11px] text-muted-foreground uppercase">The story me</p>
+            <p className="mt-1 font-medium text-heading">Nikhil Kumawat</p>
+            <a href="https://github.com/TrendySloth1001" target="_blank" rel="noopener noreferrer" className="mt-0.5 inline-flex items-center gap-1 text-sm text-mark hover:underline">
+              @TrendySloth1001 <ArrowUpRight className="size-3.5" />
+            </a>
+            <p className="mt-3 hidden text-xs leading-relaxed lg:block">Builds Twinglass. Spends most of his time on the flow people actually take through a product.</p>
+            <span className="mt-4 hidden lg:inline-block">
+              <Chip dot>{STORY_TOOLS.length} tools in this story</Chip>
+            </span>
+          </div>
+        </div>
+
+        <div className="min-w-0">
+          <h2 className="font-soft text-3xl leading-tight sm:text-4xl">The night I stopped being my own test runner.</h2>
+          <div className="mt-6 flex flex-col gap-4 text-[15.5px] leading-[1.9]">
+            <p>
+              I built the MCP server because I was tired of tapping through my own app after every change. One evening I asked Claude Code to check a new
+              sign-in flow while I kept replying on WhatsApp, on the same phone. It called <T>list_devices</T>, found my A024, checked it with{' '}
+              <T>device_info</T>, then opened its own <T>agent_screen</T> and got to work there. My screen didn’t even flicker.
+            </p>
+            <AnimatePresence initial={false}>
+              {open && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  className="flex flex-col gap-4 overflow-hidden"
+                >
+                  <p>
+                    The agent used <T>install_apk</T> to put the debug build on, <T>app_info</T> to make sure it was the right version, and <T>launch_app</T> to open it.
+                    Instead of guessing from pictures, it read the screen with <T>get_ui_tree</T> and <T>find_elements</T>, filled the form with <T>set_text</T>{' '}
+                    (and <T>type_text</T> for the one field that fought back), and pressed buttons with <T>tap_element</T>. Between steps it waited with{' '}
+                    <T>wait_for</T> until “Welcome” appeared, and the boring part, sign out and sign in again, it batched into one <T>run_steps</T>.
+                  </p>
+                  <p>
+                    Then it got picky. <T>screen_map</T> measured every view in dp and caught a gap that was 14 where my design said 16. It used{' '}
+                    <T>set_device_state</T> to switch on dark mode and the largest font size, went through every screen with <T>scroll</T> and <T>swipe</T>, and took
+                    a <T>screenshot</T> of each one. <T>record_screen</T> saved a video I watched the next morning.
+                  </p>
+                  <p>
+                    When the app crashed on a slow connection, <T>get_crashes</T> and <T>logcat</T> had the stack trace before I’d asked. <T>app_performance</T>{' '}
+                    showed janky frames on the feed, and <T>start_activity</T> timed the cold start. It reset things with <T>clear_app_data</T>, tried the
+                    permission prompts with <T>set_permission</T>, and pointed the app at the dev server on my Mac with <T>reverse_port</T>.
+                  </p>
+                  <p>
+                    By then my phone had locked itself. <T>unlock_phone</T> asked for my Touch ID on the Mac, never my PIN. It checked the test push landed with{' '}
+                    <T>get_notifications</T>, grabbed the exported log with <T>pull_file</T>, went back with <T>press_key</T>, closed the app with{' '}
+                    <T>stop_app</T>, and closed its own screen. I hadn’t put my phone down once.
+                  </p>
+                  <p className="text-heading">
+                    That’s the whole idea: your agent gets its own screen and real tools, and you keep your phone.
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <div className="mt-6 flex flex-wrap items-center gap-4">
+            <button
+              type="button"
+              aria-expanded={open}
+              onClick={() => setOpen((o) => !o)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-[4px] border border-input-border bg-input px-3.5 text-sm font-medium text-heading transition-colors hover:bg-muted"
+            >
+              {open ? 'Show less' : 'Read the whole story'}
+              <ChevronDown className={`size-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+            </button>
+            <MoreLink href={`${DOCS}/AGENTS.md`}>Every tool, explained</MoreLink>
+          </div>
+        </div>
+      </BlurFade>
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------- the little things
 
 export function Capabilities() {
-  const items: [LucideIcon, string, string][] = [
-    [Command, '⌘K for your phone', 'Open any phone app by name or send it a link.'],
-    [Clipboard, 'Clipboard history', 'Kept in memory only, and skips password managers.'],
-    [FileDown, 'Drag and drop', 'APKs install; anything else lands on the phone.'],
-    [Video, 'Screenshots and recordings', 'Saved to Pictures and Movies on your Mac.'],
-    [AppWindow, 'Compact or full windows', 'Phone frames, always on top, tile them all.'],
-    [Bell, 'Menu bar', 'Every phone and its battery, one click away.'],
-    [MousePointerClick, 'Keyboard shortcuts', 'Back, Home, volume, power, rotate, quick settings.'],
-    [RefreshCw, 'Updates itself', 'Verified downloads, and the phone app comes along.'],
+  const items: [LucideIcon, string, string, ReactNode][] = [
+    [Command, '⌘K for your phone', 'Open any phone app by name or send it a link.', <kbd className="font-mono">⌘K</kbd>],
+    [Clipboard, 'Clipboard history', 'Synced both ways, and skips password managers.', 'memory only'],
+    [FileDown, 'Drag and drop', 'APKs install; anything else lands on the phone.', '.apk · any file'],
+    [Video, 'Screenshots and recordings', 'One click, saved straight to your Mac.', '~/Pictures · ~/Movies'],
+    [AppWindow, 'Compact or full windows', 'Phone frames, always on top, tile them all.', '3 styles × 7 finishes'],
+    [Bell, 'Menu bar', 'Every phone and its battery, one click away.', 'launch at login'],
+    [MousePointerClick, 'Mouse and keys', 'Right-click is Back, middle-click is Home.', 'volume · rotate · power'],
+    [RefreshCw, 'Updates itself', 'Verified downloads; the phone app comes along.', 'SHA-256'],
   ]
   return (
     <section className={`pt-28 ${WRAP}`}>
-      <H2>And the little things.</H2>
-      <div className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-        {items.map(([I, t, b], k) => (
-          <BlurFade key={t} delay={(k % 4) * 0.04}>
-            <I className="size-5 text-mark" strokeWidth={1.6} />
-            <p className="mt-3 font-medium text-heading">{t}</p>
-            <p className="mt-1 text-sm leading-relaxed">{b}</p>
-          </BlurFade>
-        ))}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <H2>And the little things.</H2>
+        <p className="max-w-sm text-sm">The details that make it feel like part of your Mac, not a remote control.</p>
       </div>
+      <BlurFade className="relative mt-12 grid border-t border-l border-border sm:grid-cols-2 lg:grid-cols-4">
+        <FrameCorners />
+        {items.map(([I, t, b, detail]) => (
+          <div key={t} className="group relative flex flex-col border-r border-b border-border p-6 transition-colors hover:bg-primary/[0.06]">
+            <span className="flex size-10 items-center justify-center border border-input-border bg-input text-mark transition-colors group-hover:border-primary/60">
+              <I className="size-[18px]" strokeWidth={1.6} />
+            </span>
+            <p className="mt-5 font-medium text-heading">{t}</p>
+            <p className="mt-1.5 flex-1 text-sm leading-relaxed">{b}</p>
+            <span className="mt-4 self-start">
+              <Chip>{detail}</Chip>
+            </span>
+          </div>
+        ))}
+      </BlurFade>
     </section>
   )
 }
 
 // ---------------------------------------------------------------- privacy
 
+/** Phone ↔ encrypted link ↔ Mac, with a crossed-out cloud: nothing in between. */
+function PrivacyDiagram() {
+  return (
+    <div className="relative border border-border bg-tile p-6 sm:p-8">
+      <FrameCorners />
+      <Glow className="inset-0 opacity-60" />
+      <div className="relative flex items-center justify-between gap-3">
+        {(
+          [
+            [Smartphone, 'Your phone'],
+            [Laptop, 'Your Mac'],
+          ] as [LucideIcon, string][]
+        ).map(([I, t], k) => (
+          <div key={t} className={`flex flex-col items-center gap-2 ${k === 1 ? 'order-3' : ''}`}>
+            <span className="relative flex size-16 items-center justify-center border border-input-border bg-background text-heading">
+              <FrameCorners />
+              <I className="size-7" strokeWidth={1.4} />
+            </span>
+            <span className="text-xs text-heading">{t}</span>
+          </div>
+        ))}
+        <div className="order-2 flex flex-1 flex-col items-center gap-2 px-2">
+          <div className="relative h-px w-full bg-gradient-to-r from-transparent via-mark to-transparent">
+            <span className="absolute top-1/2 left-1/2 flex size-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center border border-primary/60 bg-background text-mark">
+              <Lock className="size-4" strokeWidth={1.8} />
+            </span>
+          </div>
+          <span className="mt-4 font-mono text-[11px] text-muted-foreground">USB · adb · AES-256-GCM</span>
+        </div>
+      </div>
+      <div className="relative mt-8 flex items-center justify-center gap-2.5 border border-dashed border-input-border py-3 text-sm text-muted-foreground">
+        <CloudOff className="size-4" strokeWidth={1.6} /> No server, no account, no analytics in between
+      </div>
+    </div>
+  )
+}
+
 export function PrivacyBlock() {
-  const items: [LucideIcon, string, string][] = [
-    [ShieldCheck, 'No accounts, no analytics', 'Nothing to sign up for. The only internet request is the update check.'],
-    [Lock, 'Encrypted Wi-Fi link', 'Paired with a 6-digit code, then AES-256-GCM on every frame.'],
-    [KeyRound, 'Your PIN behind Touch ID', 'Saved PINs stay encrypted in your keychain.'],
-    [Unlink, 'Forget works both ways', 'Forget on the Mac or the phone and the other side forgets too.'],
-    [SlidersHorizontal, 'You decide what the Mac reads', 'Device details, app icons and agent access switch off on the phone.'],
-    [Bot, 'Agents are opt-in', 'Off by default, localhost only, behind a token.'],
+  const items: [string, string][] = [
+    ['No accounts, no analytics', 'The only internet request is the update check.'],
+    ['Encrypted Wi-Fi link', 'Paired with a 6-digit code, AES-256-GCM on every frame.'],
+    ['Your PIN behind Touch ID', 'Saved PINs stay encrypted in your keychain.'],
+    ['Forget works both ways', 'Forget on either side and the other forgets too.'],
+    ['You decide what the Mac reads', 'Details, icons and agent access switch off on the phone.'],
+    ['Agents are opt-in', 'Off by default, localhost only, behind a token.'],
   ]
   return (
     <section id="privacy" className={`pt-28 ${WRAP}`}>
-      <H2>Private by default.</H2>
-      <p className="mt-4 text-lg">Your phone stays between your phone and your Mac.</p>
-      <div className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map(([I, t, b], k) => (
-          <BlurFade key={t} delay={(k % 3) * 0.05}>
-            <I className="size-5 text-mark" strokeWidth={1.6} />
-            <p className="mt-3 font-medium text-heading">{t}</p>
-            <p className="mt-1 text-sm leading-relaxed">{b}</p>
+      <div className="grid items-start gap-12 lg:grid-cols-[1fr_1.05fr]">
+        <div className="min-w-0">
+          <H2>Private by default.</H2>
+          <p className="mt-4 max-w-md text-lg">Your phone stays between your phone and your Mac. Here’s exactly what that means.</p>
+          <BlurFade className="mt-8">
+            <PrivacyDiagram />
           </BlurFade>
-        ))}
-      </div>
-      <div className="mt-10 flex flex-wrap gap-2">
-        <HoverButton href="/privacy">Privacy policy</HoverButton>
-        <GhostLink href={REPO}>Source on GitHub</GhostLink>
+          <div className="mt-8 flex flex-wrap gap-2">
+            <HoverButton href="/privacy">Read the privacy policy</HoverButton>
+            <GhostLink href={REPO}>Source on GitHub</GhostLink>
+          </div>
+        </div>
+        <ul className="divide-y divide-border border-y border-border">
+          {items.map(([t, b], k) => (
+            <BlurFade key={t} delay={k * 0.04}>
+              <li className="flex items-start gap-4 py-5">
+                <span className="mt-0.5">
+                  <Ok />
+                </span>
+                <div>
+                  <p className="font-medium text-heading">{t}</p>
+                  <p className="mt-1 text-sm leading-relaxed">{b}</p>
+                </div>
+              </li>
+            </BlurFade>
+          ))}
+        </ul>
       </div>
     </section>
   )
@@ -603,13 +837,13 @@ export function WhatsNew() {
           <p className="mt-3 text-sm leading-relaxed">{r.summary}</p>
           <div className="mt-5 flex flex-col gap-1">
             {older.map((o) => (
-              <span key={o.version} className="font-mono text-[11px] text-muted-foreground">
+              <a key={o.version} href={`/changelog#v${o.version}`} className="font-mono text-[11px] text-muted-foreground hover:text-heading">
                 v{o.version} · {o.title}
-              </span>
+              </a>
             ))}
           </div>
           <div className="mt-5">
-            <MoreLink href={`${REPO}/blob/master/CHANGELOG.md`}>Full changelog</MoreLink>
+            <MoreLink href="/changelog">Full changelog</MoreLink>
           </div>
         </div>
         <ul className="grid content-start gap-2.5 text-sm">
@@ -627,32 +861,80 @@ export function WhatsNew() {
 
 // ---------------------------------------------------------------- FAQ
 
-const FAQ: [string, ReactNode][] = [
-  ['Is it free?', 'Yes. No trial, no account, no in-app purchases.'],
-  ['Which Macs and phones?', 'Macs with Apple Silicon on macOS 13 or newer, and phones on Android 10 or newer. Intel Macs, Windows and Linux aren’t supported yet.'],
-  ['Do I need developer options on my phone?', 'No. Wi-Fi, no setup mode only needs the phone app. Developer mode adds second screens, full multi-touch, PIN unlock and all the agent tools.'],
-  ['Does the phone app need the internet?', 'No. It only talks to your paired Mac, and it gets its updates from your Mac too.'],
-  ['Why does macOS warn me when I open it?', 'Twinglass isn’t notarized yet. Installing from the terminal or Homebrew avoids the warning. If you downloaded the DMG in a browser, run xattr -cr /Applications/Twinglass.app once.'],
-  ['How does it update?', 'The Mac app checks GitHub for new releases, verifies the download’s SHA-256, swaps itself in place and reopens. It then offers the matching phone app to your phones.'],
-  ['Does it work with iPhone?', 'No. Twinglass is built on Android’s own tools: adb, scrcpy and the accessibility service.'],
-  ['Is my data safe with agents?', 'Agent access is off by default. If you turn it on, the AI tool you connect can see your phone’s screen and may send it to its provider, so only use it with tools you trust.'],
+type Topic = 'Setup' | 'Privacy' | 'Agents'
+const FAQ: [Topic, string, ReactNode][] = [
+  ['Setup', 'Is it free?', 'Yes. No trial, no account, no in-app purchases.'],
+  ['Setup', 'Which Macs and phones?', 'Macs with Apple Silicon on macOS 13 or newer, and phones on Android 10 or newer. Intel Macs, Windows and Linux aren’t supported yet.'],
+  ['Setup', 'Do I need developer options on my phone?', 'No. Wi-Fi, no setup mode only needs the phone app. Developer mode adds second screens, full multi-touch, PIN unlock and all the agent tools.'],
+  ['Setup', 'Why does macOS warn me when I open it?', 'Twinglass isn’t notarized yet. Installing from the terminal or Homebrew avoids the warning. If you downloaded the DMG in a browser, run xattr -cr /Applications/Twinglass.app once.'],
+  ['Setup', 'How does it update?', 'The Mac app checks GitHub for new releases, verifies the download’s SHA-256, swaps itself in place and reopens. It then offers the matching phone app to your phones.'],
+  ['Setup', 'Does it work with iPhone?', 'No. Twinglass is built on Android’s own tools: adb, scrcpy and the accessibility service.'],
+  ['Privacy', 'Does the phone app need the internet?', 'No. It only talks to your paired Mac, and it gets its updates from your Mac too.'],
+  ['Privacy', 'What does Twinglass send anywhere?', 'Nothing about you. The Mac app’s only internet request is the update check against GitHub Releases.'],
+  ['Agents', 'Is my data safe with agents?', 'Agent access is off by default. If you turn it on, the AI tool you connect can see your phone’s screen and may send it to its provider, so only use it with tools you trust.'],
+  ['Agents', 'Can an agent use my phone while I’m using it?', 'Yes. Agents work on their own second screen of the phone, in a window you can watch, so your screen stays yours.'],
 ]
 
 export function Faq() {
+  const [topic, setTopic] = useState<Topic | 'All'>('All')
+  const [open, setOpen] = useState<string | null>(FAQ[0]![1])
+  const shown = FAQ.filter(([t]) => topic === 'All' || t === topic)
+  const topics: (Topic | 'All')[] = ['All', 'Setup', 'Privacy', 'Agents']
   return (
     <section id="faq" className={`pt-28 ${WRAP}`}>
-      <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr]">
-        <H2>Questions.</H2>
-        <div className="divide-y divide-border border-y border-border">
-          {FAQ.map(([q, a]) => (
-            <details key={q} className="group py-1 [&_summary::-webkit-details-marker]:hidden">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4 font-medium text-heading">
-                {q}
-                <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-300 group-open:rotate-180" />
-              </summary>
-              <p className="pb-5 text-sm leading-relaxed">{a}</p>
-            </details>
-          ))}
+      <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr]">
+        <div className="flex flex-col">
+          <H2>Questions.</H2>
+          <p className="mt-4 max-w-sm">The ones people ask before they install. Pick a topic to narrow them down.</p>
+          <div role="tablist" aria-label="Topics" className="mt-6 flex flex-wrap gap-1.5">
+            {topics.map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={t === topic}
+                onClick={() => setTopic(t)}
+                className={`h-8 rounded-full border px-3.5 text-[13px] transition-colors ${t === topic ? 'border-primary/70 bg-primary/15 text-heading' : 'border-input-border bg-input text-muted-foreground hover:text-heading'}`}
+              >
+                {t}
+                <span className="ml-1.5 text-[11px] opacity-60">{t === 'All' ? FAQ.length : FAQ.filter(([x]) => x === t).length}</span>
+              </button>
+            ))}
+          </div>
+          <div className="relative mt-10 border border-border bg-tile p-6 lg:mt-auto">
+            <FrameCorners />
+            <p className="font-medium text-heading">Still stuck?</p>
+            <p className="mt-1.5 text-sm">Open an issue and include your Mac and phone models. Settings → About → Copy version details helps.</p>
+            <div className="mt-4 flex flex-col gap-2 text-sm">
+              <MoreLink href={`${REPO}/issues/new`}>Report a problem on GitHub</MoreLink>
+              <MoreLink href={`${DOCS}/AGENTS.md`}>Agent setup guide</MoreLink>
+              <MoreLink href="/privacy">Privacy policy</MoreLink>
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-border">
+          {shown.map(([t, q, a], k) => {
+            const isOpen = open === q
+            return (
+              <div key={q} className="border-b border-border">
+                <button type="button" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : q)} className="flex w-full items-center gap-4 py-5 text-left">
+                  <span className="w-6 shrink-0 font-mono text-xs text-muted-foreground">{String(k + 1).padStart(2, '0')}</span>
+                  <span className={`flex-1 font-medium transition-colors ${isOpen ? 'text-heading' : 'text-heading/85'}`}>{q}</span>
+                  {topic === 'All' && <span className="hidden text-[11px] text-muted-foreground sm:inline">{t}</span>}
+                  <span className={`flex size-7 shrink-0 items-center justify-center border transition-colors ${isOpen ? 'border-primary/60 bg-primary/15 text-mark' : 'border-input-border text-muted-foreground'}`}>
+                    <Plus className={`size-3.5 transition-transform duration-300 ${isOpen ? 'rotate-45' : ''}`} />
+                  </span>
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }} className="overflow-hidden">
+                      <p className="pr-12 pb-6 pl-10 text-sm leading-relaxed">{a}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )
+          })}
         </div>
       </div>
     </section>
@@ -661,42 +943,8 @@ export function Faq() {
 
 // ---------------------------------------------------------------- closing call to action + download
 
-// Labelled pills on both sides of the download box: they slide in from the edges as the section
-// scrolls in, then drift at slightly different speeds (parallax) and float gently. Built with
-// motion's useScroll / useTransform; still for reduced motion.
-const PILLS: { icon: LucideIcon; label: string; side: 'l' | 'r'; y: number; x: number; depth: number }[] = [
-  { icon: Smartphone, label: 'Android 10+', side: 'l', y: 14, x: 2, depth: 0.6 },
-  { icon: Wifi, label: 'Wi-Fi, no setup', side: 'l', y: 36, x: 0, depth: 1 },
-  { icon: Fingerprint, label: 'Touch ID unlock', side: 'l', y: 60, x: 3, depth: 0.75 },
-  { icon: Layers, label: 'Second screens', side: 'l', y: 83, x: 0.5, depth: 1.2 },
-  { icon: Bot, label: 'Coding agents', side: 'r', y: 18, x: 0.5, depth: 1.1 },
-  { icon: Command, label: '⌘K palette', side: 'r', y: 41, x: 3, depth: 0.7 },
-  { icon: Terminal, label: 'One-line install', side: 'r', y: 64, x: 0, depth: 1 },
-  { icon: Usb, label: 'USB or wireless', side: 'r', y: 87, x: 2, depth: 0.65 },
-]
-
-function Pill({ p, k, progress }: { p: (typeof PILLS)[number]; k: number; progress: MotionValue<number> }) {
-  const dir = p.side === 'l' ? -1 : 1
-  const enter = useTransform(progress, [0.06, 0.36], [1, 0], { clamp: true })
-  const x = useTransform(enter, (e) => e * dir * 220)
-  const y = useTransform(progress, [0.2, 1], [0, -90 * p.depth])
-  const opacity = useTransform(progress, [0.06, 0.3], [0, 1])
-  return (
-    <motion.div aria-hidden style={{ x, y, opacity, top: `${p.y}%`, [p.side === 'l' ? 'left' : 'right']: `${p.x}%` }} className="absolute hidden lg:block">
-      <div
-        className="relative flex -translate-y-1/2 animate-[floaty_6s_ease-in-out_infinite] items-center gap-2 border border-input-border bg-tile/90 px-3 py-2 text-[13px] whitespace-nowrap text-heading shadow-[0_10px_30px_-12px_rgb(124_92_255/0.7)] backdrop-blur motion-reduce:animate-none"
-        style={{ animationDelay: `${k * -0.8}s` }}
-      >
-        <FrameCorners />
-        <span className="flex size-6 items-center justify-center rounded-[4px] bg-primary/15 text-mark">
-          <p.icon className="size-3.5" strokeWidth={1.8} />
-        </span>
-        {p.label}
-      </div>
-    </motion.div>
-  )
-}
-
+// The download box rises into place as the section scrolls in, over a soft violet glow
+// (motion's useScroll / useTransform). Still for reduced motion.
 export function DownloadSection() {
   const ref = useRef<HTMLDivElement>(null)
   const still = useReducedMotion()
@@ -708,14 +956,11 @@ export function DownloadSection() {
   const lift = useTransform(progress, [0.08, 0.4], [50, 0], { clamp: true })
   return (
     <section id="download" className={`pt-28 ${WRAP}`}>
-      <div ref={ref} className="relative py-10 lg:px-52 lg:py-16 xl:px-56">
+      <div ref={ref} className="relative py-10 lg:py-16">
         <motion.div style={{ opacity: glow }} className="absolute -inset-x-16 inset-y-0 [mask-image:radial-gradient(ellipse_60%_55%_at_50%_60%,black_30%,transparent_75%)]">
           <Glow className="inset-0 [background:radial-gradient(ellipse_70%_60%_at_50%_70%,rgb(124_92_255/0.6),rgb(91_108_255/0.2)_45%,transparent_75%)]" />
         </motion.div>
-        {PILLS.map((p, k) => (
-          <Pill key={p.label} p={p} k={k} progress={progress} />
-        ))}
-        <motion.div style={{ scale, y: lift }} className="relative mx-auto max-w-2xl">
+        <motion.div style={{ scale, y: lift }} className="relative z-10 mx-auto max-w-2xl">
           <DownloadPanel />
         </motion.div>
       </div>
@@ -759,7 +1004,7 @@ export function Footer() {
             <p className="text-sm">An indie Mac app for people who work next to an Android phone. No accounts, no analytics.</p>
           </div>
           {col('Product', [local('/#features', 'Features'), local('/#how', 'How it works'), local('/#agents', 'For agents'), local('/#download', 'Download')])}
-          {col('Project', [out(REPO, 'GitHub'), out(`${REPO}/releases`, 'Releases'), out(`${REPO}/blob/master/CHANGELOG.md`, 'Changelog')])}
+          {col('Project', [out(REPO, 'GitHub'), local('/releases', 'Releases'), local('/changelog', 'Changelog')])}
           {col('Help & legal', [local('/privacy', 'Privacy Policy'), out(`${REPO}/issues/new`, 'Report a problem'), out(`${DOCS}/AGENTS.md`, 'Agent setup')])}
         </div>
         <p className="mt-12 text-xs text-muted-foreground">
@@ -769,6 +1014,12 @@ export function Footer() {
           </a>
           . Not affiliated with Google or Genymobile. Android is a trademark of Google LLC.
         </p>
+        {/* The name set large and cut off by the card's bottom edge, as a sign-off. */}
+        <div aria-hidden className="-mx-6 -mb-10 mt-10 overflow-hidden sm:-mx-10">
+          <p className="font-soft -mb-[0.22em] bg-gradient-to-b from-input-border to-tile bg-clip-text text-center text-[clamp(3rem,15vw,13.5rem)] leading-none whitespace-nowrap text-transparent select-none">
+            Twinglass
+          </p>
+        </div>
       </div>
     </footer>
   )
