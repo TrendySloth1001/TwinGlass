@@ -4,18 +4,18 @@ Twinglass for Mac and the Twinglass phone app ship together: each Mac release ca
 
 ## [0.1.5](https://github.com/TrendySloth1001/TwinGlass/releases/tag/v0.1.5) · 2026-11-13 · Tabs for every phone
 
-Open as many phones and second screens as you like as tabs in one window, pop any of them out into a phone-shaped window, and find Settings in a tab of its own. The phone app gets the same VS Code look.
+Open as many phones and second screens as you like as tabs in one window, pop any of them out into a phone-shaped window, and find Settings in a tab of its own. The phone app gets the same new look.
 
 ### Twinglass for Mac 0.1.5
 
 - Every phone and second screen you mirror opens as a tab in the main window, with no limit. Each tab keeps its own connection, so switching tabs never restarts a mirror.
 - Mobile view (⇧⌘M) pops a tab out into its own phone-shaped window. New window still opens separate windows.
 - Device shortcuts, ⌘K and clipboard history act on the tab in front.
-- Settings opens as a tab next to your phones, like VS Code's Settings editor.
+- Settings opens as a tab next to your phones.
 
 ### Phone app 0.9.0
 
-- A VS Code look to match the Mac: Dark and Light Modern colours, the system font, small corners and blue buttons and switches.
+- A new look to match the Mac: refined dark and light colours, the system font, small corners and blue buttons and switches.
 - Home, Device and Settings sit in a tab bar at the bottom, above a blue status bar that shows which Mac you're linked to.
 
 ## [0.1.4](https://github.com/TrendySloth1001/TwinGlass/releases/tag/v0.1.4) · 2026-11-12 · Room for the mirror
@@ -34,15 +34,15 @@ Fixes the mirror being squeezed into a narrow column when the side bar floats ov
 
 ## [0.1.3](https://github.com/TrendySloth1001/TwinGlass/releases/tag/v0.1.3) · 2026-11-12 · A familiar workbench
 
-Twinglass for Mac now looks and works like VS Code: an activity bar, an explorer for your phones, the phone as an editor tab and a status bar that shows what's live.
+Twinglass for Mac has a new workbench: an activity bar, an explorer for your phones, the phone as a tab and a status bar that shows what's live.
 
 ### Twinglass for Mac 0.1.3
 
-- VS Code-style workbench: a title bar with a command center that opens the palette, and an activity bar for Phones, opening an app, clipboard history, second screens, Agents, shortcuts and Settings.
+- A new workbench: a title bar with a command center that opens the palette, and an activity bar for Phones, opening an app, clipboard history, second screens, Agents, shortcuts and Settings.
 - Phones sit in an explorer-style tree: one row per way to reach the phone (USB, Wi-Fi), with an inline Mirror button, or double-click.
 - The mirrored phone is an editor tab (close it to disconnect), with breadcrumbs and the phone's controls underneath.
 - A status bar with a blue phone indicator and the stream's resolution, frame rate, codec, latency and audio.
-- VS Code's Light Modern and Dark Modern colours, the system font, square corners and a blue accent across every dialog and menu.
+- New light and dark colours, the system font, square corners and a blue accent across every dialog and menu.
 - The compact, phone-shaped mirror keeps its layout.
 
 ### Phone app 0.8.2
