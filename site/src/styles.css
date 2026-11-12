@@ -128,3 +128,22 @@
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 }
+
+/* Images that exist in both themes (the app screenshots): show the one matching the site's theme. */
+.only-light {
+  display: none;
+}
+:root[data-theme='light'] .only-light {
+  display: block;
+}
+:root[data-theme='light'] .only-dark {
+  display: none;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .only-light {
+    display: block;
+  }
+  :root:not([data-theme='dark']) .only-dark {
+    display: none;
+  }
+}

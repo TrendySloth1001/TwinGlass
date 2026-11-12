@@ -170,30 +170,46 @@ function HeroRotator() {
   )
 }
 
-/** Long dashed guides along a card's edges, running past its corners (the collage's blueprint grid). */
+/** Where the collage's cards sit on large screens: left, top, width, height. */
+const COLLAGE: Record<string, [string, string, string, string]> = {
+  mac: ['57%', '0px', '43%', '470px'],
+  phone: ['0%', '260px', '25%', '580px'],
+  agent: ['27%', '220px', '28%', '270px'],
+  unlock: ['27%', '515px', '28%', '220px'],
+  wifi: ['57%', '500px', '20%', '250px'],
+  second: ['79%', '500px', '21%', '330px'],
+}
+
+/**
+ * The blueprint grid: long dashed lines along every card's edges, running past its corners. Drawn
+ * once, under all the cards (which are opaque), so no line ever crosses a card or its image.
+ */
 function Guides() {
-  const line = 'pointer-events-none absolute border-dashed border-border'
+  const line = 'absolute border-dashed border-border'
   return (
-    <span aria-hidden className="hidden lg:block">
-      <span className={`${line} -inset-x-24 top-0 border-t`} />
-      <span className={`${line} -inset-x-24 bottom-0 border-b`} />
-      <span className={`${line} -inset-y-24 left-0 border-l`} />
-      <span className={`${line} -inset-y-24 right-0 border-r`} />
-    </span>
+    <div aria-hidden className="pointer-events-none absolute inset-0 z-0 hidden lg:block">
+      {Object.entries(COLLAGE).map(([k, [l, t, w, h]]) => (
+        <span key={k} className="absolute" style={{ left: l, top: t, width: w, height: h }}>
+          <span className={`${line} -inset-x-24 top-0 border-t`} />
+          <span className={`${line} -inset-x-24 bottom-0 border-b`} />
+          <span className={`${line} -inset-y-24 left-0 border-l`} />
+          <span className={`${line} -inset-y-24 right-0 border-r`} />
+        </span>
+      ))}
+    </div>
   )
 }
 
 /** One collage card. On large screens it's placed by --l/--t/--w/--h; on small ones it flows. */
-function Piece({ pos, className = '', delay = 0, children }: { pos: [string, string, string, string]; className?: string; delay?: number; children: ReactNode }) {
-  const [l, t, w, h] = pos
+function Piece({ at, className = '', delay = 0, children }: { at: keyof typeof COLLAGE; className?: string; delay?: number; children: ReactNode }) {
+  const [l, t, w, h] = COLLAGE[at]!
   return (
     <BlurFade
       delay={delay}
-      className="lg:absolute lg:top-[var(--t)] lg:left-[var(--l)] lg:h-[var(--h)] lg:w-[var(--w)]"
+      className="relative z-10 lg:absolute lg:top-[var(--t)] lg:left-[var(--l)] lg:h-[var(--h)] lg:w-[var(--w)]"
       style={{ '--l': l, '--t': t, '--w': w, '--h': h } as CSSProperties}
     >
       <div className={`relative h-full border border-border bg-tile ${className}`}>
-        <Guides />
         <FrameCorners />
         {children}
       </div>
@@ -205,8 +221,9 @@ function Piece({ pos, className = '', delay = 0, children }: { pos: [string, str
 function HeroCollage() {
   return (
     <div className="relative mt-16 flex flex-col gap-4 lg:block lg:h-[860px]">
+      <Guides />
       {/* Intro, top left (the reference layout's headline slot). */}
-      <BlurFade delay={0.1} className="lg:absolute lg:top-6 lg:left-0 lg:w-[52%]">
+      <BlurFade delay={0.1} className="relative z-10 lg:absolute lg:top-0 lg:left-0 lg:w-[52%] lg:bg-background lg:pt-6 lg:pr-6 lg:pb-8">
         <h2 className="font-soft text-3xl leading-tight text-heading sm:text-[2.1rem]">
           Mirror it, drive it,
           <br />
@@ -219,27 +236,29 @@ function HeroCollage() {
       </BlurFade>
 
       {/* The Mac app on a violet glow. */}
-      <Piece pos={['57%', '0px', '43%', '470px']} delay={0.15} className="min-h-[360px] overflow-hidden bg-[#0d0b16] sm:min-h-[460px] lg:min-h-0">
+      <Piece at="mac" delay={0.15} className="min-h-[360px] overflow-hidden sm:min-h-[460px] lg:min-h-0">
         <Glow className="inset-0 opacity-90 [background:radial-gradient(ellipse_90%_80%_at_50%_100%,rgb(124_92_255/0.8),rgb(70_60_200/0.35)_45%,transparent_75%)]" />
-        <div className="relative flex items-center justify-between px-5 pt-4 text-[12px] text-white/80">
-          <span className="flex items-center gap-2 font-medium text-white">
+        <div className="relative flex items-center justify-between px-5 pt-4 text-[12px] text-muted-foreground">
+          <span className="flex items-center gap-2 font-medium text-heading">
             <img src="/icon.png" alt="" className="size-4 rounded-[4px]" /> Twinglass for Mac
           </span>
-          <span className="font-mono text-[11px] text-white/60">workbench</span>
+          <span className="font-mono text-[11px]">workbench</span>
         </div>
-        <p className="relative px-5 pt-3 text-[22px] leading-tight font-medium text-white">Your phone, as a tab.</p>
-        <div className="absolute inset-x-5 bottom-0 top-[110px] overflow-hidden rounded-t-[10px] border border-b-0 border-white/15 bg-[#181818] shadow-2xl lg:inset-x-6">
-          <div className="flex h-5 items-center gap-1.5 border-b border-white/10 px-2.5">
+        <p className="relative px-5 pt-3 text-[22px] leading-tight font-medium text-heading">Your phone, as a tab.</p>
+        <div className="absolute inset-x-5 bottom-0 top-[110px] overflow-hidden rounded-t-[10px] border border-b-0 border-border bg-background shadow-2xl lg:inset-x-6">
+          <div className="flex h-5 items-center gap-1.5 border-b border-border px-2.5">
             <span className="size-2 rounded-full bg-[#ff5f57]" />
             <span className="size-2 rounded-full bg-[#febc2e]" />
             <span className="size-2 rounded-full bg-[#28c840]" />
           </div>
-          <img src="/app-workbench.jpg" alt="Twinglass for Mac: phones in a side bar, the Welcome tab and a status bar" width={1600} height={1220} className="w-full" loading="eager" />
+          {/* The app in the site's own theme. */}
+          <img src="/app-workbench-dark.jpg" alt="Twinglass for Mac: phones in a side bar, the Welcome tab and a status bar" width={1600} height={1220} className="only-dark w-full" loading="eager" />
+          <img src="/app-workbench-light.jpg" alt="Twinglass for Mac in the light theme" width={1600} height={1220} className="only-light w-full" loading="eager" />
         </div>
       </Piece>
 
       {/* The phone app. */}
-      <Piece pos={['0%', '260px', '25%', '580px']} delay={0.2} className="overflow-hidden">
+      <Piece at="phone" delay={0.2} className="overflow-hidden">
         <div className="p-5">
           <p className="flex items-center gap-2 text-[13px] font-medium text-heading">
             <Smartphone className="size-4 text-mark" /> The phone app
@@ -247,12 +266,13 @@ function HeroCollage() {
           <p className="mt-1 text-[13px] leading-snug">Pairs with a QR, sends files and clipboard, and shows what your Mac may read.</p>
         </div>
         <div className="relative mx-auto mt-1 w-[60%] max-w-[220px] overflow-hidden lg:w-[78%] lg:max-w-[260px] rounded-[26px] border-[5px] border-black bg-black shadow-2xl [mask-image:linear-gradient(to_bottom,black_70%,transparent)]">
-          <img src="/phone-app.webp" alt="The Twinglass phone app" width={565} height={1256} className="w-full" loading="lazy" />
+          <img src="/phone-app-dark.jpg" alt="The Twinglass phone app" width={620} height={1304} className="only-dark w-full" loading="lazy" />
+          <img src="/phone-app-light.jpg" alt="The Twinglass phone app in the light theme" width={620} height={1304} className="only-light w-full" loading="lazy" />
         </div>
       </Piece>
 
       {/* An agent working on its own screen. */}
-      <Piece pos={['27%', '220px', '28%', '270px']} delay={0.25}>
+      <Piece at="agent" delay={0.25}>
         <div className="flex h-full flex-col p-5">
           <p className="flex items-center gap-2 text-[13px] font-medium text-heading">
             <Bot className="size-4 text-mark" /> Agents get their own screen
@@ -269,7 +289,7 @@ function HeroCollage() {
       </Piece>
 
       {/* Unlock. */}
-      <Piece pos={['27%', '515px', '28%', '220px']} delay={0.3}>
+      <Piece at="unlock" delay={0.3}>
         <div className="flex h-full flex-col justify-between p-5">
           <span className="flex size-12 items-center justify-center rounded-full border border-border bg-input">
             <Fingerprint className="size-6 text-mark" strokeWidth={1.6} />
@@ -282,7 +302,7 @@ function HeroCollage() {
       </Piece>
 
       {/* Wi-Fi, no setup. */}
-      <Piece pos={['57%', '500px', '20%', '250px']} delay={0.35} className="overflow-hidden">
+      <Piece at="wifi" delay={0.35} className="overflow-hidden">
         <div className="relative flex h-[130px] items-center justify-center">
           {[0, 1, 2].map((k) => (
             <span
@@ -303,7 +323,7 @@ function HeroCollage() {
       </Piece>
 
       {/* Second screens. */}
-      <Piece pos={['79%', '500px', '21%', '330px']} delay={0.4}>
+      <Piece at="second" delay={0.4}>
         <div className="flex h-full flex-col p-5">
           <p className="flex items-center gap-2 text-[13px] font-medium text-heading">
             <Layers className="size-4 text-mark" /> Second screens
@@ -670,7 +690,8 @@ export function PhoneApp() {
           <div className="relative flex flex-1 items-end justify-center overflow-hidden pt-12">
             <Glow className="inset-0" />
             <div className="relative w-[15.5rem] rounded-t-[2.6rem] border border-b-0 border-input-border bg-[#050506] px-2 pt-2 shadow-[0_-20px_80px_-20px_rgb(124_92_255/0.6)] [mask-image:linear-gradient(to_bottom,black_70%,transparent)] sm:w-[17rem]">
-              <img src="/phone-app.webp" alt="The Twinglass phone app's Home screen" className="w-full rounded-t-[2.1rem]" width={565} height={1256} loading="lazy" />
+              <img src="/phone-app-dark.jpg" alt="The Twinglass phone app's Home screen" className="only-dark w-full rounded-t-[2.1rem]" width={620} height={1304} loading="lazy" />
+              <img src="/phone-app-light.jpg" alt="The Twinglass phone app's Home screen in the light theme" className="only-light w-full rounded-t-[2.1rem]" width={620} height={1304} loading="lazy" />
             </div>
           </div>
           {/* What you're looking at, pointed out. */}
