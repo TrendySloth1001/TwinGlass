@@ -2,6 +2,24 @@
   "repo": "https://github.com/TrendySloth1001/TwinGlass",
   "releases": [
     {
+      "version": "0.1.3",
+      "date": "2026-11-12",
+      "phone": "0.8.2",
+      "title": "A familiar workbench",
+      "summary": "Twinglass for Mac now looks and works like VS Code: an activity bar, an explorer for your phones, the phone as an editor tab and a status bar that shows what's live.",
+      "mac": [
+        "VS Code-style workbench: a title bar with a command center that opens the palette, and an activity bar for Phones, opening an app, clipboard history, second screens, Agents, shortcuts and Settings.",
+        "Phones sit in an explorer-style tree: one row per way to reach the phone (USB, Wi-Fi), with an inline Mirror button, or double-click.",
+        "The mirrored phone is an editor tab (close it to disconnect), with breadcrumbs and the phone's controls underneath.",
+        "A status bar with a blue phone indicator and the stream's resolution, frame rate, codec, latency and audio.",
+        "VS Code's Light Modern and Dark Modern colours, the system font, square corners and a blue accent across every dialog and menu.",
+        "The compact, phone-shaped mirror keeps its layout."
+      ],
+      "phoneApp": [
+        "No changes in this release: 0.8.2 is still the current phone app."
+      ]
+    },
+    {
       "version": "0.1.2",
       "date": "2026-11-12",
       "phone": "0.8.2",
