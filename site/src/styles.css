@@ -147,3 +147,19 @@
     display: none;
   }
 }
+
+/* Hero collage details: the fingerprint pad's scanning line and the agent transcript's caret. */
+@keyframes scan {
+  0%, 100% { top: 14%; }
+  50% { top: 84%; }
+}
+@keyframes caret {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Nothing may widen the page sideways on a phone (glows, hidden tooltips, the collage's guides). */
+html,
+body {
+  overflow-x: clip;
+}

@@ -179,10 +179,15 @@ const COLLAGE: Record<string, [string, string, string, string]> = {
   wifi: ['57%', '500px', '20%', '250px'],
   second: ['79%', '500px', '21%', '330px'],
 }
+/** Empty cells of the grid, filled with hatching (cut-out detailing, not content). */
+const HATCH: [string, string, string, string][] = [
+  ['27%', '765px', '28%', '75px'],
+  ['57%', '780px', '20%', '60px'],
+]
 
 /**
- * The blueprint grid: long dashed lines along every card's edges, running past its corners. Drawn
- * once, under all the cards (which are opaque), so no line ever crosses a card or its image.
+ * The blueprint grid: long dashed lines along every card's edges, running past its corners, plus
+ * hatched empty cells. Drawn once, under all the cards (which are opaque), so no line crosses a card.
  */
 function Guides() {
   const line = 'absolute border-dashed border-border'
@@ -196,12 +201,46 @@ function Guides() {
           <span className={`${line} -inset-y-24 right-0 border-r`} />
         </span>
       ))}
+      {HATCH.map(([l, t, w, h]) => (
+        <span
+          key={l + t}
+          className="absolute border border-dashed border-border [background:repeating-linear-gradient(135deg,var(--color-border)_0_1px,transparent_1px_9px)]"
+          style={{ left: l, top: t, width: w, height: h }}
+        />
+      ))}
     </div>
   )
 }
 
-/** One collage card. On large screens it's placed by --l/--t/--w/--h; on small ones it flows. */
-function Piece({ at, className = '', delay = 0, children }: { at: keyof typeof COLLAGE; className?: string; delay?: number; children: ReactNode }) {
+/** A "+" registration mark centred on a card corner. */
+function Cross({ className }: { className: string }) {
+  return (
+    <span aria-hidden className={`pointer-events-none absolute z-20 size-[15px] ${className}`}>
+      <span className="absolute top-1/2 left-0 h-px w-full -translate-y-1/2 bg-input-border" />
+      <span className="absolute top-0 left-1/2 h-full w-px -translate-x-1/2 bg-input-border" />
+    </span>
+  )
+}
+
+/**
+ * One collage card. On large screens it's placed by --l/--t/--w/--h; on small ones it flows. [tag]
+ * sits in a notch cut into the top border; [overlay] may break out of the card's edges.
+ */
+function Piece({
+  at,
+  tag,
+  className = '',
+  delay = 0,
+  overlay,
+  children,
+}: {
+  at: keyof typeof COLLAGE
+  tag: string
+  className?: string
+  delay?: number
+  overlay?: ReactNode
+  children: ReactNode
+}) {
   const [l, t, w, h] = COLLAGE[at]!
   return (
     <BlurFade
@@ -209,10 +248,17 @@ function Piece({ at, className = '', delay = 0, children }: { at: keyof typeof C
       className="relative z-10 lg:absolute lg:top-[var(--t)] lg:left-[var(--l)] lg:h-[var(--h)] lg:w-[var(--w)]"
       style={{ '--l': l, '--t': t, '--w': w, '--h': h } as CSSProperties}
     >
-      <div className={`relative h-full border border-border bg-tile ${className}`}>
-        <FrameCorners />
-        {children}
-      </div>
+      <div className={`relative h-full border border-border bg-tile ${className}`}>{children}</div>
+      {/* The notch: the label's own background cuts the border line. */}
+      <span className="absolute -top-[9px] left-4 z-20 flex items-center gap-1.5 bg-background px-1.5 font-mono text-[10px] tracking-wide text-muted-foreground uppercase">
+        <span className="size-1 rounded-full bg-mark" />
+        {tag}
+      </span>
+      <Cross className="-top-[8px] -left-[8px]" />
+      <Cross className="-top-[8px] -right-[8px]" />
+      <Cross className="-bottom-[8px] -left-[8px]" />
+      <Cross className="-right-[8px] -bottom-[8px]" />
+      {overlay}
     </BlurFade>
   )
 }
@@ -220,11 +266,12 @@ function Piece({ at, className = '', delay = 0, children }: { at: keyof typeof C
 /** The hero's product collage: the Mac app, the phone app and what they do, laid out on a dashed grid. */
 function HeroCollage() {
   return (
-    <div className="relative mt-16 flex flex-col gap-4 lg:block lg:h-[860px]">
+    <div className="relative mt-16 flex flex-col gap-6 lg:block lg:h-[860px]">
       <Guides />
       {/* Intro, top left (the reference layout's headline slot). */}
       <BlurFade delay={0.1} className="relative z-10 lg:absolute lg:top-0 lg:left-0 lg:w-[52%] lg:bg-background lg:pt-6 lg:pr-6 lg:pb-8">
-        <h2 className="font-soft text-3xl leading-tight text-heading sm:text-[2.1rem]">
+        <p className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">00 · What you get</p>
+        <h2 className="font-soft mt-3 text-3xl leading-tight text-heading sm:text-[2.1rem]">
           Mirror it, drive it,
           <br />
           or hand it to your <span className="text-mark">AI agent.</span>
@@ -235,17 +282,31 @@ function HeroCollage() {
         </p>
       </BlurFade>
 
-      {/* The Mac app on a violet glow. */}
-      <Piece at="mac" delay={0.15} className="min-h-[360px] overflow-hidden sm:min-h-[460px] lg:min-h-0">
+      {/* The Mac app on a violet glow, with a live chip breaking out of its bottom edge. */}
+      <Piece
+        at="mac"
+        tag="01 · Mac"
+        delay={0.15}
+        className="min-h-[360px] overflow-hidden sm:min-h-[460px] lg:min-h-0"
+        overlay={
+          <div className="absolute -bottom-4 left-6 z-30 hidden items-center gap-2 border border-input-border bg-tile px-3 py-1.5 font-mono text-[11px] shadow-xl sm:flex">
+            <span className="size-1.5 rounded-full bg-ok motion-safe:animate-pulse" />
+            <span className="text-heading">Mirroring A024</span>
+            <span className="text-muted-foreground">· Wi-Fi · 12 ms · 120 Hz</span>
+          </div>
+        }
+      >
         <Glow className="inset-0 opacity-90 [background:radial-gradient(ellipse_90%_80%_at_50%_100%,rgb(124_92_255/0.8),rgb(70_60_200/0.35)_45%,transparent_75%)]" />
-        <div className="relative flex items-center justify-between px-5 pt-4 text-[12px] text-muted-foreground">
+        {/* Fine dot texture over the glow. */}
+        <span aria-hidden className="absolute inset-0 opacity-40 [background-image:radial-gradient(var(--color-border)_1px,transparent_1px)] [background-size:14px_14px]" />
+        <div className="relative flex items-center justify-between px-5 pt-5 text-[12px] text-muted-foreground">
           <span className="flex items-center gap-2 font-medium text-heading">
             <img src="/icon.png" alt="" className="size-4 rounded-[4px]" /> Twinglass for Mac
           </span>
-          <span className="font-mono text-[11px]">workbench</span>
+          <span className="flex items-center gap-1.5 border border-border px-1.5 py-0.5 font-mono text-[10px]">⌘K</span>
         </div>
         <p className="relative px-5 pt-3 text-[22px] leading-tight font-medium text-heading">Your phone, as a tab.</p>
-        <div className="absolute inset-x-5 bottom-0 top-[110px] overflow-hidden rounded-t-[10px] border border-b-0 border-border bg-background shadow-2xl lg:inset-x-6">
+        <div className="absolute inset-x-5 bottom-0 top-[110px] overflow-hidden rounded-t-[10px] border border-b-0 border-border bg-background shadow-2xl ring-1 ring-mark/20 lg:inset-x-6">
           <div className="flex h-5 items-center gap-1.5 border-b border-border px-2.5">
             <span className="size-2 rounded-full bg-[#ff5f57]" />
             <span className="size-2 rounded-full bg-[#febc2e]" />
@@ -257,52 +318,66 @@ function HeroCollage() {
         </div>
       </Piece>
 
-      {/* The phone app. */}
-      <Piece at="phone" delay={0.2} className="overflow-hidden">
+      {/* The phone app: the phone rises out of a cut-out window in the card. */}
+      <Piece at="phone" tag="02 · Phone" delay={0.2} className="overflow-hidden">
         <div className="p-5">
           <p className="flex items-center gap-2 text-[13px] font-medium text-heading">
             <Smartphone className="size-4 text-mark" /> The phone app
           </p>
           <p className="mt-1 text-[13px] leading-snug">Pairs with a QR, sends files and clipboard, and shows what your Mac may read.</p>
         </div>
-        <div className="relative mx-auto mt-1 w-[60%] max-w-[220px] overflow-hidden lg:w-[78%] lg:max-w-[260px] rounded-[26px] border-[5px] border-black bg-black shadow-2xl [mask-image:linear-gradient(to_bottom,black_70%,transparent)]">
-          <img src="/phone-app-dark.jpg" alt="The Twinglass phone app" width={620} height={1304} className="only-dark w-full" loading="lazy" />
-          <img src="/phone-app-light.jpg" alt="The Twinglass phone app in the light theme" width={620} height={1304} className="only-light w-full" loading="lazy" />
+        <div className="relative mx-3 mb-3 flex justify-center overflow-hidden border border-border pt-6 [background:repeating-linear-gradient(135deg,var(--color-border)_0_1px,transparent_1px_9px)] lg:absolute lg:inset-x-3 lg:top-[118px] lg:bottom-3 lg:m-0">
+          <div className="relative w-[60%] max-w-[220px] overflow-hidden rounded-[26px] border-[5px] border-black bg-black shadow-2xl [mask-image:linear-gradient(to_bottom,black_75%,transparent)] lg:w-[80%] lg:max-w-[250px]">
+            <img src="/phone-app-dark.jpg" alt="The Twinglass phone app" width={620} height={1304} className="only-dark w-full" loading="lazy" />
+            <img src="/phone-app-light.jpg" alt="The Twinglass phone app in the light theme" width={620} height={1304} className="only-light w-full" loading="lazy" />
+          </div>
+          <span className="absolute top-2 right-2 font-mono text-[10px] text-muted-foreground">v0.9.0</span>
         </div>
       </Piece>
 
       {/* An agent working on its own screen. */}
-      <Piece at="agent" delay={0.25}>
+      <Piece at="agent" tag="03 · Agents" delay={0.25}>
         <div className="flex h-full flex-col p-5">
           <p className="flex items-center gap-2 text-[13px] font-medium text-heading">
             <Bot className="size-4 text-mark" /> Agents get their own screen
           </p>
-          <div className="mt-4 flex-1 space-y-1.5 border border-border bg-input/70 p-3 font-mono text-[11.5px] leading-relaxed">
-            <p className="text-muted-foreground">agent · second screen</p>
-            <p className="text-heading">launch_app “Settings”</p>
-            <p className="text-heading">tap_element “Display”</p>
-            <p className="text-heading">set_device_state dark_mode=on</p>
-            <p className="text-ok">✓ settled in 320 ms · screenshot saved</p>
+          <div className="mt-4 flex flex-1 border border-border bg-input/70 font-mono text-[11.5px] leading-relaxed">
+            <ol aria-hidden className="border-r border-border px-2 py-3 text-right text-muted-foreground/60 select-none">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <li key={n}>{n}</li>
+              ))}
+            </ol>
+            <div className="min-w-0 flex-1 px-3 py-3">
+              <p className="text-muted-foreground">agent · second screen</p>
+              <p className="truncate text-heading">launch_app “Settings”</p>
+              <p className="truncate text-heading">tap_element “Display”</p>
+              <p className="truncate text-heading">set_device_state dark_mode=on</p>
+              <p className="truncate text-ok">
+                ✓ settled in 320 ms<span className="ml-0.5 inline-block h-3 w-1.5 translate-y-0.5 bg-mark motion-safe:animate-[caret_1.1s_steps(1)_infinite]" />
+              </p>
+            </div>
           </div>
           <p className="mt-3 text-[12px]">You keep using your phone meanwhile.</p>
         </div>
       </Piece>
 
       {/* Unlock. */}
-      <Piece at="unlock" delay={0.3}>
-        <div className="flex h-full flex-col justify-between p-5">
-          <span className="flex size-12 items-center justify-center rounded-full border border-border bg-input">
-            <Fingerprint className="size-6 text-mark" strokeWidth={1.6} />
-          </span>
+      <Piece at="unlock" tag="04 · Unlock" delay={0.3}>
+        <div className="flex h-full items-end justify-between gap-4 p-5">
           <div>
             <p className="text-[15px] font-medium text-heading">Unlock with Touch ID</p>
             <p className="mt-1 text-[13px] leading-snug">Your PIN stays in the Mac’s keychain. Agents can’t unlock without your finger.</p>
           </div>
+          {/* A fingerprint pad with a scanning line. */}
+          <span className="relative flex size-[88px] shrink-0 items-center justify-center self-center overflow-hidden rounded-[20px] border border-input-border bg-input">
+            <Fingerprint className="size-10 text-mark" strokeWidth={1.3} />
+            <span aria-hidden className="absolute inset-x-2 h-px bg-mark shadow-[0_0_10px_2px_rgb(124_92_255/0.6)] motion-safe:animate-[scan_2.4s_ease-in-out_infinite]" />
+          </span>
         </div>
       </Piece>
 
       {/* Wi-Fi, no setup. */}
-      <Piece at="wifi" delay={0.35} className="overflow-hidden">
+      <Piece at="wifi" tag="05 · Wi-Fi" delay={0.35} className="overflow-hidden">
         <div className="relative flex h-[130px] items-center justify-center">
           {[0, 1, 2].map((k) => (
             <span
@@ -315,23 +390,27 @@ function HeroCollage() {
           <span className="relative flex size-11 items-center justify-center rounded-full bg-mark/15">
             <Wifi className="size-5 text-mark" />
           </span>
+          <span className="absolute right-3 bottom-2 font-mono text-[10px] text-muted-foreground">AES-256-GCM</span>
         </div>
-        <div className="px-5 pb-5">
+        <div className="border-t border-dashed border-border px-5 pt-3 pb-5">
           <p className="text-[15px] font-medium text-heading">Wi-Fi, no setup</p>
           <p className="mt-1 text-[13px] leading-snug">Scan a code once. No cable, no developer options.</p>
         </div>
       </Piece>
 
       {/* Second screens. */}
-      <Piece at="second" delay={0.4}>
+      <Piece at="second" tag="06 · Screens" delay={0.4}>
         <div className="flex h-full flex-col p-5">
           <p className="flex items-center gap-2 text-[13px] font-medium text-heading">
             <Layers className="size-4 text-mark" /> Second screens
           </p>
-          <div className="relative mt-4 flex-1">
-            <div className="absolute top-0 left-0 h-[78%] w-[52%] rounded-[12px] border-[3px] border-black bg-gradient-to-b from-[#2a2346] to-[#120f1f] shadow-xl" />
+          <div className="relative mt-4 min-h-[150px] flex-1">
+            <div className="absolute top-0 left-0 h-[78%] w-[52%] rounded-[12px] border-[3px] border-black bg-gradient-to-b from-[#2a2346] to-[#120f1f] shadow-xl">
+              <span className="absolute -top-2.5 left-2 bg-tile px-1 font-mono text-[9px] text-muted-foreground">phone</span>
+            </div>
             <div className="absolute right-0 bottom-0 flex h-[78%] w-[52%] flex-col gap-1.5 rounded-[12px] border-[3px] border-black bg-[#1f1f1f] p-2 shadow-xl">
-              <span className="h-2 w-2/3 rounded-full bg-white/25" />
+              <span className="absolute -top-2.5 left-2 bg-tile px-1 font-mono text-[9px] text-mark">screen 2</span>
+              <span className="mt-1 h-2 w-2/3 rounded-full bg-white/25" />
               <span className="h-2 w-1/2 rounded-full bg-white/15" />
               <span className="mt-auto h-6 rounded-[5px] bg-mark/70" />
             </div>
@@ -780,7 +859,7 @@ function T({ children }: { children: string }) {
         <span
           role="tooltip"
           style={{ marginLeft: shift }}
-          className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-[min(16rem,calc(100vw-1rem))] -translate-x-1/2 translate-y-1 border border-input-border bg-background p-3 text-left font-sans text-[13px] leading-snug font-normal whitespace-normal text-foreground opacity-0 shadow-[0_16px_40px_-12px_rgb(0_0_0/0.6)] backdrop-blur-xl transition-all duration-150 group-hover/t:translate-y-0 group-hover/t:opacity-100 group-focus-visible/t:translate-y-0 group-focus-visible/t:opacity-100"
+          className="pointer-events-none invisible absolute bottom-full left-1/2 z-20 mb-2 w-[min(16rem,calc(100vw-1rem))] -translate-x-1/2 translate-y-1 group-hover/t:visible group-focus-visible/t:visible border border-input-border bg-background p-3 text-left font-sans text-[13px] leading-snug font-normal whitespace-normal text-foreground opacity-0 shadow-[0_16px_40px_-12px_rgb(0_0_0/0.6)] backdrop-blur-xl transition-all duration-150 group-hover/t:translate-y-0 group-hover/t:opacity-100 group-focus-visible/t:translate-y-0 group-focus-visible/t:opacity-100"
         >
           <span className="mb-1 flex items-center gap-1.5 font-mono text-xs text-heading">
             {Icon && <Icon aria-hidden className="size-3.5 text-mark" />}
