@@ -2,6 +2,20 @@
 
 Twinglass for Mac and the Twinglass phone app ship together: each Mac release carries the phone app listed with it.
 
+## [0.1.4](https://github.com/TrendySloth1001/TwinGlass/releases/tag/v0.1.4) · 2026-11-12 · Room for the mirror
+
+Fixes the mirror being squeezed into a narrow column when the side bar floats over it.
+
+### Twinglass for Mac 0.1.4
+
+- With a floating side bar, the mirror, tab and controls fill the window again instead of a narrow column on the left.
+- The floating side bar stops above the status bar.
+- Breadcrumbs no longer run into the phone controls in narrow windows.
+
+### Phone app 0.8.2
+
+- No changes in this release: 0.8.2 is still the current phone app.
+
 ## [0.1.3](https://github.com/TrendySloth1001/TwinGlass/releases/tag/v0.1.3) · 2026-11-12 · A familiar workbench
 
 Twinglass for Mac now looks and works like VS Code: an activity bar, an explorer for your phones, the phone as an editor tab and a status bar that shows what's live.

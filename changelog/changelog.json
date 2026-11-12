@@ -2,6 +2,21 @@
   "repo": "https://github.com/TrendySloth1001/TwinGlass",
   "releases": [
     {
+      "version": "0.1.4",
+      "date": "2026-11-12",
+      "phone": "0.8.2",
+      "title": "Room for the mirror",
+      "summary": "Fixes the mirror being squeezed into a narrow column when the side bar floats over it.",
+      "mac": [
+        "With a floating side bar, the mirror, tab and controls fill the window again instead of a narrow column on the left.",
+        "The floating side bar stops above the status bar.",
+        "Breadcrumbs no longer run into the phone controls in narrow windows."
+      ],
+      "phoneApp": [
+        "No changes in this release: 0.8.2 is still the current phone app."
+      ]
+    },
+    {
       "version": "0.1.3",
       "date": "2026-11-12",
       "phone": "0.8.2",
