@@ -11,7 +11,7 @@ type Path = 'wifi' | 'developer'
 /** Numbered step with a title and body (the sheet's columns). */
 function Step({ n, title, children, done }: { n: number; title: string; children: ReactNode; done?: boolean }): ReactNode {
   return (
-    <div className="flex min-w-0 flex-1 flex-col rounded-2xl border bg-background/60 p-5">
+    <div className="flex min-w-0 flex-1 flex-col rounded-[4px] border bg-background/60 p-5">
       <div className="mb-3 flex items-center gap-2.5">
         <span className={cn('grid size-6 place-items-center rounded-full text-[11px] font-semibold', done ? 'bg-brand text-white' : 'bg-primary text-primary-foreground')}>
           {done ? <Check className="size-3.5" /> : n}
@@ -84,7 +84,7 @@ export function AddPhoneSheet({ open, onOpenChange, onDeveloper }: { open: boole
 
           {path === 'wifi' &&
             (paired ? (
-              <div className="mt-6 flex items-center gap-4 rounded-2xl border bg-background/60 p-6">
+              <div className="mt-6 flex items-center gap-4 rounded-[4px] border bg-background/60 p-6">
                 <span className="grid size-12 place-items-center rounded-full bg-brand text-white">
                   <Check className="size-6" />
                 </span>
@@ -103,9 +103,9 @@ export function AddPhoneSheet({ open, onOpenChange, onDeveloper }: { open: boole
                   </p>
                   <div className="flex items-center gap-4">
                     {apk ? (
-                      <img src={apk.qr} alt="QR code to download the Twinglass app" className="size-36 rounded-xl bg-white p-1.5" draggable={false} />
+                      <img src={apk.qr} alt="QR code to download the Twinglass app" className="size-36 rounded-[4px] bg-white p-1.5" draggable={false} />
                     ) : (
-                      <div className="grid size-36 place-items-center rounded-xl border border-dashed text-center text-[11px] text-muted-foreground">Not on Wi-Fi</div>
+                      <div className="grid size-36 place-items-center rounded-[4px] border border-dashed text-center text-[11px] text-muted-foreground">Not on Wi-Fi</div>
                     )}
                     <div className="min-w-0 text-[12px] text-muted-foreground">
                       The QR changes with each code.

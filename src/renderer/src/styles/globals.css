@@ -4,73 +4,97 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Twinglass design tokens. Visual language shared with Sparky (agent-worker/frontend: core/constants
- * app_colors.dart, app_sizes.dart): monochrome surfaces (true black on dark, warm off-white on
- * light), one red accent (#D71921) kept for "on / active / live" (switches, recording, the agent,
- * unread), Space Grotesk for text, Space Mono caps for small labels, Doto (dot matrix) for figures,
- * a 4 pt grid, radii 12 / 20 / pill (28 for dialogs), hairline borders and a dot-grid backdrop.
- * shadcn/ui components read these through the @theme mapping below.
+ * Twinglass design tokens: the VS Code workbench look. Light follows VS Code's "Light Modern" theme
+ * and dark its "Dark Modern" theme (editor, side bar, activity bar, title bar, status bar, list,
+ * input and button colours), with the system UI font at 13 px, 2 px radii on buttons and inputs,
+ * hairline borders and one blue accent (#0078d4) for focus, primary buttons and toggles. Red stays
+ * for destructive actions and recording. shadcn/ui components read these through @theme below.
  */
 :root {
-  --radius: 0.75rem;
-  --background: #f4f4f2;
-  --foreground: #0a0a0a;
-  --card: #ffffff;
-  --card-foreground: #0a0a0a;
-  --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
-  --primary: #0a0a0a;
+  --radius: 0.375rem;
+  --background: #ffffff; /* editor */
+  --foreground: #3b3b3b;
+  --card: #f8f8f8;
+  --card-foreground: #3b3b3b;
+  --popover: #f8f8f8; /* editorWidget / menu */
+  --popover-foreground: #3b3b3b;
+  --primary: #005fb8; /* button.background */
   --primary-foreground: #ffffff;
-  --secondary: #ebebe8;
-  --secondary-foreground: #0a0a0a;
-  --muted: #ebebe8;
-  --muted-foreground: #5e5e5a;
-  --faint: #8e8e89;
-  --accent: #ebebe8;
-  --accent-foreground: #0a0a0a;
-  --destructive: #d71921;
-  --border: #d6d6d2;
-  --border-strong: #a8a8a3;
-  --input: #d6d6d2;
-  --ring: #a8a8a3;
-  --success: #1f8a4c;
-  --warning: #b86e00;
+  --secondary: #e5e5e5; /* button.secondaryBackground */
+  --secondary-foreground: #3b3b3b;
+  --muted: #f2f2f2;
+  --muted-foreground: #616161;
+  --faint: #868686;
+  --accent: #f2f2f2; /* list.hoverBackground */
+  --accent-foreground: #3b3b3b;
+  --selection: #e4e6f1; /* list.activeSelectionBackground */
+  --destructive: #c72e0f;
+  --border: #e5e5e5;
+  --border-strong: #cecece;
+  --input: #cecece; /* input.border */
+  --input-background: #ffffff;
+  --ring: #005fb8; /* focusBorder */
+  --success: #2ea043;
+  --warning: #bf8803;
   --brand: #d71921;
-  --stage: #ebebe8;
-  --sidebar: #ffffff;
-  --sidebar-border: #d6d6d2;
-  --dot-grid: #dcdcd7;
+  --link: #005fb8; /* textLink.foreground */
+  --stage: #ffffff;
+  --sidebar: #f8f8f8;
+  --sidebar-border: #e5e5e5;
+  --activity: #f8f8f8;
+  --activity-foreground: #1f1f1f;
+  --activity-inactive: #616161;
+  --titlebar: #f8f8f8;
+  --statusbar: #f8f8f8;
+  --statusbar-foreground: #3b3b3b;
+  --statusbar-remote: #005fb8;
+  --tab-inactive: #f8f8f8;
+  --tab-active-border: #005fb8;
+  --badge: #005fb8;
+  --dot-grid: transparent;
 }
 
 .dark {
-  --background: #000000;
-  --foreground: #ffffff;
-  --card: #0a0a0a;
-  --card-foreground: #ffffff;
-  --popover: #141414;
-  --popover-foreground: #ffffff;
-  --primary: #ffffff;
-  --primary-foreground: #000000;
-  --secondary: #141414;
-  --secondary-foreground: #ffffff;
-  --muted: #141414;
-  --muted-foreground: #999999;
-  --faint: #5c5c5c;
-  --accent: #1f1f1f;
+  --background: #1f1f1f;
+  --foreground: #cccccc;
+  --card: #181818;
+  --card-foreground: #cccccc;
+  --popover: #202020;
+  --popover-foreground: #cccccc;
+  --primary: #0078d4;
+  --primary-foreground: #ffffff;
+  --secondary: #313131;
+  --secondary-foreground: #cccccc;
+  --muted: #2a2d2e;
+  --muted-foreground: #9d9d9d;
+  --faint: #868686;
+  --accent: #2a2d2e;
   --accent-foreground: #ffffff;
-  /* Red text on black needs a lift to stay readable; fills keep the true red (--brand). */
-  --destructive: #ff4d55;
-  --border: #2a2a2a;
-  --border-strong: #3d3d3d;
-  --input: #2a2a2a;
-  --ring: #3d3d3d;
-  --success: #4cc38a;
-  --warning: #f0a33a;
+  --selection: #37373d;
+  --destructive: #f85149;
+  --border: #2b2b2b;
+  --border-strong: #3c3c3c;
+  --input: #3c3c3c;
+  --input-background: #313131;
+  --ring: #0078d4;
+  --success: #2ea043;
+  --warning: #cca700;
   --brand: #d71921;
-  --stage: #0a0a0a;
-  --sidebar: #0a0a0a;
-  --sidebar-border: #1f1f1f;
-  --dot-grid: #1c1c1c;
+  --link: #4daafc;
+  --stage: #1f1f1f;
+  --sidebar: #181818;
+  --sidebar-border: #2b2b2b;
+  --activity: #181818;
+  --activity-foreground: #d7d7d7;
+  --activity-inactive: #868686;
+  --titlebar: #181818;
+  --statusbar: #181818;
+  --statusbar-foreground: #cccccc;
+  --statusbar-remote: #0078d4;
+  --tab-inactive: #181818;
+  --tab-active-border: #0078d4;
+  --badge: #0078d4;
+  --dot-grid: transparent;
 }
 
 @theme inline {
@@ -107,10 +131,23 @@
   --color-stage: var(--stage);
   --color-sidebar: var(--sidebar);
   --color-sidebar-border: var(--sidebar-border);
-  --font-sans: 'Space Grotesk Variable', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-mono: 'Space Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-  /* Dot-matrix face for figures (battery %, timers, fps): the Nothing touch, used sparingly. */
-  --font-dot: 'Doto Variable', 'Space Mono', monospace;
+  --color-selection: var(--selection);
+  --color-input-background: var(--input-background);
+  --color-link: var(--link);
+  --color-activity: var(--activity);
+  --color-activity-foreground: var(--activity-foreground);
+  --color-activity-inactive: var(--activity-inactive);
+  --color-titlebar: var(--titlebar);
+  --color-statusbar: var(--statusbar);
+  --color-statusbar-foreground: var(--statusbar-foreground);
+  --color-statusbar-remote: var(--statusbar-remote);
+  --color-tab-inactive: var(--tab-inactive);
+  --color-tab-active-border: var(--tab-active-border);
+  --color-badge: var(--badge);
+  /* VS Code's workbench font on macOS, and its default editor font. */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+  --font-mono: Menlo, Monaco, 'SF Mono', 'Courier New', monospace;
+  --font-dot: var(--font-sans);
   /* Springy entrances (Sparky's "snappy" spring, damping ~0.86, as a CSS curve). */
   --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
   --animate-border-beam: border-beam 6s linear infinite;
@@ -151,32 +188,44 @@
   textarea {
     @apply select-text;
   }
-  /* Lighter icon stroke (Sparky draws Hugeicons at 1.3; lucide's default 2 reads heavy). */
+  /* Thin, codicon-like strokes. */
   svg.lucide {
-    stroke-width: 1.6;
+    stroke-width: 1.5;
+  }
+  /* VS Code scrollbars: square thumbs that only show their weight on hover. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, #797979 40%, transparent);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, #646464 70%, transparent);
   }
 }
 
 @layer utilities {
-  /* Small metadata labels: Space Mono caps, letter-spaced (Sparky AppTextStyles.caption). */
+  /* Small section labels: VS Code's view and pane headers (11 px, bold caps). */
   .label-mono {
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.1em;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
     text-transform: uppercase;
     line-height: 1.3;
   }
-  /* Figures in the dot-matrix face. */
+  /* Figures (battery %, timers, fps): plain tabular numbers. */
   .figure-dot {
-    font-family: var(--font-dot);
-    font-weight: 700;
+    font-family: var(--font-sans);
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
-    letter-spacing: 0.02em;
   }
-  /* Nothing-style dot grid (18 px pitch, 1 px dots), for page backgrounds. */
+  /* The old dot-grid backdrop: VS Code's editor background is plain. */
   .dot-grid {
-    background-image: radial-gradient(circle at center, var(--dot-grid) 1px, transparent 1.2px);
-    background-size: 18px 18px;
-    background-position: 9px 9px;
+    background-image: none;
   }
 }

@@ -56,7 +56,7 @@ export function DirectPhones({ phones, onMirror, connecting }: { phones: DirectP
         const s = state(p)
         const t: TransportInfo = { serial: `direct:${p.id}`, kind: 'wifi', state: 'device', model: p.model }
         return (
-          <div key={p.id} className="flex items-center gap-4 rounded-2xl border bg-card px-5 py-4">
+          <div key={p.id} className="flex items-center gap-4 rounded-[4px] border bg-card px-5 py-4">
             <span className="grid size-10 shrink-0 place-items-center rounded-full bg-muted">
               <Wifi className="size-4.5" />
             </span>

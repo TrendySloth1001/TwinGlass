@@ -114,7 +114,7 @@ export function AppGrid({ onClose, phoneName, serial }: { onClose: () => void; p
       </div>
 
       {noIcons && (icons === 'need-app' || icons === 'installing' || icons === 'loading') && (
-        <div className="mx-4 mb-3 flex items-center gap-3 rounded-xl border bg-card px-3 py-2 text-xs">
+        <div className="mx-4 mb-3 flex items-center gap-3 rounded-[4px] border bg-card px-3 py-2 text-xs">
           <Sparkles className="size-4 shrink-0 text-muted-foreground" />
           {icons === 'loading' ? (
             <span className="flex-1 text-muted-foreground">Loading app icons from the phone…</span>
@@ -151,13 +151,13 @@ export function AppGrid({ onClose, phoneName, serial }: { onClose: () => void; p
                 type="button"
                 onClick={() => open(a)}
                 title={a.pkg}
-                className={cn('group flex flex-col items-center gap-1.5 rounded-xl p-1.5 transition-colors hover:bg-accent', q && i === 0 && 'bg-accent')}
+                className={cn('group flex flex-col items-center gap-1.5 rounded-[4px] p-1.5 transition-colors hover:bg-accent', q && i === 0 && 'bg-accent')}
               >
                 {a.icon ? (
                   <img src={a.icon} alt="" draggable={false} className="size-12 drop-shadow-sm transition-transform group-hover:scale-105" />
                 ) : (
                   <span
-                    className="grid size-12 place-items-center rounded-2xl text-lg font-semibold text-white shadow-sm transition-transform group-hover:scale-105"
+                    className="grid size-12 place-items-center rounded-[4px] text-lg font-semibold text-white shadow-sm transition-transform group-hover:scale-105"
                     style={{ background: tileColor(a.pkg) }}
                   >
                     {a.label.trim().charAt(0).toUpperCase()}

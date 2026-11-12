@@ -65,7 +65,7 @@ function applyFull(win: BrowserWindow): void {
   win.setMinimumSize(480, 420)
   const b = fullBounds.get(win.id)
   if (b) win.setBounds(b, true)
-  win.setWindowButtonPosition({ x: 16, y: 16 })
+  win.setWindowButtonPosition({ x: 13, y: 11 })
   refreshShadow(win)
 }
 

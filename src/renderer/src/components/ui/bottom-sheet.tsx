@@ -21,7 +21,7 @@ function BottomSheetContent({
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/45 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
       <DialogPrimitive.Content
         className={cn(
-          'fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[min(92vh,760px)] w-[min(880px,100vw-24px)] flex-col overflow-hidden rounded-t-[28px] border border-b-0 bg-card text-card-foreground shadow-2xl outline-none',
+          'fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[min(92vh,760px)] w-[min(880px,100vw-24px)] flex-col overflow-hidden rounded-t-[8px] border border-b-0 bg-card text-card-foreground shadow-2xl outline-none',
           'duration-300 ease-[var(--ease-spring)] data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom',
           className,
         )}
@@ -29,7 +29,7 @@ function BottomSheetContent({
       >
         <div className="mx-auto mt-3 h-1 w-9 shrink-0 rounded-full bg-border-strong" />
         {children}
-        <DialogPrimitive.Close className="absolute top-4 right-4 grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+        <DialogPrimitive.Close className="absolute top-4 right-4 grid size-8 place-items-center rounded-[5px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
           <XIcon className="size-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>

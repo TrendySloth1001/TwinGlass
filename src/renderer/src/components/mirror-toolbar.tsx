@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  ChevronRight,
   BellDot,
   Camera,
   Circle,
@@ -7,8 +8,6 @@ import {
   Ellipsis,
   Info,
   Keyboard,
-  PanelLeftClose,
-  PanelLeftOpen,
   LockKeyhole,
   LockKeyholeOpen,
   Monitor,
@@ -18,7 +17,6 @@ import {
   LayoutGrid,
   Layers,
   Search,
-  Settings,
   Settings2,
   Smartphone,
   Square,
@@ -33,8 +31,6 @@ import {
 import type { ReactNode } from 'react'
 import { shortcutFor, type DeviceAction } from '@shared/shortcuts'
 import { IconButton } from '@/components/icon-button'
-import { NotificationCenter } from '@/components/notification-center'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -76,7 +72,8 @@ function Action({
       label={label}
       shortcut={[shortcutFor(action), hint].filter(Boolean).join(' · ')}
       onClick={() => run(action)}
-      className={className}
+      size="icon-xs"
+      className={cn('[&_svg]:size-4', className)}
     >
       {children}
     </IconButton>
@@ -88,10 +85,6 @@ interface ToolbarProps {
   /** App-level dispatcher (some actions, like unlock, open dialogs). */
   onAction: (a: DeviceAction) => void
   onShowHelp: () => void
-  /** No docked sidebar on the left: leave room for the macOS traffic lights. */
-  ownsCorner: boolean
-  sidebarOpen: boolean
-  onToggleSidebar: () => void
   /** Switch to the compact phone-shaped mirror (only while mirroring). */
   onCompact?: () => void
   /** Normal windows: open a second screen (a whole phone) in a new window. */
@@ -102,7 +95,7 @@ interface ToolbarProps {
   onOpenPalette: () => void
 }
 
-export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sidebarOpen, onToggleSidebar, onCompact, onOpenSettings, onOpenPalette, onSecondScreen, onOpenApps }: ToolbarProps): ReactNode {
+export function MirrorToolbar({ mirror, onAction, onShowHelp, onCompact, onOpenPalette, onSecondScreen, onOpenApps }: ToolbarProps): ReactNode {
   const { state } = mirror
   const live = state.phase === 'live'
   const idle = state.phase === 'idle'
@@ -131,27 +124,26 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sideba
   return (
     <div
       className={cn(
-        // @container: the toolbar adapts to its own width (window size, docked sidebar or not).
-        '@container flex h-12 shrink-0 items-center gap-2 border-b px-3 transition-[padding] duration-200 [-webkit-app-region:drag] @3xl:gap-3',
-        ownsCorner && 'pl-20',
+        // VS Code's breadcrumbs row under the tab, with the phone's controls as editor actions.
+        // @container: the row adapts to its own width (window size, side bar open or not).
+        '@container flex h-[30px] shrink-0 items-center gap-2 border-b border-border bg-background pr-2 pl-3 text-[12px]',
       )}
     >
-      <div className="flex min-w-0 shrink items-center gap-2">
-        {ownsCorner && (
-          <IconButton label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'} shortcut="⌘\" onClick={onToggleSidebar}>
-            {sidebarOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
-          </IconButton>
-        )}
-        <span className="truncate font-semibold">
-          {state.deviceName || (state.phase === 'connecting' ? 'Connecting…' : 'Twinglass')}
+      <nav aria-label="Breadcrumbs" className="flex min-w-0 shrink items-center gap-0.5 text-muted-foreground">
+        <span className="shrink-0">Phones</span>
+        <ChevronRight className="size-3.5 shrink-0" />
+        <span className="flex min-w-0 items-center gap-1 text-foreground">
+          <Smartphone className="size-3.5 shrink-0 text-link" />
+          <span className="truncate">{state.deviceName || (state.phase === 'connecting' ? 'Connecting…' : 'Phone')}</span>
         </span>
         {state.transport && (
-          <Badge variant="outline" className="hidden gap-1 @xl:inline-flex">
-            {state.transport.kind === 'usb' ? <Usb /> : <Wifi />}
+          <span className="hidden items-center gap-0.5 @xl:flex">
+            <ChevronRight className="size-3.5 shrink-0" />
+            {state.transport.kind === 'usb' ? <Usb className="size-3.5" /> : <Wifi className="size-3.5" />}
             {state.transport.kind === 'usb' ? 'USB' : 'Wi-Fi'}
-          </Badge>
+          </span>
         )}
-      </div>
+      </nav>
 
       {/* Priority tiers by toolbar width: navigation, unlock and screenshot always; the rest
           appears inline from @4xl / @5xl and otherwise lives in the More menu. */}
@@ -222,7 +214,7 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sideba
           <Divider />
           <Group>
             {state.audio !== 'off' && (
-              <IconButton label={state.muted ? 'Unmute' : 'Mute'} onClick={mirror.toggleMute}>
+              <IconButton size="icon-xs" className="[&_svg]:size-4" label={state.muted ? 'Unmute' : 'Mute'} onClick={mirror.toggleMute}>
                 {state.muted ? <VolumeX /> : <Volume2 />}
               </IconButton>
             )}
@@ -243,26 +235,22 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sideba
         </div>
 
         {!idle && (
-          <IconButton label="Open app, send to phone, clipboard" shortcut="⌘K" onClick={onOpenPalette}>
+          <IconButton label="Open app, send to phone, clipboard" shortcut="⌘K" size="icon-xs" className="[&_svg]:size-4" onClick={onOpenPalette}>
             <Search />
           </IconButton>
         )}
-        <NotificationCenter />
         {!idle && onOpenApps && (
-          <IconButton label="All apps on this screen" onClick={onOpenApps}>
+          <IconButton size="icon-xs" className="[&_svg]:size-4" label="All apps on this screen" onClick={onOpenApps}>
             <LayoutGrid />
           </IconButton>
         )}
         {!idle && onSecondScreen && (
-          <IconButton label="Open a second screen (whole phone)" shortcut="⌥⌘N" onClick={onSecondScreen}>
+          <IconButton size="icon-xs" className="[&_svg]:size-4" label="Open a second screen (whole phone)" shortcut="⌥⌘N" onClick={onSecondScreen}>
             <Layers />
           </IconButton>
         )}
-        <IconButton label="Settings" shortcut="⌘," onClick={onOpenSettings}>
-          <Settings />
-        </IconButton>
         {onCompact && (
-          <IconButton label="Compact mirror" shortcut="⇧⌘M" onClick={onCompact}>
+          <IconButton size="icon-xs" className="[&_svg]:size-4" label="Compact mirror" shortcut="⇧⌘M" onClick={onCompact}>
             <Smartphone />
           </IconButton>
         )}
@@ -272,7 +260,7 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sideba
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon-xs"
               aria-label="More controls"
               className={cn('[-webkit-app-region:no-drag] @5xl:hidden', recording && 'text-destructive')}
             >
@@ -302,16 +290,16 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, ownsCorner, sideba
         )}
         <div className={cn('hidden items-center gap-2', !idle && '@5xl:flex')}>
           <Divider />
-          <IconButton label="Mouse, trackpad & keyboard controls" onClick={onShowHelp}>
+          <IconButton size="icon-xs" className="[&_svg]:size-4" label="Mouse, trackpad & keyboard controls" onClick={onShowHelp}>
             <Keyboard />
           </IconButton>
         </div>
         {!idle && (
         <Button
-          variant="outline"
-          size="sm"
+          variant="ghost"
+          size="xs"
           aria-label="Disconnect"
-          className="text-destructive [-webkit-app-region:no-drag]"
+          className="text-destructive hover:text-destructive [-webkit-app-region:no-drag] [&_svg]:size-3.5"
           onClick={() => onAction('disconnect')}
         >
           <Unplug />

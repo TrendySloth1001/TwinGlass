@@ -153,7 +153,7 @@ function RecentCaptures(): ReactNode {
             e.preventDefault()
             void window.mobMirror.reveal(it.path)
           }}
-          className="group relative aspect-[3/4] overflow-hidden rounded-lg border bg-muted"
+          className="group relative aspect-[3/4] overflow-hidden rounded-[3px] border bg-muted"
         >
           {it.thumb ? (
             <img src={it.thumb} alt="" className="size-full object-cover transition-transform group-hover:scale-105" draggable={false} />
@@ -182,7 +182,7 @@ function Tile({ icon, title, keys, onClick, disabled }: { icon: ReactNode; title
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground"
+      className="flex items-center gap-3 rounded-[3px] px-3 py-2.5 text-left transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground"
     >
       {icon}
       <span className="min-w-0 flex-1 truncate text-[13px]">{title}</span>
@@ -274,8 +274,8 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
         <div className="flex items-center gap-3">
           <img src={appIcon} alt="" className="size-11 drop-shadow-sm" draggable={false} />
           <div>
-            <div className="text-xl font-semibold tracking-tight">Twinglass</div>
-            <div className="text-[13px] text-muted-foreground">Your Android phone, right on your Mac.</div>
+            <div className="text-[28px] leading-tight font-light tracking-tight">Twinglass</div>
+            <div className="text-[17px] font-light text-muted-foreground">Your Android phone, right on your Mac.</div>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -300,7 +300,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
                 <PhoneHero key={d.id} onSecondScreen={p.onSecondScreen} device={d} connecting={p.connecting} onMirror={p.onMirror} frame={p.frame} frameColor={p.frameColor} />
               ))}
               {pending.map((t) => (
-                <div key={t.serial} className="flex items-center gap-3 rounded-2xl border border-dashed bg-card p-5 text-sm">
+                <div key={t.serial} className="flex items-center gap-3 rounded-[4px] border border-dashed bg-card p-5 text-sm">
                   <ShieldAlert className="size-5 shrink-0 text-warning" />
                   <div className="flex-1">
                     <div className="font-medium">{t.state === 'unauthorized' ? 'Check your phone' : 'Phone not ready'}</div>
@@ -312,10 +312,10 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
                 </div>
               ))}
               {adbMissing && (
-                <div className="rounded-xl border bg-card p-5">
+                <div className="rounded-[4px] border bg-card p-5">
                   <div className="mb-1 font-medium">Install Android’s adb tool once</div>
                   <div className="mb-3 text-xs text-muted-foreground">Twinglass talks to your phone through it. Run this in Terminal:</div>
-                  <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 font-mono text-sm">
+                  <div className="flex items-center gap-2 rounded-[3px] bg-muted px-3 py-2 font-mono text-sm">
                     <span className="flex-1 truncate">{INSTALL}</span>
                     <Button
                       size="icon-xs"
@@ -331,13 +331,13 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
                       {copied ? <Check /> : <Copy />}
                     </Button>
                   </div>
-                  <Button size="sm" variant="outline" className="mt-3 rounded-full" onClick={p.refresh}>
+                  <Button size="sm" variant="outline" className="mt-3" onClick={p.refresh}>
                     <RefreshCw /> I’ve installed it
                   </Button>
                 </div>
               )}
               {!devices.length && !pending.length && !directPhones.length && (
-                <div className="flex items-center gap-5 rounded-xl border border-dashed p-5">
+                <div className="flex items-center gap-5 rounded-[4px] border border-dashed p-5">
                   <div className="shrink-0 opacity-60 [--mp-h:96px] [--mp-w:46px]">
                     <MiniPhone style={p.frame === 'none' ? 'modern' : p.frame} color={p.frameColor} />
                   </div>
@@ -388,7 +388,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
             {p.recentDevices.length === 0 ? (
               <p className="text-[13px] text-muted-foreground">Phones you mirror appear here for one-click reconnects.</p>
             ) : (
-              <ul className="divide-y overflow-hidden rounded-xl border">
+              <ul className="divide-y overflow-hidden rounded-[4px] border">
                 {p.recentDevices.slice(0, 5).map((r) => {
                   const dev = live.get(r.id)
                   const t = dev?.transports[0]
@@ -414,7 +414,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
 
           <section>
             <SectionTitle>Guides</SectionTitle>
-            <ul className="overflow-hidden rounded-xl border">
+            <ul className="overflow-hidden rounded-[4px] border">
               {GUIDES.map((g) => {
                 const isOpen = open === g.id
                 return (
@@ -440,7 +440,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
                         ))}
                         {g.id === 'wireless' && (
                           <li className="pb-4">
-                            <Button size="sm" variant="outline" className="rounded-full" onClick={() => setPairing(true)}>
+                            <Button size="sm" variant="outline" onClick={() => setPairing(true)}>
                               <QrCode /> Pair over Wi-Fi
                             </Button>
                           </li>

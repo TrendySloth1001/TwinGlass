@@ -1,11 +1,9 @@
-import { AppWindow, EllipsisVertical, Info, Loader2, Play, Unplug, Usb, Wifi } from 'lucide-react'
+import { AppWindow, Ellipsis, Info, Loader2, Play, Smartphone, Unplug, Usb, Wifi } from 'lucide-react'
 import { showPhoneDetails } from '@/lib/phone-details'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 import type { DeviceInfo, OpResult, TransportInfo } from '../../../preload/api'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,81 +36,78 @@ const isIpSerial = (s: string): boolean => /^[\d.]+:\d+$/.test(s)
 
 export function DeviceCard({ device, activeSerial, connecting, onMirror }: DeviceCardProps): ReactNode {
   const hasWifi = device.transports.some((t) => t.kind === 'wifi')
+  // A tree like VS Code's explorer: the phone, then one row per way to reach it (USB, Wi-Fi), with
+  // inline actions. The mirrored row is selected.
   return (
-    <Card className="min-w-0 gap-2 p-3 shadow-none">
-      <div className="flex items-center justify-between gap-2">
-        <span className="truncate font-semibold">{device.model}</span>
-        {device.sdk && (
-          <Badge variant="secondary" className="font-mono text-[10px]">
-            API {device.sdk}
-          </Badge>
-        )}
+    <div role="tree" aria-label={device.model} className="-mx-3 min-w-0 text-[13px]">
+      <div className="flex h-[22px] items-center gap-1.5 pr-3 pl-4">
+        <Smartphone className="size-4 shrink-0 text-link" />
+        <span className="truncate text-foreground">{device.model}</span>
+        {device.sdk && <span className="shrink-0 text-[12px] text-muted-foreground">API {device.sdk}</span>}
       </div>
-      <div className="flex flex-col gap-1">
-        {device.transports.map((t, i) => {
-          const active = activeSerial === t.serial
-          return (
-            <div
-              key={t.serial}
-              className={cn(
-                'group flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-accent',
-                active && 'bg-accent',
-              )}
-            >
-              {t.kind === 'usb' ? (
-                <Usb className="size-3.5 shrink-0 text-muted-foreground" />
-              ) : (
-                <Wifi className="size-3.5 shrink-0 text-muted-foreground" />
-              )}
-              <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={t.serial}>
-                {t.serial}
+      {device.transports.map((t) => {
+        const active = activeSerial === t.serial
+        return (
+          <div
+            key={t.serial}
+            role="treeitem"
+            aria-selected={active}
+            onDoubleClick={() => !connecting && !active && onMirror(t, device.id)}
+            className={cn('group flex h-[22px] items-center gap-1.5 pr-2 pl-9 hover:bg-accent', active && 'bg-selection hover:bg-selection')}
+          >
+            {t.kind === 'usb' ? <Usb className="size-3.5 shrink-0 text-muted-foreground" /> : <Wifi className="size-3.5 shrink-0 text-muted-foreground" />}
+            <span className="min-w-0 flex-1 truncate text-muted-foreground" title={t.serial}>
+              {t.kind === 'usb' ? 'USB' : 'Wi-Fi'} <span className="text-[12px] opacity-70">{t.serial}</span>
+            </span>
+            {active ? (
+              <span className="flex shrink-0 items-center gap-1 text-[11px] text-success">
+                {connecting ? <Loader2 className="size-3 animate-spin" /> : <span className="size-1.5 rounded-full bg-success" />}
+                Live
               </span>
+            ) : (
               <Button
-                size="xs"
-                variant={i === 0 && !active ? 'default' : 'outline'}
-                disabled={connecting || active}
+                size="icon-xs"
+                variant="ghost"
+                title="Mirror (or double-click)"
+                aria-label={`Mirror over ${t.kind === 'usb' ? 'USB' : 'Wi-Fi'}`}
+                disabled={connecting}
                 onClick={() => onMirror(t, device.id)}
+                className="text-foreground [&_svg]:size-4"
               >
-                {connecting && active ? <Loader2 className="animate-spin" /> : <Play />}
-                {active ? 'Live' : 'Mirror'}
+                <Play />
               </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="icon-xs" variant="ghost" aria-label="More actions">
-                    <EllipsisVertical />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => void window.mobMirror.openDeviceWindow(t.serial, t.kind)}>
-                    <AppWindow /> Mirror in new window
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon-xs" variant="ghost" aria-label="More actions" className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 [&_svg]:size-4">
+                  <Ellipsis />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => void window.mobMirror.openDeviceWindow(t.serial, t.kind)}>
+                  <AppWindow /> Mirror in new window
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => showPhoneDetails(t.serial, device.model)}>
+                  <Info /> Phone details
+                </DropdownMenuItem>
+                {t.kind === 'usb' && !hasWifi && (
+                  <DropdownMenuItem onSelect={() => void run('Switching to Wi-Fi', () => window.mobMirror.enableTcpip(t.serial))}>
+                    <Wifi /> Switch to Wi-Fi (adb tcpip)
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => showPhoneDetails(t.serial, device.model)}>
-                    <Info /> Phone details
-                  </DropdownMenuItem>
-                  {t.kind === 'usb' && !hasWifi && (
-                    <DropdownMenuItem
-                      onSelect={() => void run('Switching to Wi-Fi', () => window.mobMirror.enableTcpip(t.serial))}
-                    >
-                      <Wifi /> Switch to Wi-Fi (adb tcpip)
+                )}
+                {t.kind === 'wifi' && isIpSerial(t.serial) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onSelect={() => void run('Disconnecting', () => window.mobMirror.disconnect(t.serial))}>
+                      <Unplug /> Disconnect Wi-Fi
                     </DropdownMenuItem>
-                  )}
-                  {t.kind === 'wifi' && isIpSerial(t.serial) && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onSelect={() => void run('Disconnecting', () => window.mobMirror.disconnect(t.serial))}
-                      >
-                        <Unplug /> Disconnect Wi-Fi
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          )
-        })}
-      </div>
-    </Card>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )
+      })}
+    </div>
   )
 }

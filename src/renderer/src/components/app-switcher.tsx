@@ -9,7 +9,7 @@ function AppIcon({ app, size = 'size-14' }: { app: PhoneAppInfo; size?: string }
   return app.icon ? (
     <img src={app.icon} alt="" draggable={false} className={`${size} drop-shadow-sm`} />
   ) : (
-    <span className={`${size} grid place-items-center rounded-2xl text-xl font-semibold text-white`} style={{ background: tileColor(app.pkg) }}>
+    <span className={`${size} grid place-items-center rounded-[4px] text-xl font-semibold text-white`} style={{ background: tileColor(app.pkg) }}>
       {app.label.trim().charAt(0).toUpperCase()}
     </span>
   )
@@ -74,7 +74,7 @@ export function AppSwitcher({ onClose, onAllApps }: { onClose: () => void; onAll
                     key={a.pkg}
                     type="button"
                     onClick={() => open(a)}
-                    className="flex flex-col items-center gap-2 rounded-2xl border bg-card px-3 py-5 transition-colors hover:bg-accent"
+                    className="flex flex-col items-center gap-2 rounded-[4px] border bg-card px-3 py-5 transition-colors hover:bg-accent"
                   >
                     <AppIcon app={a} />
                     <span className="line-clamp-1 w-full text-center text-xs font-medium">{a.label}</span>
@@ -83,7 +83,7 @@ export function AppSwitcher({ onClose, onAllApps }: { onClose: () => void; onAll
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
+              <div className="rounded-[4px] border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
                 Nothing open on this screen yet.
                 <div className="mt-3">
                   <Button size="sm" variant="outline" onClick={onAllApps}>
@@ -99,7 +99,7 @@ export function AppSwitcher({ onClose, onAllApps }: { onClose: () => void; onAll
                 </h3>
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(76px,1fr))] gap-x-2 gap-y-3">
                   {data.phone.map((a) => (
-                    <button key={a.pkg} type="button" onClick={() => open(a)} className="flex flex-col items-center gap-1.5 rounded-xl p-1.5 hover:bg-accent">
+                    <button key={a.pkg} type="button" onClick={() => open(a)} className="flex flex-col items-center gap-1.5 rounded-[4px] p-1.5 hover:bg-accent">
                       <AppIcon app={a} size="size-11" />
                       <span className="line-clamp-2 w-full text-center text-[11px] leading-tight">{a.label}</span>
                     </button>

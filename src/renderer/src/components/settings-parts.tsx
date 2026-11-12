@@ -19,7 +19,7 @@ export function Group({ title, children }: { title?: string; children: ReactNode
   return (
     <section className="mb-5">
       {title && <SectionHeader className="mb-2">{title}</SectionHeader>}
-      <div className="divide-y rounded-xl border bg-card px-4">{children}</div>
+      <div className="divide-y rounded-[4px] border bg-card px-4">{children}</div>
     </section>
   )
 }

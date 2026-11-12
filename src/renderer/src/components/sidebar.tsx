@@ -32,6 +32,8 @@ import type { Settings } from '@/hooks/use-settings'
 import { cn } from '@/lib/utils'
 
 interface SidebarProps {
+  /** Which view the activity bar picked. */
+  view: 'phones' | 'agents'
   list: DeviceListInfo | null
   error: string | null
   adb: AdbStatusInfo | null
@@ -72,24 +74,25 @@ function Section({
   children: ReactNode
 }): ReactNode {
   return (
-    <section className="border-b border-sidebar-border/60 last:border-b-0">
-      <div className="flex h-9 items-center gap-1 px-2">
+    // A VS Code view pane: 22 px bold caps header with a chevron, a hairline above each pane but the first.
+    <section className="group/pane border-t border-sidebar-border first:border-t-0">
+      <div className="flex h-[22px] items-center pr-1">
         <button
           type="button"
           onClick={onToggle}
           aria-expanded={!closed}
-          className="flex flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-left label-mono text-faint transition-colors hover:text-foreground"
+          className="flex h-full flex-1 items-center gap-0.5 pl-0.5 text-left label-mono text-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring"
         >
-          <ChevronRight className={cn('size-3.5 transition-transform duration-200', !closed && 'rotate-90')} />
-          <span className="[&>svg]:size-3.5">{icon}</span>
+          <ChevronRight className={cn('size-4 transition-transform duration-100', !closed && 'rotate-90')} />
+          <span className="hidden">{icon}</span>
           {title}
-          {badge}
+          <span className="ml-1.5">{badge}</span>
         </button>
-        {action}
+        <span className="opacity-0 transition-opacity group-hover/pane:opacity-100 focus-within:opacity-100">{action}</span>
       </div>
       <div className={cn('grid transition-[grid-template-rows] duration-200 ease-out', closed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]')}>
         <div className="min-h-0 overflow-hidden">
-          <div className="flex flex-col gap-3 px-3 pt-1 pb-3">{children}</div>
+          <div className="flex flex-col gap-2.5 px-3 pt-1 pb-3">{children}</div>
         </div>
       </div>
     </section>
@@ -116,12 +119,12 @@ export function Sidebar(p: SidebarProps): ReactNode {
       className={cn(
         'z-30 flex flex-col overflow-hidden bg-sidebar transition-[width,transform,opacity] duration-200 ease-out',
         floating
-          ? 'absolute top-[3.75rem] bottom-10 left-3 w-72 rounded-2xl border border-sidebar-border bg-sidebar/85 shadow-2xl ring-1 ring-black/5 backdrop-blur-xl'
-          : 'relative shrink-0 border-r border-sidebar-border',
+          ? 'absolute top-[35px] bottom-0 left-12 w-72 border-r border-sidebar-border shadow-2xl'
+          : 'relative min-h-0 shrink-0 border-r border-sidebar-border',
         floating
           ? open
             ? 'translate-x-0 opacity-100'
-            : 'pointer-events-none -translate-x-[calc(100%+1rem)] opacity-0'
+            : 'pointer-events-none -translate-x-4 opacity-0'
           : open
             ? 'w-72'
             : 'w-0 border-r-0',
@@ -129,37 +132,39 @@ export function Sidebar(p: SidebarProps): ReactNode {
     >
       {/* Fixed inner width: content doesn't reflow while the docked width animates. */}
       <div className="flex h-full w-72 flex-col">
-        <header
-          className={cn(
-            'flex shrink-0 items-center gap-0.5 pr-2',
-            floating ? 'h-11 pl-4' : 'h-12 pl-20 [-webkit-app-region:drag]', // pl-20: macOS traffic lights
+        {/* View title, like VS Code's "EXPLORER": caps on the left, view actions on the right. */}
+        <header className="group/title flex h-[35px] shrink-0 items-center gap-0.5 pr-2 pl-5">
+          <span className="mr-auto text-[11px] tracking-[0.02em] text-foreground/80 uppercase">{p.view === 'agents' ? 'Agents' : 'Phones'}</span>
+          {p.view === 'phones' && (
+            <IconButton label="Refresh phones" size="icon-xs" className="[&_svg]:size-4" onClick={p.refresh}>
+              <RefreshCw />
+            </IconButton>
           )}
-        >
-          <span className="mr-auto text-sm font-semibold tracking-tight">Twinglass</span>
-          <IconButton label="Refresh devices" onClick={p.refresh}>
-            <RefreshCw />
-          </IconButton>
           <IconButton
-            label={p.layoutLocked ? 'Widen the window to dock the sidebar' : floating ? 'Dock sidebar' : 'Float sidebar over the mirror'}
+            label={p.layoutLocked ? 'Widen the window to dock the side bar' : floating ? 'Dock side bar' : 'Float side bar over the mirror'}
             disabled={p.layoutLocked}
             shortcut="⌥⌘\"
+            size="icon-xs"
+            className="[&_svg]:size-4"
             onClick={() => p.onSettingsChange({ sidebarLayout: floating ? 'docked' : 'floating' })}
           >
             {floating ? <Pin /> : <PinOff />}
           </IconButton>
-          <IconButton label="Hide sidebar" shortcut="⌘\" onClick={() => p.onSettingsChange({ sidebarOpen: false })}>
+          <IconButton label="Hide side bar" shortcut="⌘\" size="icon-xs" className="[&_svg]:size-4" onClick={() => p.onSettingsChange({ sidebarOpen: false })}>
             <PanelLeftClose />
           </IconButton>
         </header>
 
         {/* Plain overflow container: Radix ScrollArea's display:table wrapper defeats text truncation. */}
         <div className="min-h-0 flex-1 overflow-y-auto">
+          {p.view === 'phones' && (
+          <>
           <Section
             title="Devices"
             icon={<Smartphone />}
             badge={deviceCount > 0 && <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">{deviceCount}</Badge>}
             action={
-              <IconButton label="Add phone" onClick={() => setAdding(true)}>
+              <IconButton label="Add phone" size="icon-xs" className="[&_svg]:size-4" onClick={() => setAdding(true)}>
                 <Plus />
               </IconButton>
             }
@@ -176,7 +181,7 @@ export function Sidebar(p: SidebarProps): ReactNode {
               <button
                 type="button"
                 onClick={() => setAdding(true)}
-                className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-5 text-center text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+                className="flex flex-col items-center gap-2 rounded-[4px] border border-dashed p-5 text-center text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
               >
                 <Smartphone className="size-6" />
                 Plug in a phone with USB debugging on, or add a wireless device.
@@ -186,7 +191,7 @@ export function Sidebar(p: SidebarProps): ReactNode {
               <DeviceCard key={d.id} device={d} activeSerial={p.activeSerial} connecting={p.connecting} onMirror={p.onMirror} />
             ))}
             {p.list?.other.map((t) => (
-              <div key={t.serial} className="rounded-lg border border-dashed p-3 text-xs">
+              <div key={t.serial} className="rounded-[4px] border border-dashed p-3 text-xs">
                 <div className="truncate font-medium">{t.serial}</div>
                 <div className="text-muted-foreground">
                   {t.state}. {stateHint(t.state)}
@@ -255,18 +260,20 @@ export function Sidebar(p: SidebarProps): ReactNode {
             </Select>
           </Section>
 
-          <Section title="Agents" icon={<Bot />} closed={closed.has('agents')} onToggle={() => toggleSection('agents')}>
-            <AgentAccess />
-          </Section>
+          </>
+          )}
+          {p.view === 'agents' && (
+            <Section title="Agent access" icon={<Bot />} closed={closed.has('agent-view')} onToggle={() => toggleSection('agent-view')}>
+              <AgentAccess />
+            </Section>
+          )}
         </div>
 
-        <footer className="shrink-0 border-t border-sidebar-border/60 px-4 py-2">
-          <p className="truncate text-[11px] text-muted-foreground" title={p.adb?.adbPath ?? ''}>
-            {p.adb?.adbPath
-              ? `adb ${p.adb.clientVersion ?? ''}${p.adb.serverVersion ? ` · server ${p.adb.serverVersion}` : ''}`
-              : 'adb not found: brew install android-platform-tools'}
-          </p>
-        </footer>
+        {!p.adb?.adbPath && (
+          <footer className="shrink-0 border-t border-sidebar-border px-4 py-2">
+            <p className="text-[12px] text-warning">adb not found: brew install android-platform-tools</p>
+          </footer>
+        )}
       </div>
 
       {/* "+" opens Add phone (Wi-Fi no setup first); its Developer path leads to wireless debugging pairing. */}

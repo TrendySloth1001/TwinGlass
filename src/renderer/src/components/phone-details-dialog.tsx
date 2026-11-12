@@ -125,7 +125,7 @@ export function PhoneDetailsDialog({ request }: { request: { serial: string; nam
           {error && <div className="py-16 text-center text-sm text-muted-foreground">{error}</div>}
           <div className="columns-1 gap-4 sm:columns-2">
             {sections.map((s) => (
-              <section key={s.title} className="mb-4 break-inside-avoid rounded-xl border bg-card">
+              <section key={s.title} className="mb-4 break-inside-avoid rounded-[4px] border bg-card">
                 <h3 className="label-mono border-b px-3 py-2 text-faint">{s.title}</h3>
                 <dl className="divide-y">
                   {s.rows.map((r) => (

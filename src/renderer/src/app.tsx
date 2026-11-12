@@ -14,6 +14,7 @@ import { notify, setPopups } from '@/lib/notify'
 import { MirrorToolbar } from '@/components/mirror-toolbar'
 import { Sidebar } from '@/components/sidebar'
 import { StatusBar } from '@/components/status-bar'
+import { ActivityBar, EditorTabs, TitleBar, TITLE_BAR, type SideView } from '@/components/workbench'
 import type { DeviceAction } from '@shared/shortcuts'
 import { useDevices } from '@/hooks/use-devices'
 import { useMirror } from '@/hooks/use-mirror'
@@ -457,12 +458,54 @@ export function App(): ReactNode {
   const narrow = useMediaQuery('(max-width: 899px)')
   const sidebarLayout = narrow ? 'floating' : settings.sidebarLayout
   sidebarLayoutRef.current = sidebarLayout
-  const toolbarOwnsCorner = sidebarLayout === 'floating' || !settings.sidebarOpen
+  // Side bar view (activity bar): clicking the shown view's icon again hides the side bar, like VS Code.
+  const [sideView, setSideView] = useState<SideView>('phones')
+  const pickView = (v: SideView): void => {
+    if (settings.sidebarOpen && sideView === v) updateSettings({ sidebarOpen: false })
+    else {
+      setSideView(v)
+      updateSettings({ sidebarOpen: true })
+    }
+  }
+  const phoneName = mirror.state.deviceName || (mirror.state.phase === 'connecting' ? 'Connecting…' : '')
+  const onPhone = mirror.state.phase !== 'idle'
 
   return (
-    <div className={cn('relative flex h-full', !compact && 'overflow-hidden rounded-[12px] bg-background')}>
+    // Full view is VS Code's workbench: title bar, activity bar, side bar, editor, status bar (a grid).
+    // Every piece is a conditional slot before <main>, so <main> keeps its place in the tree in both
+    // views and the video canvas inside it is never remounted.
+    <div
+      className={cn('relative h-full', compact ? 'flex' : 'grid grid-cols-[auto_auto_minmax(0,1fr)] overflow-hidden rounded-[12px] bg-background')}
+      style={compact ? undefined : { gridTemplateRows: `${TITLE_BAR}px minmax(0,1fr) auto` }}
+    >
+      {!compact && (
+        <div className="col-span-3">
+          <TitleBar
+            title={onPhone ? `${phoneName} — Twinglass` : 'Twinglass'}
+            onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
+            sidebarOpen={settings.sidebarOpen}
+            onToggleSidebar={() => updateSettings({ sidebarOpen: !settings.sidebarOpen })}
+            statusBarOpen={settings.showStatusBar}
+            onToggleStatusBar={() => updateSettings({ showStatusBar: !settings.showStatusBar })}
+          />
+        </div>
+      )}
+      {!compact && (
+        <ActivityBar
+          view={sideView}
+          sidebarOpen={settings.sidebarOpen}
+          onView={pickView}
+          phones={devices.list?.devices.length ?? 0}
+          onSearch={() => setPalette({ open: true, mode: 'all' })}
+          onClipboard={() => setPalette({ open: true, mode: 'clipboard' })}
+          onSecondScreen={SECOND_SCREEN ? undefined : openSecondScreen}
+          onShortcuts={() => setHelpOpen(true)}
+          onSettings={() => setSettingsOpen(true)}
+        />
+      )}
       {!compact && (
         <Sidebar
+          view={sideView}
           list={devices.list}
           error={devices.error}
           adb={devices.adb}
@@ -477,7 +520,7 @@ export function App(): ReactNode {
         />
       )}
       {/* Compact: the phone is one rounded dark block; the rail floats beside it (see-through gap). */}
-      <main className={cn('flex min-w-0 flex-1 flex-col', compact && settings.frame === 'none' && 'overflow-hidden rounded-xl bg-stage')}>
+      <main className={cn('flex min-w-0 flex-1 flex-col', compact && settings.frame === 'none' && 'overflow-hidden rounded-xl bg-stage', !compact && 'min-h-0')}>
         {compact ? (
           <CompactTitleBar
             name={SECOND_SCREEN ? `${mirror.state.deviceName} · ${SECOND_SCREEN.agent ? 'Agent screen' : 'Second screen'}` : mirror.state.deviceName}
@@ -486,6 +529,10 @@ export function App(): ReactNode {
             inset={frameSpec(settings.frame)?.buttons ?? 0}
           />
         ) : (
+          // One slot (a fragment) so the stage below keeps its position in the tree.
+          <>
+            <EditorTabs phone={onPhone ? phoneName : null} transport={mirror.state.transport?.kind ?? null} onClose={onPhone ? () => dispatch('disconnect') : undefined} />
+            {onPhone && (
           <MirrorToolbar
             onCompact={live ? () => updateSettings({ viewMode: 'compact' }) : undefined}
             mirror={mirror}
@@ -495,10 +542,9 @@ export function App(): ReactNode {
             onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
             onSecondScreen={SECOND_SCREEN ? undefined : openSecondScreen}
             onOpenApps={SECOND_SCREEN ? () => setGridOpen(true) : undefined}
-            ownsCorner={toolbarOwnsCorner}
-            sidebarOpen={settings.sidebarOpen}
-            onToggleSidebar={() => updateSettings({ sidebarOpen: !settings.sidebarOpen })}
           />
+            )}
+          </>
         )}
         {/* Same tree position in both views: the decoder is bound to this canvas. */}
         <div className="relative flex min-h-0 flex-1">
@@ -565,8 +611,17 @@ export function App(): ReactNode {
         {compact && settings.navBar && !framed && <NavBar onAction={dispatch} disabled={!live} />}
         {/* Framed: the dock attaches right under the phone body (absolute), this keeps its room. */}
         {compact && settings.navBar && framed && <div aria-hidden className="shrink-0" style={{ height: NAV }} />}
-        {!compact && settings.showStatusBar && <StatusBar state={mirror.state} />}
       </main>
+      {!compact && settings.showStatusBar && (
+        <div className="col-span-3">
+          <StatusBar
+            state={mirror.state}
+            phones={devices.list?.devices.length ?? 0}
+            adb={devices.adb}
+            onRemote={() => pickView('phones')}
+          />
+        </div>
+      )}
       {/* The see-through strip between phone and rail: also a handle to move the window. */}
       {compact && <div aria-hidden className="shrink-0 [-webkit-app-region:drag]" style={{ width: GAP }} />}
       {compact && (

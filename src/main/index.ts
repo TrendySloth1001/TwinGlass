@@ -57,7 +57,7 @@ function createWindow(autoConnect?: {
     minHeight: 420,
     title: 'Twinglass',
     titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 16, y: 16 },
+    trafficLightPosition: { x: 13, y: 11 },
     // Transparent so the compact view can float the control rail beside the phone with a
     // see-through gap. The full view paints its own opaque background.
     transparent: true,
@@ -161,6 +161,14 @@ ipcMain.handle('app:theme', (_e, t: unknown) => {
   nativeTheme.themeSource = t === 'light' || t === 'dark' ? t : 'system'
 })
 
+/**
+ * Development only: MOB_UI_PREVIEW=1 runs the UI against its own profile (MOB_USER_DATA) without the
+ * Wi-Fi server or the phone-app link, so screenshots of a dev build can't reach a phone that another
+ * Twinglass is using. Ignored in packaged builds.
+ */
+const uiPreview = !app.isPackaged && process.env.MOB_UI_PREVIEW === '1'
+if (uiPreview && process.env.MOB_USER_DATA) app.setPath('userData', process.env.MOB_USER_DATA)
+
 void app.whenReady().then(() => {
   // Packaged builds get build/icon.icns from electron-builder; in development show it in the Dock too.
   if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))
@@ -169,8 +177,10 @@ void app.whenReady().then(() => {
   createWindow()
   startClipboardHistory()
   startTrayUpdates(trayDeps)
-  startCompanionLink(getAdb, { sessions: sessionSummary, agents: agentSummary })
-  startDirect()
+  if (!uiPreview) {
+    startCompanionLink(getAdb, { sessions: sessionSummary, agents: agentSummary })
+    startDirect()
+  }
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

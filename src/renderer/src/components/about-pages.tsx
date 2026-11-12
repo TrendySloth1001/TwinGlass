@@ -76,7 +76,7 @@ export function AboutPage({ onWhatsNew }: { onWhatsNew: () => void }): ReactNode
   return (
     <>
       {/* Identity */}
-      <section className="mb-6 flex items-center gap-5 rounded-2xl border bg-card p-5">
+      <section className="mb-6 flex items-center gap-5 rounded-[4px] border bg-card p-5">
         <img src={icon} alt="" className="size-20 shrink-0 rounded-[22%] shadow-sm" draggable={false} />
         <div className="min-w-0 flex-1">
           <div className="text-xl font-semibold tracking-tight">Twinglass</div>
