@@ -2,6 +2,19 @@
 
 Twinglass for Mac and the Twinglass phone app ship together: each Mac release carries the phone app listed with it.
 
+## [0.1.6](https://github.com/TrendySloth1001/TwinGlass/releases/tag/v0.1.6) · 2026-11-13 · Small fixes
+
+Readable shortcuts in tooltips, and tidier release notes.
+
+### Twinglass for Mac 0.1.6
+
+- Keyboard shortcuts in tooltips are readable again in both themes.
+- Tooltips no longer draw an arrow.
+
+### Phone app 0.9.0
+
+- No changes in this release: 0.9.0 is still the current phone app.
+
 ## [0.1.5](https://github.com/TrendySloth1001/TwinGlass/releases/tag/v0.1.5) · 2026-11-13 · Tabs for every phone
 
 Open as many phones and second screens as you like as tabs in one window, pop any of them out into a phone-shaped window, and find Settings in a tab of its own. The phone app gets the same new look.
