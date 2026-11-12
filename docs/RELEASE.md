@@ -187,3 +187,13 @@ Checked on 2026-11-08:
 Add the release to `changelog/changelog.json` first (Mac version, the phone app version it carries, date, title,
 summary, Mac and phone lines). Both apps show it (Settings → What's new; the phone app bundles the file as an
 asset) and `npm run release` regenerates `CHANGELOG.md` from it. Use the summary as the GitHub release text.
+
+## Website (twinglass.vercel.app)
+
+The landing page lives in `site/` (Vite + React + Tailwind, Vercel project `twinglass`). Its download button asks GitHub
+for the latest release at page load, so it never goes stale. After a release, refresh the version, changelog and
+screenshot it ships with, then deploy:
+
+```bash
+cd site && npm run sync && npx vercel deploy --prod
+```
