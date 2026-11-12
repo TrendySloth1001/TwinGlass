@@ -2,6 +2,20 @@
   "repo": "https://github.com/TrendySloth1001/TwinGlass",
   "releases": [
     {
+      "version": "0.1.6",
+      "date": "2026-11-13",
+      "phone": "0.9.0",
+      "title": "Small fixes",
+      "summary": "Tooltips are back to their standard dark style, with readable shortcuts.",
+      "mac": [
+        "Tooltips use the standard dark style with an arrow again.",
+        "Keyboard shortcuts in tooltips are readable in both themes."
+      ],
+      "phoneApp": [
+        "No changes in this release: 0.9.0 is still the current phone app."
+      ]
+    },
+    {
       "version": "0.1.5",
       "date": "2026-11-13",
       "phone": "0.9.0",
