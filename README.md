@@ -191,7 +191,7 @@ sequenceDiagram
   Note over P,M: shared = ECDH, key = HKDF-SHA256(shared, salt = code)
   P->>M: confirm HMAC(key, "phone")
   M-->>P: confirm HMAC(key, "mac")
-  Note over P,M: Both store the pairing secret. A wrong code fails here;<br/>codes expire after 5 minutes or 3 tries.
+  Note over P,M: Both store the pairing secret. A wrong code fails here.<br/>Codes expire after 5 minutes or 3 tries.
   P->>M: hello {id, nonce, app version}
   M-->>P: hello {nonce}
   Note over P,M: Per-direction AES-256-GCM keys from the secret and both nonces<br/>IV = 4 zero bytes + 64-bit counter (replay-proof)
@@ -219,7 +219,7 @@ flowchart TD
   T["Agent calls tap_element {text}"] --> R["Read the element tree<br/>(phone app, that display)"]
   R --> Q{"Match?"}
   Q -- "no, retry ≤ 2.5 s" --> R
-  Q -- "yes" --> C["Prefer clickable; a label →<br/>its clickable row"]
+  Q -- "yes" --> C["Prefer clickable, a label →<br/>its clickable row"]
   C --> X["Accessibility click<br/>(else a tap at its centre)"]
   X --> I["idle: wait until no window on that<br/>display changed for 300 ms"]
   I --> OK["Result: pressed · screen settled (n ms)"]
