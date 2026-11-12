@@ -129,7 +129,7 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, onCompact, onOpenP
         '@container flex h-[30px] shrink-0 items-center gap-2 border-b border-border bg-background pr-2 pl-3 text-[12px]',
       )}
     >
-      <nav aria-label="Breadcrumbs" className="flex min-w-0 shrink items-center gap-0.5 text-muted-foreground">
+      <nav aria-label="Breadcrumbs" className="flex min-w-0 shrink items-center gap-0.5 overflow-hidden text-muted-foreground">
         <span className="shrink-0">Phones</span>
         <ChevronRight className="size-3.5 shrink-0" />
         <span className="flex min-w-0 items-center gap-1 text-foreground">

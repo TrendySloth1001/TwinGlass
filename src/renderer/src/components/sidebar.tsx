@@ -119,8 +119,8 @@ export function Sidebar(p: SidebarProps): ReactNode {
       className={cn(
         'z-30 flex flex-col overflow-hidden bg-sidebar transition-[width,transform,opacity] duration-200 ease-out',
         floating
-          ? 'absolute top-[35px] bottom-0 left-12 w-72 border-r border-sidebar-border shadow-2xl'
-          : 'relative min-h-0 shrink-0 border-r border-sidebar-border',
+          ? 'absolute top-[35px] bottom-[22px] left-12 w-72 border-r border-sidebar-border shadow-2xl'
+          : 'relative col-start-2 row-start-2 min-h-0 shrink-0 border-r border-sidebar-border',
         floating
           ? open
             ? 'translate-x-0 opacity-100'

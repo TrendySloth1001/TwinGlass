@@ -137,7 +137,7 @@ export function ActivityBar({
   onSettings: () => void
 }): ReactNode {
   return (
-    <nav aria-label="Activity bar" className="flex w-12 shrink-0 flex-col border-r border-border bg-activity">
+    <nav aria-label="Activity bar" className="col-start-1 row-start-2 flex w-12 shrink-0 flex-col border-r border-border bg-activity">
       <ActivityItem icon={Smartphone} label="Phones" shortcut="⌘\" active={sidebarOpen && view === 'phones'} badge={phones} onClick={() => onView('phones')} />
       <ActivityItem icon={Search} label="Open an app on the phone" shortcut="⌘K" onClick={onSearch} />
       <ActivityItem icon={ClipboardList} label="Clipboard history" shortcut="⇧⌘V" onClick={onClipboard} />

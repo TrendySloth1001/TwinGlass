@@ -479,7 +479,7 @@ export function App(): ReactNode {
       style={compact ? undefined : { gridTemplateRows: `${TITLE_BAR}px minmax(0,1fr) auto` }}
     >
       {!compact && (
-        <div className="col-span-3">
+        <div className="col-span-3 row-start-1">
           <TitleBar
             title={onPhone ? `${phoneName} — Twinglass` : 'Twinglass'}
             onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
@@ -520,7 +520,9 @@ export function App(): ReactNode {
         />
       )}
       {/* Compact: the phone is one rounded dark block; the rail floats beside it (see-through gap). */}
-      <main className={cn('flex min-w-0 flex-1 flex-col', compact && settings.frame === 'none' && 'overflow-hidden rounded-xl bg-stage', !compact && 'min-h-0')}>
+      {/* Pinned to its cell: a floating (absolute) side bar leaves the grid, and auto-placement would
+          otherwise drop the editor into the side bar's narrow column. */}
+      <main className={cn('flex min-w-0 flex-1 flex-col', compact && settings.frame === 'none' && 'overflow-hidden rounded-xl bg-stage', !compact && 'col-start-3 row-start-2 min-h-0')}>
         {compact ? (
           <CompactTitleBar
             name={SECOND_SCREEN ? `${mirror.state.deviceName} · ${SECOND_SCREEN.agent ? 'Agent screen' : 'Second screen'}` : mirror.state.deviceName}
@@ -613,7 +615,7 @@ export function App(): ReactNode {
         {compact && settings.navBar && framed && <div aria-hidden className="shrink-0" style={{ height: NAV }} />}
       </main>
       {!compact && settings.showStatusBar && (
-        <div className="col-span-3">
+        <div className="col-span-3 row-start-3">
           <StatusBar
             state={mirror.state}
             phones={devices.list?.devices.length ?? 0}
