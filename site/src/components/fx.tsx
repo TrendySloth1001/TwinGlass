@@ -135,16 +135,16 @@ export function AnimatedBeam({
     <svg aria-hidden className="pointer-events-none absolute inset-0" width={box.w} height={box.h} viewBox={`0 0 ${box.w} ${box.h}`} fill="none">
       <defs>
         <linearGradient id={id} gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#5b6cff" stopOpacity="0" />
-          <stop offset="50%" stopColor="#6d4cff" />
-          <stop offset="100%" stopColor="#a855f7" stopOpacity="0" />
+          <stop offset="0%" stopColor="#0078d4" stopOpacity="0" />
+          <stop offset="50%" stopColor="#3794ff" />
+          <stop offset="100%" stopColor="#4fc1ff" stopOpacity="0" />
         </linearGradient>
       </defs>
       <path d={d} stroke="currentColor" strokeOpacity="0.12" strokeWidth="2" strokeLinecap="round" />
       <path
         d={d}
         pathLength={1}
-        stroke="#6d4cff"
+        stroke="#3794ff"
         strokeWidth="2.5"
         strokeLinecap="round"
         strokeDasharray="0.18 0.82"
@@ -163,7 +163,7 @@ export function BorderBeam({ seconds = 8 }: { seconds?: number }) {
       className="pointer-events-none absolute inset-0 rounded-[inherit] [mask:linear-gradient(#000,#000)_content-box_exclude,linear-gradient(#000,#000)] p-px motion-reduce:hidden"
     >
       <span
-        className="absolute aspect-square w-40 animate-[border-beam_var(--bb)_linear_infinite] bg-[linear-gradient(to_left,#6d4cff,#a855f7,transparent)] [offset-anchor:90%_50%] [offset-path:rect(0_auto_auto_0_round_0)]"
+        className="absolute aspect-square w-40 animate-[border-beam_var(--bb)_linear_infinite] bg-[linear-gradient(to_left,#0078d4,#4fc1ff,transparent)] [offset-anchor:90%_50%] [offset-path:rect(0_auto_auto_0_round_0)]"
         style={{ ['--bb' as string]: `${seconds}s` }}
       />
     </span>
@@ -175,7 +175,7 @@ export function DotPattern({ className }: { className?: string }) {
   return (
     <div
       aria-hidden
-      className={`pointer-events-none absolute inset-0 bg-[radial-gradient(circle,oklch(0.145_0_0/0.13)_1px,transparent_1.2px)] [background-size:18px_18px] ${className ?? ''}`}
+      className={`pointer-events-none absolute inset-0 bg-[radial-gradient(circle,rgb(255_255_255/0.07)_1px,transparent_1.2px)] [background-size:18px_18px] ${className ?? ''}`}
     />
   )
 }
@@ -197,7 +197,7 @@ export function SpotlightCard({ children, className }: { children: ReactNode; cl
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-        style={pos ? { background: `radial-gradient(320px circle at ${pos.x}px ${pos.y}px, color-mix(in oklch, #6d4cff 9%, transparent), transparent 70%)` } : undefined}
+        style={pos ? { background: `radial-gradient(320px circle at ${pos.x}px ${pos.y}px, rgb(0 120 212 / 0.14), transparent 70%)` } : undefined}
       />
       {children}
     </div>

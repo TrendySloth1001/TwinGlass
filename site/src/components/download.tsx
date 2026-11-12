@@ -63,13 +63,13 @@ export function ConsentCheck({ id }: { id: string }) {
     <label htmlFor={id} className="flex cursor-pointer items-start gap-3 text-left text-sm select-none">
       <span className="relative mt-0.5 flex size-5 shrink-0 items-center justify-center">
         <input id={id} type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="peer absolute inset-0 cursor-pointer opacity-0" />
-        <span className="flex size-5 items-center justify-center rounded-md border border-foreground/30 bg-background transition-colors peer-checked:border-foreground peer-checked:bg-foreground peer-focus-visible:outline-2 peer-focus-visible:outline-mark">
-          <Check className={`size-3.5 text-background transition-transform ${agreed ? 'scale-100' : 'scale-0'}`} strokeWidth={3} />
+        <span className="flex size-[18px] items-center justify-center rounded-[3px] border border-input-border bg-input transition-colors peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:outline peer-focus-visible:outline-1 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-primary">
+          <Check className={`size-3.5 text-white transition-transform ${agreed ? 'scale-100' : 'scale-0'}`} strokeWidth={3} />
         </span>
       </span>
       <span className="text-muted-foreground">
         I’ve read and agree to the{' '}
-        <a href="/privacy" target="_blank" rel="noopener" className="font-medium text-foreground underline underline-offset-2">
+        <a href="/privacy" target="_blank" rel="noopener" className="font-medium text-mark hover:underline">
           Privacy Policy
         </a>
         .
@@ -93,7 +93,7 @@ export function DownloadButton({ label }: { label?: string }) {
 export function DownloadPanel() {
   const { agreed, latest } = useDownload()
   return (
-    <div className="relative overflow-hidden border border-border px-6 py-12 text-center sm:px-12 sm:py-16">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-tile px-6 py-12 text-center sm:px-12 sm:py-16">
       <FrameCorners />
       <BorderBeam seconds={9} />
       <img src="/icon-large.png" alt="" className="mx-auto size-20 rounded-[22%] shadow-sm" width={80} height={80} loading="lazy" />
@@ -132,7 +132,7 @@ function DownloadDialog({ open, onClose }: { open: boolean; onClose: () => void 
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-foreground/25 p-3 backdrop-blur-sm sm:items-center"
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-3 sm:items-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -147,7 +147,7 @@ function DownloadDialog({ open, onClose }: { open: boolean; onClose: () => void 
             exit={{ y: 16, scale: 0.98, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 380, damping: 32 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-lg rounded-3xl border border-border bg-background p-6 shadow-2xl sm:p-8"
+            className="relative w-full max-w-lg rounded-lg border border-[#454545] bg-[#222222] p-6 shadow-[0_8px_32px_rgb(0_0_0/0.6)] sm:p-8"
           >
             <button type="button" onClick={onClose} aria-label="Close" className="absolute top-4 right-4 flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
               <X className="size-4" />
@@ -165,7 +165,7 @@ function DownloadDialog({ open, onClose }: { open: boolean; onClose: () => void 
               Twinglass has no accounts and no analytics. The only thing it fetches from the internet is the update check. The policy explains exactly what
               stays where.
             </p>
-            <div className="mt-5 rounded-2xl border border-border bg-tile p-4">
+            <div className="mt-5 rounded-md border border-border bg-tile p-4">
               <ConsentCheck id="consent-dialog" />
             </div>
             <div className="mt-5 flex flex-col gap-2">

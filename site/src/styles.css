@@ -1,18 +1,27 @@
 @import 'tailwindcss';
 
-/* Credoodle's language: white sheet, monochrome, hairlines, one accent dot. */
+/* VS Code's "Dark Modern" theme: editor #1f1f1f, side bars and panels #181818, hairlines
+   #2b2b2b, text #cccccc, one blue (#0078d4) for buttons, focus and the status bar item. */
 @theme {
-  --font-sans: 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'Space Mono', ui-monospace, monospace;
-  --font-serif: 'Fraunces Variable', ui-serif, Georgia, serif;
-  --color-background: oklch(1 0 0);
-  --color-foreground: oklch(0.145 0 0);
-  --color-muted: oklch(0.97 0 0);
-  --color-muted-foreground: oklch(0.556 0 0);
-  --color-border: oklch(0.922 0 0);
-  --color-tile: oklch(0.98 0 0);
-  /* Twinglass violet, from the app icon. */
-  --color-mark: oklch(0.55 0.24 285);
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+  --font-mono: 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --color-background: #1f1f1f;
+  --color-foreground: #cccccc;
+  --color-heading: #ffffff;
+  --color-tile: #181818;
+  --color-muted: #2a2d2e;
+  --color-muted-foreground: #9d9d9d;
+  --color-border: #2b2b2b;
+  --color-input: #313131;
+  --color-input-border: #3c3c3c;
+  --color-primary: #0078d4;
+  --color-primary-hover: #026ec1;
+  --color-mark: #3794ff;
+  --color-comment: #6a9955;
+  --color-keyword: #569cd6;
+  --color-string: #ce9178;
+  --color-func: #dcdcaa;
+  --color-var: #9cdcfe;
 }
 
 @layer base {
@@ -21,23 +30,35 @@
   }
   html {
     @apply scroll-smooth font-sans antialiased;
-    scroll-padding-top: 5rem;
+    scroll-padding-top: 4rem;
+    color-scheme: dark;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background pb-[22px] text-[15px] text-foreground;
+  }
+  h1, h2, h3 {
+    @apply text-heading;
   }
   ::selection {
-    background: color-mix(in oklch, var(--color-mark) 22%, transparent);
+    background: #264f78;
+  }
+  :focus-visible {
+    outline: 1px solid var(--color-primary);
+    outline-offset: 1px;
+  }
+  /* VS Code's thin scrollbars. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #424242 transparent;
   }
 }
 
-/* The soft book face for headlines, as on Credoodle's landing. */
+/* Headlines: the system face, tight and bold, as on VS Code's own site. */
 .font-soft {
-  font-family: var(--font-serif);
-  font-variation-settings: 'SOFT' 100, 'WONK' 1;
+  font-family: var(--font-sans);
+  letter-spacing: -0.025em;
 }
 
-/* Keyframes for the motion pieces in components/fx.tsx. */
 @keyframes marquee {
   from { transform: translateX(0); }
   to { transform: translateX(calc(-100% - var(--gap))); }

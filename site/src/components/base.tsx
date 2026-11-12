@@ -1,4 +1,5 @@
-import { ArrowRight, ArrowUpRight, Check, Copy } from 'lucide-react'
+// Building blocks in VS Code's design language (Dark Modern): badges, buttons, editor tabs.
+import { ArrowRight, ArrowUpRight, Check, Copy, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import changelog from '../data/changelog.json'
 import release from '../data/release.json'
@@ -8,40 +9,31 @@ export const RELEASES = changelog.releases
 export const INSTALL = 'curl -fsSL https://raw.githubusercontent.com/TrendySloth1001/TwinGlass/master/install.sh | bash'
 export const BREW = 'brew tap TrendySloth1001/tap && brew trust TrendySloth1001/tap\nbrew install --cask twinglass'
 
-/** Corner marks on a framed box, drawn on its hairlines (as on Credoodle). */
+/** Kept for older call sites: VS Code has no corner marks, so this draws nothing. */
 export function FrameCorners() {
-  const corners = ['-top-px -left-px border-t border-l', '-top-px -right-px border-t border-r', '-bottom-px -left-px border-b border-l', '-bottom-px -right-px border-b border-r']
-  return corners.map((c) => <span key={c} aria-hidden className={`pointer-events-none absolute size-3.5 border-foreground/60 ${c}`} />)
+  return null
 }
 
+/** VS Code's badge / tag chip: square-ish, small, quiet. */
 export function Chip({ children, dot = false, className }: { children: ReactNode; dot?: boolean; className?: string }) {
   return (
-    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 font-mono text-[11px] whitespace-nowrap text-muted-foreground ${className ?? ''}`}>
+    <span
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-[3px] border border-input-border bg-input px-1.5 py-[3px] font-mono text-[11px] leading-none whitespace-nowrap text-foreground ${className ?? ''}`}
+    >
       {dot && <span aria-hidden className="size-1.5 rounded-full bg-mark" />}
       {children}
     </span>
   )
 }
 
-/** Credoodle's hover button: a dot that grows to fill it. A button, or a link with href. */
+/** VS Code's primary button. A button, or a link with href. */
 export function HoverButton({ children, onClick, disabled, href }: { children: ReactNode; onClick?: () => void; disabled?: boolean; href?: string }) {
   const cls =
-    'group relative inline-flex h-12 items-center overflow-hidden rounded-full border border-foreground/15 bg-background px-6 font-semibold focus-visible:outline-2 focus-visible:outline-mark disabled:cursor-not-allowed disabled:opacity-45'
+    'group inline-flex h-10 items-center gap-2 rounded-[4px] bg-primary px-5 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-input disabled:text-muted-foreground'
   const inner = (
     <>
-      <span className="flex items-center gap-2.5">
-        <span className="size-2 rounded-full bg-foreground transition-transform duration-300 group-enabled:group-hover:scale-[100] group-[:is(a)]:group-hover:scale-[100] motion-reduce:transition-none" />
-        <span className="transition-all duration-300 group-enabled:group-hover:translate-x-12 group-enabled:group-hover:opacity-0 group-[:is(a)]:group-hover:translate-x-12 group-[:is(a)]:group-hover:opacity-0 motion-reduce:transition-none">
-          {children}
-        </span>
-      </span>
-      <span
-        aria-hidden
-        className="absolute inset-0 flex translate-x-12 items-center justify-center gap-2 text-background opacity-0 transition-all duration-300 group-enabled:group-hover:translate-x-0 group-enabled:group-hover:opacity-100 group-[:is(a)]:group-hover:translate-x-0 group-[:is(a)]:group-hover:opacity-100 motion-reduce:transition-none"
-      >
-        {children}
-        <ArrowRight className="size-4" />
-      </span>
+      {children}
+      <ArrowRight className="size-4 transition-transform group-enabled:group-hover:translate-x-0.5 group-[:is(a)]:group-hover:translate-x-0.5" />
     </>
   )
   return href ? (
@@ -55,13 +47,14 @@ export function HoverButton({ children, onClick, disabled, href }: { children: R
   )
 }
 
+/** VS Code's secondary button. */
 export function GhostLink({ href, children }: { href: string; children: ReactNode }) {
   const external = href.startsWith('http')
   return (
     <a
       href={href}
       {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-      className="inline-flex h-12 items-center gap-1.5 rounded-full px-5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      className="inline-flex h-10 items-center gap-1.5 rounded-[4px] bg-input px-5 text-sm font-medium text-foreground transition-colors hover:bg-input-border"
     >
       {children}
       {external && <ArrowUpRight className="size-4" />}
@@ -69,12 +62,33 @@ export function GhostLink({ href, children }: { href: string; children: ReactNod
   )
 }
 
+/** An editor tab strip on top of a panel: one active tab with VS Code's blue top border. */
+export function EditorTabs({ tabs, active = 0, right }: { tabs: { icon?: ReactNode; label: string }[]; active?: number; right?: ReactNode }) {
+  return (
+    <div className="flex h-9 items-stretch border-b border-border bg-tile text-[13px]">
+      {tabs.map((t, i) => (
+        <span
+          key={t.label}
+          className={`flex items-center gap-2 border-r border-border px-3 ${i === active ? 'relative bg-background text-heading before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-primary' : 'text-muted-foreground'}`}
+        >
+          {t.icon}
+          <span className="truncate">{t.label}</span>
+          {i === active && <X aria-hidden className="size-3.5 opacity-60" />}
+        </span>
+      ))}
+      <span className="ml-auto flex items-center pr-3">{right}</span>
+    </div>
+  )
+}
+
 export function CopyCommand({ command, label, disabled = false }: { command: string; label: string; disabled?: boolean }) {
   const [done, setDone] = useState(false)
   return (
-    <div className={`relative flex items-start gap-3 rounded-xl border border-border bg-tile p-3 pl-4 text-left transition-opacity ${disabled ? 'opacity-50' : ''}`}>
-      <span className="mt-1 w-[4.5rem] shrink-0 font-mono text-[11px] text-muted-foreground uppercase">{label}</span>
-      <pre className={`min-w-0 flex-1 overflow-x-auto py-0.5 font-mono text-[13px] leading-relaxed whitespace-pre ${disabled ? 'select-none blur-[2px]' : ''}`}>{command}</pre>
+    <div className={`relative flex items-start gap-3 rounded-[4px] border border-border bg-tile p-2.5 pl-3 text-left transition-opacity ${disabled ? 'opacity-55' : ''}`}>
+      <span className="mt-0.5 shrink-0">
+        <Chip>{label}</Chip>
+      </span>
+      <pre className={`min-w-0 flex-1 overflow-x-auto py-0.5 font-mono text-[13px] leading-relaxed whitespace-pre text-foreground ${disabled ? 'select-none blur-[2px]' : ''}`}>{command}</pre>
       <button
         type="button"
         disabled={disabled}
@@ -86,7 +100,7 @@ export function CopyCommand({ command, label, disabled = false }: { command: str
             setTimeout(() => setDone(false), 1400)
           })
         }
-        className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors enabled:hover:text-foreground disabled:cursor-not-allowed"
+        className="flex size-7 shrink-0 items-center justify-center rounded-[4px] text-muted-foreground transition-colors enabled:hover:bg-muted enabled:hover:text-foreground disabled:cursor-not-allowed"
       >
         {done ? <Check className="size-4 text-mark" /> : <Copy className="size-4" />}
       </button>
@@ -94,16 +108,15 @@ export function CopyCommand({ command, label, disabled = false }: { command: str
   )
 }
 
+/** Section heading: a code-comment label, then the title. */
 export function SectionHead({ n, label, title, children }: { n: string; label: string; title: ReactNode; children?: ReactNode }) {
   return (
     <div className="max-w-2xl">
-      <p className="flex items-center gap-2 font-mono text-xs text-muted-foreground uppercase">
-        <span className="text-foreground">{n}</span>
-        <span aria-hidden className="h-px w-6 bg-border" />
-        {label}
+      <p className="font-mono text-[13px] text-comment">
+        // {n} · {label}
       </p>
-      <h2 className="font-soft mt-4 text-[2.1rem] leading-[1.08] font-semibold tracking-tight text-balance sm:text-[2.6rem]">{title}</h2>
-      {children && <p className="mt-4 text-pretty text-muted-foreground sm:text-lg">{children}</p>}
+      <h2 className="font-soft mt-3 text-[2rem] leading-[1.12] font-semibold text-balance sm:text-[2.5rem]">{title}</h2>
+      {children && <p className="mt-4 text-pretty text-muted-foreground sm:text-[17px]">{children}</p>}
     </div>
   )
 }

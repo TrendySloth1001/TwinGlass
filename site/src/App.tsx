@@ -1,8 +1,9 @@
 import { MotionConfig } from 'motion/react'
 import { useEffect } from 'react'
+import { StatusBar, TitleBar } from './components/chrome'
 import { DownloadProvider } from './components/download'
 import { Privacy } from './pages/Privacy'
-import { Agents, DownloadSection, Faq, Features, Footer, Header, Hero, HowItWorks, Numbers, PhoneApp, PrivacyBlock, Strip, WhatsNew } from './sections'
+import { Agents, DownloadSection, Faq, Features, Footer, Hero, HowItWorks, Numbers, PhoneApp, PrivacyBlock, Strip, WhatsNew } from './sections'
 
 export function App() {
   const path = window.location.pathname.replace(/\/+$/, '') || '/'
@@ -14,7 +15,7 @@ export function App() {
     // "user": animations follow the visitor's reduced-motion setting.
     <MotionConfig reducedMotion="user">
       <DownloadProvider>
-        <Header />
+        <TitleBar />
         {privacy ? (
           <Privacy />
         ) : (
@@ -33,6 +34,7 @@ export function App() {
           </main>
         )}
         <Footer />
+        <StatusBar />
       </DownloadProvider>
     </MotionConfig>
   )

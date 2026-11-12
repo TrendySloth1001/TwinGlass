@@ -1,58 +1,19 @@
-import { ArrowLeftRight, ArrowUpRight, Bot, ChevronDown, Command, Download, Fingerprint, KeyRound, Keyboard, Laptop, Layers, Lock, MonitorSmartphone, RefreshCw, ShieldCheck, SlidersHorizontal, Smartphone, Wifi, type LucideIcon } from 'lucide-react'
+import { ArrowLeftRight, ArrowUpRight, Bot, ChevronDown, Command, Fingerprint, KeyRound, Keyboard, Laptop, Layers, Lock, MonitorSmartphone, RefreshCw, ShieldCheck, SlidersHorizontal, Smartphone, Wifi, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Chip, FrameCorners, GhostLink, GithubMark, HoverButton, REPO, RELEASES, SectionHead } from './components/base'
+import { Chip, EditorTabs, FrameCorners, GhostLink, HoverButton, REPO, RELEASES, SectionHead } from './components/base'
 import { DownloadPanel, useDownload } from './components/download'
 import { AnimatedBeam, BlurFade, DotPattern, Marquee, NumberTicker, SpotlightCard, Typewriter, WordRotate } from './components/fx'
 
 /** A thin line icon in a hairline circle: the site's only illustration style. */
 function Glyph({ icon: Icon, size = 'size-10' }: { icon: LucideIcon; size?: string }) {
   return (
-    <span className={`flex ${size} shrink-0 items-center justify-center rounded-full border border-border bg-background text-foreground`}>
+    <span className={`flex ${size} shrink-0 items-center justify-center rounded-md border border-input-border bg-input text-mark`}>
       <Icon className="size-[42%]" strokeWidth={1.6} />
     </span>
   )
 }
 
 const WRAP = 'mx-auto max-w-6xl px-4 sm:px-6 lg:px-10'
-
-// ---------------------------------------------------------------- header
-
-export function Header() {
-  const { openDownload } = useDownload()
-  const capsule = 'pointer-events-auto flex items-center gap-0.5 rounded-full border border-border bg-background/90 p-1 text-sm shadow-sm backdrop-blur-xl'
-  const nav = [
-    ['Features', '/#features'],
-    ['How it works', '/#how'],
-    ['Agents', '/#agents'],
-    ['FAQ', '/#faq'],
-  ]
-  return (
-    <header className="pointer-events-none sticky top-0 z-50 h-0 px-4 sm:px-6 lg:px-10">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 pt-3">
-        <div className={capsule}>
-          <a href="/" className="flex h-9 items-center gap-2 rounded-full px-3 font-semibold tracking-tight">
-            <img src="/icon.png" alt="" className="size-5 rounded-[5px]" />
-            Twinglass
-          </a>
-        </div>
-        <nav aria-label="Main" className={capsule}>
-          {nav.map(([label, href]) => (
-            <a key={href} href={href} className="hidden h-9 items-center rounded-full px-3 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:flex">
-              {label}
-            </a>
-          ))}
-          <a href={REPO} target="_blank" rel="noopener noreferrer" aria-label="GitHub" className="flex h-9 items-center gap-1.5 rounded-full px-3 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-            <GithubMark />
-          </a>
-          <button type="button" onClick={openDownload} className="flex h-9 items-center gap-1.5 rounded-full bg-foreground px-4 font-medium text-background">
-            <Download className="size-4" />
-            Download
-          </button>
-        </nav>
-      </div>
-    </header>
-  )
-}
 
 // ---------------------------------------------------------------- hero
 
@@ -78,7 +39,8 @@ export function Hero() {
   const { openDownload, latest } = useDownload()
   return (
     <section className="relative overflow-hidden">
-      <DotPattern className="[mask-image:radial-gradient(ellipse_at_top,black_20%,transparent_70%)]" />
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[42rem] bg-[radial-gradient(ellipse_60%_55%_at_50%_0%,rgb(0_120_212/0.28),transparent_70%)]" />
+      <DotPattern className="[mask-image:radial-gradient(ellipse_at_top,black_10%,transparent_60%)]" />
 
       <div className={`relative flex flex-col items-center pt-32 text-center lg:pt-40 ${WRAP}`}>
         <BlurFade>
@@ -112,8 +74,11 @@ export function Hero() {
           <p className="mt-4 font-mono text-xs text-muted-foreground">Free · v{latest.version} · macOS 13+ · Apple Silicon · Android 10+</p>
         </BlurFade>
         <BlurFade delay={0.25} className="w-full">
-          <div className="relative mt-16 w-full border border-border bg-tile p-2 shadow-[0_40px_80px_-40px_rgb(0_0_0/0.35)] sm:p-3">
-            <FrameCorners />
+          <div className="relative mt-16 w-full overflow-hidden rounded-lg border border-border bg-tile text-left shadow-[0_40px_100px_-40px_rgb(0_120_212/0.45)]">
+            <EditorTabs
+              tabs={[{ icon: <Smartphone className="size-3.5 text-mark" />, label: 'A024 · mirroring' }, { label: 'Second screen' }, { label: 'Agent screen' }]}
+              right={<Chip dot>Wi-Fi · 60 fps</Chip>}
+            />
             <DemoVideo />
           </div>
         </BlurFade>
@@ -169,7 +134,7 @@ export function Numbers() {
 function Node({ refEl, icon: Icon, title, sub }: { refEl: React.RefObject<HTMLDivElement | null>; icon: LucideIcon; title: string; sub: string }) {
   return (
     <div className="relative z-10 flex flex-col items-center gap-2 text-center">
-      <div ref={refEl} className="flex size-20 items-center justify-center rounded-2xl border border-border bg-background shadow-sm sm:size-24">
+      <div ref={refEl} className="flex size-20 items-center justify-center rounded-lg border border-input-border bg-background text-mark shadow-sm sm:size-24">
         <Icon className="size-8 sm:size-9" strokeWidth={1.4} />
       </div>
       <p className="text-sm font-semibold">{title}</p>
@@ -193,7 +158,7 @@ export function HowItWorks() {
       <SectionHead n="02" label="How it works" title="One video pipeline, three ways in.">
         Either way, the phone’s screen arrives in the same format and one hardware decoder draws it on your Mac. Nothing goes through a server.
       </SectionHead>
-      <div ref={box} className="relative mt-12 flex items-center justify-between gap-4 overflow-hidden rounded-3xl border border-border bg-tile px-4 py-12 text-foreground sm:px-16">
+      <div ref={box} className="relative mt-12 flex items-center justify-between gap-4 overflow-hidden rounded-lg border border-border bg-tile px-4 py-12 text-foreground sm:px-16">
         <DotPattern className="opacity-60" />
         <Node refEl={phone} icon={Smartphone} title="Your phone" sub="Android 10+" />
         <Node refEl={mac} icon={Laptop} title="Twinglass for Mac" sub="decodes, draws, controls" />
@@ -238,7 +203,7 @@ export function Features() {
       <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {FEATURES.map((f, i) => (
           <BlurFade key={f.title} delay={(i % 4) * 0.05} className={f.span}>
-            <SpotlightCard className="h-full rounded-3xl border border-border bg-background p-6 sm:p-7">
+            <SpotlightCard className="h-full rounded-lg border border-border bg-tile p-6 transition-colors hover:border-primary/70 sm:p-7">
               <span className="inline-flex transition-transform duration-500 group-hover:-translate-y-0.5"><Glyph icon={f.icon} size="size-11" /></span>
               <h3 className="mt-6 text-lg font-semibold tracking-tight">{f.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.body}</p>
@@ -260,7 +225,7 @@ export function PhoneApp() {
     ['Updates from your Mac', 'Every Mac release carries the newest phone app. The phone app itself never uses the internet.'],
   ]
   return (
-    <section className={`pt-28 ${WRAP}`}>
+    <section id="phone" className={`pt-28 ${WRAP}`}>
       <div className="grid items-center gap-12 lg:grid-cols-2">
         <div className="min-w-0">
           <SectionHead n="03" label="The phone app" title="A small companion that makes the link two-way.">
@@ -280,9 +245,9 @@ export function PhoneApp() {
         </div>
         <BlurFade className="relative flex justify-center">
           {/* The real phone app, in a plain phone outline on the dot sheet. */}
-          <div className="relative flex w-full max-w-md items-center justify-center overflow-hidden rounded-[2.5rem] border border-border bg-tile py-10">
+          <div className="relative flex w-full max-w-md items-center justify-center overflow-hidden rounded-lg border border-border bg-tile py-10">
             <DotPattern className="[mask-image:radial-gradient(circle,black,transparent_75%)]" />
-            <div className="relative w-[15.5rem] rounded-[2.6rem] border border-foreground/15 bg-background p-2 shadow-[0_30px_60px_-30px_rgb(0_0_0/0.35)] sm:w-[17rem]">
+            <div className="relative w-[15.5rem] rounded-[2.6rem] border border-input-border bg-[#0b0b0b] p-2 shadow-[0_30px_80px_-30px_rgb(0_120_212/0.5)] sm:w-[17rem]">
               <img src="/phone-app.webp" alt="The Twinglass phone app's Home screen" className="w-full rounded-[2.1rem]" width={565} height={1256} loading="lazy" />
             </div>
           </div>
@@ -323,18 +288,19 @@ export function Agents() {
             ))}
           </div>
         </div>
-        <BlurFade className="relative min-w-0 overflow-hidden rounded-3xl border border-border bg-tile p-5 sm:p-6">
+        <BlurFade className="relative min-w-0 overflow-hidden rounded-lg border border-border bg-tile p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-2 text-sm font-medium">
               <Bot className="size-4" /> Connect Claude Code in one line
             </span>
             <Glyph icon={Bot} size="size-9" />
           </div>
-          <div className="mt-4 overflow-hidden rounded-xl border border-border bg-foreground text-background">
-            <div className="flex gap-1.5 border-b border-background/10 px-4 py-2.5">
-              {[0, 1, 2].map((k) => (
-                <span key={k} className="size-2.5 rounded-full bg-background/20" />
-              ))}
+          <div className="mt-4 overflow-hidden rounded-md border border-border bg-tile text-foreground">
+            <div className="flex h-8 items-center gap-4 border-b border-border px-3 text-[11px] tracking-wide text-muted-foreground uppercase">
+              <span>Problems</span>
+              <span>Output</span>
+              <span className="relative text-heading after:absolute after:inset-x-0 after:-bottom-[9px] after:h-px after:bg-heading">Terminal</span>
+              <span className="ml-auto font-mono normal-case">zsh</span>
             </div>
             <Typewriter
               className="min-h-[7.5rem] overflow-x-auto p-4 font-mono text-[12.5px] leading-relaxed whitespace-pre-wrap"
@@ -374,7 +340,7 @@ export function PrivacyBlock() {
     [SlidersHorizontal, 'You decide what the Mac reads', 'Device details, app icons and agent access each switch off on the phone.'],
   ]
   return (
-    <section className={`pt-28 ${WRAP}`}>
+    <section id="privacy" className={`pt-28 ${WRAP}`}>
       <SectionHead n="05" label="Privacy" title="Your phone stays between your phone and your Mac.">
         No servers in the middle. Read the full <a className="font-medium text-foreground underline underline-offset-2" href="/privacy">privacy policy</a>.
       </SectionHead>
