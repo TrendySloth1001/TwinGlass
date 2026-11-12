@@ -1,6 +1,6 @@
 {
   "name": "mob-mirror",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "Mirror and control Android phones from the desktop over USB or Wi-Fi",
   "main": "./out/main/index.js",
