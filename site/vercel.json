@@ -64,6 +64,14 @@
     {
       "source": "/releases/",
       "destination": "/index.html"
+    },
+    {
+      "source": "/docs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/docs/",
+      "destination": "/index.html"
     }
   ]
 }

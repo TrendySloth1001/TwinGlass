@@ -53,6 +53,7 @@ export function SiteHeader() {
     ['FAQ', '#faq'],
   ]
   const pages = [
+    ['Docs', '/docs'],
     ['Changelog', '/changelog'],
     ['Releases', '/releases'],
   ]

@@ -1005,7 +1005,7 @@ export function Footer() {
           </div>
           {col('Product', [local('/#features', 'Features'), local('/#how', 'How it works'), local('/#agents', 'For agents'), local('/#download', 'Download')])}
           {col('Project', [out(REPO, 'GitHub'), local('/releases', 'Releases'), local('/changelog', 'Changelog')])}
-          {col('Help & legal', [local('/privacy', 'Privacy Policy'), out(`${REPO}/issues/new`, 'Report a problem'), out(`${DOCS}/AGENTS.md`, 'Agent setup')])}
+          {col('Help & legal', [local('/docs', 'Documentation'), local('/privacy', 'Privacy Policy'), out(`${REPO}/issues/new`, 'Report a problem'), out(`${DOCS}/AGENTS.md`, 'Agent setup')])}
         </div>
         <p className="mt-12 text-xs text-muted-foreground">
           © 2026 Nikhil Kumawat · Built on{' '}
