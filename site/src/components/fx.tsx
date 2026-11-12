@@ -192,7 +192,7 @@ export function SpotlightCard({ children, className }: { children: ReactNode; cl
         if (r) setPos({ x: e.clientX - r.left, y: e.clientY - r.top })
       }}
       onPointerLeave={() => setPos(null)}
-      className={`group relative overflow-hidden ${className ?? ''}`}
+      className={`group relative ${className ?? ''}`}
     >
       <div
         aria-hidden

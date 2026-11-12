@@ -1,5 +1,5 @@
 // Building blocks in VS Code's design language (Dark Modern): badges, buttons, editor tabs.
-import { ArrowRight, ArrowUpRight, Check, Copy, X } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Check, Copy } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import changelog from '../data/changelog.json'
 import release from '../data/release.json'
@@ -9,9 +9,10 @@ export const RELEASES = changelog.releases
 export const INSTALL = 'curl -fsSL https://raw.githubusercontent.com/TrendySloth1001/TwinGlass/master/install.sh | bash'
 export const BREW = 'brew tap TrendySloth1001/tap && brew trust TrendySloth1001/tap\nbrew install --cask twinglass'
 
-/** Kept for older call sites: VS Code has no corner marks, so this draws nothing. */
+/** The L7 frame: corner marks (⌜ ⌝ ⌞ ⌟) drawn on a card's hairlines. Cards stay square. */
 export function FrameCorners() {
-  return null
+  const corners = ['-top-px -left-px border-t border-l', '-top-px -right-px border-t border-r', '-bottom-px -left-px border-b border-l', '-bottom-px -right-px border-b border-r']
+  return corners.map((c) => <span key={c} aria-hidden className={`pointer-events-none absolute size-3.5 border-foreground/55 ${c}`} />)
 }
 
 /** VS Code's badge / tag chip: square-ish, small, quiet. */
@@ -62,25 +63,6 @@ export function GhostLink({ href, children }: { href: string; children: ReactNod
   )
 }
 
-/** An editor tab strip on top of a panel: one active tab with VS Code's blue top border. */
-export function EditorTabs({ tabs, active = 0, right }: { tabs: { icon?: ReactNode; label: string }[]; active?: number; right?: ReactNode }) {
-  return (
-    <div className="flex h-9 items-stretch border-b border-border bg-tile text-[13px]">
-      {tabs.map((t, i) => (
-        <span
-          key={t.label}
-          className={`flex items-center gap-2 border-r border-border px-3 ${i === active ? 'relative bg-background text-heading before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-primary' : 'text-muted-foreground'}`}
-        >
-          {t.icon}
-          <span className="truncate">{t.label}</span>
-          {i === active && <X aria-hidden className="size-3.5 opacity-60" />}
-        </span>
-      ))}
-      <span className="ml-auto flex items-center pr-3">{right}</span>
-    </div>
-  )
-}
-
 export function CopyCommand({ command, label, disabled = false }: { command: string; label: string; disabled?: boolean }) {
   const [done, setDone] = useState(false)
   return (
@@ -112,8 +94,10 @@ export function CopyCommand({ command, label, disabled = false }: { command: str
 export function SectionHead({ n, label, title, children }: { n: string; label: string; title: ReactNode; children?: ReactNode }) {
   return (
     <div className="max-w-2xl">
-      <p className="font-mono text-[13px] text-comment">
-        // {n} · {label}
+      <p className="flex items-center gap-2 font-mono text-xs text-muted-foreground uppercase">
+        <span className="text-mark">{n}</span>
+        <span aria-hidden className="h-px w-6 bg-border" />
+        {label}
       </p>
       <h2 className="font-soft mt-3 text-[2rem] leading-[1.12] font-semibold text-balance sm:text-[2.5rem]">{title}</h2>
       {children && <p className="mt-4 text-pretty text-muted-foreground sm:text-[17px]">{children}</p>}

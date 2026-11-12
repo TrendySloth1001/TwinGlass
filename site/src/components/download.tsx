@@ -93,7 +93,7 @@ export function DownloadButton({ label }: { label?: string }) {
 export function DownloadPanel() {
   const { agreed, latest } = useDownload()
   return (
-    <div className="relative overflow-hidden rounded-lg border border-border bg-tile px-6 py-12 text-center sm:px-12 sm:py-16">
+    <div className="relative border border-border bg-tile px-6 py-12 text-center sm:px-12 sm:py-16">
       <FrameCorners />
       <BorderBeam seconds={9} />
       <img src="/icon-large.png" alt="" className="mx-auto size-20 rounded-[22%] shadow-sm" width={80} height={80} loading="lazy" />
@@ -147,8 +147,9 @@ function DownloadDialog({ open, onClose }: { open: boolean; onClose: () => void 
             exit={{ y: 16, scale: 0.98, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 380, damping: 32 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-lg rounded-lg border border-[#454545] bg-[#222222] p-6 shadow-[0_8px_32px_rgb(0_0_0/0.6)] sm:p-8"
+            className="relative w-full max-w-lg border border-input-border bg-tile p-6 shadow-[0_8px_40px_rgb(0_0_0/0.6)] sm:p-8"
           >
+            <FrameCorners />
             <button type="button" onClick={onClose} aria-label="Close" className="absolute top-4 right-4 flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
               <X className="size-4" />
             </button>
@@ -165,7 +166,8 @@ function DownloadDialog({ open, onClose }: { open: boolean; onClose: () => void 
               Twinglass has no accounts and no analytics. The only thing it fetches from the internet is the update check. The policy explains exactly what
               stays where.
             </p>
-            <div className="mt-5 rounded-md border border-border bg-tile p-4">
+            <div className="relative mt-5 border border-border bg-background p-4">
+              <FrameCorners />
               <ConsentCheck id="consent-dialog" />
             </div>
             <div className="mt-5 flex flex-col gap-2">

@@ -1,6 +1,6 @@
 import { ArrowLeftRight, ArrowUpRight, Bot, ChevronDown, Command, Fingerprint, KeyRound, Keyboard, Laptop, Layers, Lock, MonitorSmartphone, RefreshCw, ShieldCheck, SlidersHorizontal, Smartphone, Wifi, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Chip, EditorTabs, FrameCorners, GhostLink, HoverButton, REPO, RELEASES, SectionHead } from './components/base'
+import { Chip, FrameCorners, GhostLink, HoverButton, REPO, RELEASES, SectionHead } from './components/base'
 import { DownloadPanel, useDownload } from './components/download'
 import { AnimatedBeam, BlurFade, DotPattern, Marquee, NumberTicker, SpotlightCard, Typewriter, WordRotate } from './components/fx'
 
@@ -74,11 +74,8 @@ export function Hero() {
           <p className="mt-4 font-mono text-xs text-muted-foreground">Free · v{latest.version} · macOS 13+ · Apple Silicon · Android 10+</p>
         </BlurFade>
         <BlurFade delay={0.25} className="w-full">
-          <div className="relative mt-16 w-full overflow-hidden rounded-lg border border-border bg-tile text-left shadow-[0_40px_100px_-40px_rgb(0_120_212/0.45)]">
-            <EditorTabs
-              tabs={[{ icon: <Smartphone className="size-3.5 text-mark" />, label: 'A024 · mirroring' }, { label: 'Second screen' }, { label: 'Agent screen' }]}
-              right={<Chip dot>Wi-Fi · 60 fps</Chip>}
-            />
+          <div className="relative mt-16 w-full border border-border bg-tile p-2 shadow-[0_40px_100px_-40px_rgb(0_120_212/0.45)] sm:p-3">
+            <FrameCorners />
             <DemoVideo />
           </div>
         </BlurFade>
@@ -134,7 +131,8 @@ export function Numbers() {
 function Node({ refEl, icon: Icon, title, sub }: { refEl: React.RefObject<HTMLDivElement | null>; icon: LucideIcon; title: string; sub: string }) {
   return (
     <div className="relative z-10 flex flex-col items-center gap-2 text-center">
-      <div ref={refEl} className="flex size-20 items-center justify-center rounded-lg border border-input-border bg-background text-mark shadow-sm sm:size-24">
+      <div ref={refEl} className="relative flex size-20 items-center justify-center border border-input-border bg-background text-mark sm:size-24">
+        <FrameCorners />
         <Icon className="size-8 sm:size-9" strokeWidth={1.4} />
       </div>
       <p className="text-sm font-semibold">{title}</p>
@@ -158,7 +156,8 @@ export function HowItWorks() {
       <SectionHead n="02" label="How it works" title="One video pipeline, three ways in.">
         Either way, the phone’s screen arrives in the same format and one hardware decoder draws it on your Mac. Nothing goes through a server.
       </SectionHead>
-      <div ref={box} className="relative mt-12 flex items-center justify-between gap-4 overflow-hidden rounded-lg border border-border bg-tile px-4 py-12 text-foreground sm:px-16">
+      <div ref={box} className="relative mt-12 flex items-center justify-between gap-4 border border-border bg-tile px-4 py-12 text-foreground sm:px-16">
+        <FrameCorners />
         <DotPattern className="opacity-60" />
         <Node refEl={phone} icon={Smartphone} title="Your phone" sub="Android 10+" />
         <Node refEl={mac} icon={Laptop} title="Twinglass for Mac" sub="decodes, draws, controls" />
@@ -203,7 +202,8 @@ export function Features() {
       <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {FEATURES.map((f, i) => (
           <BlurFade key={f.title} delay={(i % 4) * 0.05} className={f.span}>
-            <SpotlightCard className="h-full rounded-lg border border-border bg-tile p-6 transition-colors hover:border-primary/70 sm:p-7">
+            <SpotlightCard className="h-full border border-border bg-tile p-6 transition-colors hover:border-primary/60 sm:p-7">
+              <FrameCorners />
               <span className="inline-flex transition-transform duration-500 group-hover:-translate-y-0.5"><Glyph icon={f.icon} size="size-11" /></span>
               <h3 className="mt-6 text-lg font-semibold tracking-tight">{f.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.body}</p>
@@ -245,7 +245,8 @@ export function PhoneApp() {
         </div>
         <BlurFade className="relative flex justify-center">
           {/* The real phone app, in a plain phone outline on the dot sheet. */}
-          <div className="relative flex w-full max-w-md items-center justify-center overflow-hidden rounded-lg border border-border bg-tile py-10">
+          <div className="relative flex w-full max-w-md items-center justify-center border border-border bg-tile py-10">
+            <FrameCorners />
             <DotPattern className="[mask-image:radial-gradient(circle,black,transparent_75%)]" />
             <div className="relative w-[15.5rem] rounded-[2.6rem] border border-input-border bg-[#0b0b0b] p-2 shadow-[0_30px_80px_-30px_rgb(0_120_212/0.5)] sm:w-[17rem]">
               <img src="/phone-app.webp" alt="The Twinglass phone app's Home screen" className="w-full rounded-[2.1rem]" width={565} height={1256} loading="lazy" />
@@ -288,19 +289,19 @@ export function Agents() {
             ))}
           </div>
         </div>
-        <BlurFade className="relative min-w-0 overflow-hidden rounded-lg border border-border bg-tile p-5 sm:p-6">
+        <BlurFade className="relative min-w-0 border border-border bg-tile p-5 sm:p-6">
+          <FrameCorners />
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-2 text-sm font-medium">
               <Bot className="size-4" /> Connect Claude Code in one line
             </span>
             <Glyph icon={Bot} size="size-9" />
           </div>
-          <div className="mt-4 overflow-hidden rounded-md border border-border bg-tile text-foreground">
-            <div className="flex h-8 items-center gap-4 border-b border-border px-3 text-[11px] tracking-wide text-muted-foreground uppercase">
-              <span>Problems</span>
-              <span>Output</span>
-              <span className="relative text-heading after:absolute after:inset-x-0 after:-bottom-[9px] after:h-px after:bg-heading">Terminal</span>
-              <span className="ml-auto font-mono normal-case">zsh</span>
+          <div className="relative mt-4 border border-border bg-background text-foreground">
+            <FrameCorners />
+            <div className="flex h-8 items-center justify-between border-b border-border px-3 font-mono text-[11px] text-muted-foreground uppercase">
+              <span>Terminal</span>
+              <span className="normal-case">zsh</span>
             </div>
             <Typewriter
               className="min-h-[7.5rem] overflow-x-auto p-4 font-mono text-[12.5px] leading-relaxed whitespace-pre-wrap"
