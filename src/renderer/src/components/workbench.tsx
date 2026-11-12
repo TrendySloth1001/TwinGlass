@@ -184,7 +184,7 @@ function Tab({
         }
       }}
       className={cn(
-        'group relative -mb-px flex min-w-0 cursor-default items-center gap-1.5 border-r border-border pr-1.5 pl-3 text-[13px] outline-none',
+        'group relative -mb-px flex max-w-[240px] min-w-0 shrink-0 cursor-default items-center gap-1.5 border-r border-border pr-1.5 pl-3 text-[13px] outline-none',
         active ? 'bg-background text-foreground' : 'bg-tab-inactive text-muted-foreground hover:text-foreground',
       )}
     >
@@ -213,43 +213,43 @@ function Tab({
   )
 }
 
-export type EditorTab = 'main' | 'settings'
+/** One entry of the editor tab strip. */
+export interface EditorTabSpec {
+  id: string
+  label: string
+  kind: 'welcome' | 'settings' | 'usb' | 'wifi' | 'phone' | 'second'
+  detail?: string
+  /** × on the tab (Disconnect for phones, Close for Settings). */
+  onClose?: () => void
+  closeLabel?: string
+}
 
-/** The editor tab strip: Welcome or the mirrored phone, plus Settings when it's open. */
-export function EditorTabs({
-  phone,
-  transport,
-  onDisconnect,
-  settingsOpen,
-  active,
-  onSelect,
-  onCloseSettings,
-}: {
-  /** The mirrored phone's name, or null on the Welcome page. */
-  phone: string | null
-  transport: 'usb' | 'wifi' | null
-  onDisconnect?: () => void
-  settingsOpen: boolean
-  active: EditorTab
-  onSelect: (t: EditorTab) => void
-  onCloseSettings: () => void
-}): ReactNode {
-  const Icon = phone ? (transport === 'usb' ? Usb : transport === 'wifi' ? Wifi : Smartphone) : House
+const TAB_ICON: Record<EditorTabSpec['kind'], { icon: LucideIcon; cls: string }> = {
+  welcome: { icon: House, cls: 'text-primary' },
+  settings: { icon: Settings, cls: '' },
+  usb: { icon: Usb, cls: 'text-link' },
+  wifi: { icon: Wifi, cls: 'text-link' },
+  phone: { icon: Smartphone, cls: 'text-link' },
+  second: { icon: Layers, cls: 'text-link' },
+}
+
+/** The editor tab strip (VS Code's): Welcome, every phone or second screen open here, Settings. */
+export function EditorTabs({ tabs, active, onSelect }: { tabs: EditorTabSpec[]; active: string; onSelect: (id: string) => void }): ReactNode {
   return (
-    <div role="tablist" className="flex h-[35px] shrink-0 items-stretch border-b border-border bg-tab-inactive">
-      <Tab
-        icon={Icon}
-        iconClass={phone ? 'text-link' : 'text-primary'}
-        label={phone ?? 'Welcome'}
-        detail={phone && transport ? (transport === 'usb' ? 'USB' : 'Wi-Fi') : undefined}
-        active={active === 'main'}
-        onSelect={() => onSelect('main')}
-        onClose={onDisconnect}
-        closeLabel="Disconnect"
-      />
-      {settingsOpen && (
-        <Tab icon={Settings} label="Settings" active={active === 'settings'} onSelect={() => onSelect('settings')} onClose={onCloseSettings} closeLabel="Close Settings" />
-      )}
+    <div role="tablist" className="flex h-[35px] shrink-0 items-stretch overflow-x-auto border-b border-border bg-tab-inactive [scrollbar-width:none]">
+      {tabs.map((t) => (
+        <Tab
+          key={t.id}
+          icon={TAB_ICON[t.kind].icon}
+          iconClass={TAB_ICON[t.kind].cls}
+          label={t.label}
+          detail={t.detail}
+          active={active === t.id}
+          onSelect={() => onSelect(t.id)}
+          onClose={t.onClose}
+          closeLabel={t.closeLabel}
+        />
+      ))}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { app, BrowserWindow, ipcMain, nativeTheme } from 'electron'
+import { mirrorHash, registerTabs } from './tabs'
 import { Adb, findAdb } from './adb/adb'
 import { registerDevicesIpc, stopDeviceTracking } from './devices-ipc'
 import { closeAllRecordings, registerMediaIpc } from './media-ipc'
@@ -46,6 +47,8 @@ function createWindow(autoConnect?: {
   agent?: boolean
   /** Second screen size (agent screen setting). */
   display?: { width: number; height: number; dpi: number }
+  /** Start in the compact, phone-shaped view (a tab popped out with "mobile view"). */
+  compact?: boolean
 }): BrowserWindow {
   const win = new BrowserWindow({
     // The agent screen opens without taking focus from what the user is doing.
@@ -73,12 +76,7 @@ function createWindow(autoConnect?: {
       backgroundThrottling: false,
     },
   })
-  const hash = autoConnect
-    ? `connect=${encodeURIComponent(autoConnect.serial)}&kind=${autoConnect.kind}` +
-      (autoConnect.second ? `&screen=second${autoConnect.app ? `&app=${encodeURIComponent(autoConnect.app)}` : ''}` : '') +
-      (autoConnect.agent ? '&agent=1' : '') +
-      (autoConnect.display ? `&size=${autoConnect.display.width}x${autoConnect.display.height}/${autoConnect.display.dpi}` : '')
-    : ''
+  const hash = autoConnect ? mirrorHash(autoConnect) + (autoConnect.compact ? '&view=compact' : '') : ''
   if (autoConnect?.agent) win.once('ready-to-show', () => win.showInactive())
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(`${process.env.ELECTRON_RENDERER_URL}#${hash}`)
   else void win.loadFile(join(__dirname, '../renderer/index.html'), { hash })
@@ -117,6 +115,8 @@ ipcMain.handle('window:open-device', (_e, serial: string, kind: string, opts?: {
   createWindow({ serial, kind, second: opts?.second === true, app })
 })
 
+// Phones opened as editor tabs in a window; "mobile view" pops one out as its own compact window.
+registerTabs((t) => void createWindow({ ...t, compact: t.compact }))
 registerDevicesIpc(getAdb)
 registerSessionIpc(getAdb, serverPath)
 registerUnlockIpc(getAdb, getSession)

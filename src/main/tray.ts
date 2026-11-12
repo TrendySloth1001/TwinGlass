@@ -1,4 +1,5 @@
 // Menu bar icon: phones with battery and connection, one click to mirror, launch at login.
+import { hostWindowOf } from './tabs'
 import { app, BrowserWindow, Menu, nativeImage, Tray, webContents, type MenuItemConstructorOptions } from 'electron'
 import type { Adb, DeviceList } from './adb/adb'
 import { parseBattery, type Battery } from './adb/parse'
@@ -44,7 +45,7 @@ function build(deps: TrayDeps): void {
         label: 'Show mirror',
         click: () => {
           const wc = webContents.fromId(live.get(mirroredOn.serial)!)
-          const win = wc && BrowserWindow.fromWebContents(wc)
+          const win = wc && (BrowserWindow.fromWebContents(wc) ?? hostWindowOf(wc))
           win?.show()
           win?.focus()
         },

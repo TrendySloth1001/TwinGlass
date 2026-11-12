@@ -1,5 +1,6 @@
 // macOS application menu. Device shortcuts live here because Electron's menu handles key
 // equivalents before the page, so ⌘-shortcuts can't be reliably caught with keydown in the renderer.
+import { deviceTarget } from './tabs'
 import { BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron'
 import { SHORTCUTS, type ShortcutDef } from '@shared/shortcuts'
 import { tileWindows } from './window-layout'
@@ -13,13 +14,18 @@ function deviceItems(): MenuItemConstructorOptions[] {
     items.push({
       label: s.label,
       accelerator: s.accelerator,
-      click: () => BrowserWindow.getFocusedWindow()?.webContents.send('device:action', s.action),
+      click: () => deviceTarget(BrowserWindow.getFocusedWindow())?.send('device:action', s.action),
     })
   }
   return items
 }
 
-const uiCommand = (cmd: string): void => BrowserWindow.getFocusedWindow()?.webContents.send('ui:command', cmd)
+/** Phone-level commands go to the selected tab's page; window-level ones to the window. */
+const TAB_COMMANDS = new Set(['open-palette', 'open-clipboard', 'send-clipboard', 'toggle-view'])
+const uiCommand = (cmd: string): void => {
+  const win = BrowserWindow.getFocusedWindow()
+  ;(TAB_COMMANDS.has(cmd) ? deviceTarget(win) : win?.webContents)?.send('ui:command', cmd)
+}
 
 export function installMenu(): void {
   const template: MenuItemConstructorOptions[] = [
@@ -53,7 +59,7 @@ export function installMenu(): void {
         {
           label: 'Compact Mirror / Full View',
           accelerator: 'CommandOrControl+Shift+M',
-          click: () => BrowserWindow.getFocusedWindow()?.webContents.send('ui:command', 'toggle-view'),
+          click: () => uiCommand('toggle-view'),
         },
         {
           label: 'Toggle Sidebar',

@@ -221,6 +221,24 @@ export interface MobMirrorApi {
   onQrState(cb: (s: QrState) => void): () => void
   /** opts.second: mirror a new virtual display (a second screen), opening opts.app on it. */
   openDeviceWindow(serial: string, kind: 'usb' | 'wifi', opts?: { second?: boolean; app?: string }): Promise<void>
+  /** Editor tabs (a window's own mirror tabs; each tab is its own page with its own session). */
+  tabs: {
+    open(target: { serial: string; kind: 'usb' | 'wifi'; second?: boolean; app?: string }): Promise<string | null>
+    list(): Promise<TabsState>
+    onChanged(cb: (s: TabsState) => void): () => void
+    select(id: string | null): void
+    close(id: string): void
+    /** The editor area in window coordinates (null: no room for a tab page). */
+    setBounds(r: { x: number; y: number; width: number; height: number } | null): void
+    /** A menu or dialog covers the editor area: hide the tab page under it. */
+    setCovered(covered: boolean): void
+    /** From a tab's own page: its title, close itself, pop out as a compact window. */
+    setTitle(title: string): void
+    closeSelf(): void
+    popOut(): void
+    /** Ask the selected tab to open its own search / clipboard history. */
+    command(cmd: 'open-palette' | 'open-clipboard'): void
+  }
   /** Device menu items / their shortcuts (⌘B back, ⇧⌘H home…), sent to the focused window. */
   onDeviceAction(cb: (action: DeviceAction) => void): () => void
   /** View menu commands (toggle sidebar ⌘\, float/dock ⌥⌘\). */
@@ -294,4 +312,17 @@ declare global {
   interface Window {
     mobMirror: MobMirrorApi
   }
+}
+
+export interface TabInfo {
+  id: string
+  serial: string
+  kind: string
+  second?: boolean
+  app?: string
+  title: string
+}
+export interface TabsState {
+  tabs: TabInfo[]
+  active: string | null
 }

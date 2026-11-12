@@ -49,18 +49,23 @@ export function StatusBar({
   phones,
   adb,
   onRemote,
+  tab,
 }: {
   state: MirrorState
   phones: number
   adb: AdbStatusInfo | null
   onRemote: () => void
+  /** The main window's selected phone tab (its stream numbers live in the tab's own page). */
+  tab?: { title: string; kind: 'usb' | 'wifi' }
 }): ReactNode {
   const s = state.stats
   const live = state.phase === 'live'
   const busy = state.phase === 'connecting' || state.phase === 'reconnecting'
   const kind = state.transport?.kind
-  const RemoteIcon = busy ? LoaderCircle : !state.transport ? Unplug : kind === 'usb' ? Usb : Wifi
-  const remote = busy
+  const RemoteIcon = tab ? (tab.kind === 'usb' ? Usb : Wifi) : busy ? LoaderCircle : !state.transport ? Unplug : kind === 'usb' ? Usb : Wifi
+  const remote = tab
+    ? `${tab.title} · ${tab.kind === 'usb' ? 'USB' : 'Wi-Fi'}`
+    : busy
     ? state.phase === 'connecting'
       ? 'Connecting…'
       : 'Reconnecting…'
@@ -78,10 +83,10 @@ export function StatusBar({
         title="Phones"
         className="mr-1 flex items-center gap-1.5 bg-statusbar-remote px-2.5 text-white hover:brightness-110 [&_svg]:size-3.5"
       >
-        <RemoteIcon className={cn(busy && 'animate-spin')} />
+        <RemoteIcon className={cn(busy && !tab && 'animate-spin')} />
         {remote}
       </button>
-      {!live && (
+      {!live && !tab && (
         <Item title="Phones connected" onClick={onRemote}>
           <Smartphone /> {phones} {phones === 1 ? 'phone' : 'phones'}
         </Item>

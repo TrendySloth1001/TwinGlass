@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import type { TransportInfo } from '../../preload/api'
@@ -14,7 +15,8 @@ import { notify, setPopups } from '@/lib/notify'
 import { MirrorToolbar } from '@/components/mirror-toolbar'
 import { Sidebar } from '@/components/sidebar'
 import { StatusBar } from '@/components/status-bar'
-import { ActivityBar, EditorTabs, TitleBar, TITLE_BAR, type EditorTab, type SideView } from '@/components/workbench'
+import { ActivityBar, EditorTabs, TitleBar, TITLE_BAR, type EditorTabSpec, type SideView } from '@/components/workbench'
+import type { TabsState } from '../../preload/api'
 import type { DeviceAction } from '@shared/shortcuts'
 import { useDevices } from '@/hooks/use-devices'
 import { useMirror } from '@/hooks/use-mirror'
@@ -106,6 +108,14 @@ const SECOND_SCREEN: {
   }
 })()
 
+const HASH = new URLSearchParams(location.hash.slice(1))
+/** A tab's own page inside a window (main/tabs.ts): only the phone's controls and its stage. */
+const EMBED = HASH.get('embed') === '1'
+/** A window popped out of a tab with "mobile view": starts in the compact phone view. */
+const START_COMPACT = HASH.get('view') === 'compact'
+/** The main window: phones and second screens open as editor tabs here, as many as the user likes. */
+const IS_HOST = !EMBED && !autoConnectTarget()
+
 /** Update versions already offered in this window (the check repeats every 6 hours). */
 const offeredUpdates = new Set<string>()
 
@@ -122,18 +132,40 @@ export function App(): ReactNode {
   const [settingsOpen, setSettingsOpen] = useState(false)
   /** Full view: Settings is an editor tab next to the phone (or Welcome), like VS Code's. */
   const [settingsTab, setSettingsTab] = useState(false)
-  const [editorTab, setEditorTab] = useState<EditorTab>('main')
+  /** A popped-out tab starts compact until the user picks the full view. */
+  const [forceCompact, setForceCompact] = useState(START_COMPACT)
+  const forceCompactRef = useRef(forceCompact)
+  forceCompactRef.current = forceCompact
+  /** 'main' (Welcome, or this window's phone), 'settings', or a phone tab's id. */
+  const [editorTab, setEditorTab] = useState<string>('main')
+  /** Phone tabs open in this window (main window only). */
+  const [tabsState, setTabsState] = useState<TabsState>({ tabs: [], active: null })
+  useEffect(() => {
+    if (!IS_HOST) return
+    const apply = (st: TabsState): void => {
+      setTabsState(st)
+      setEditorTab((prev) => st.active ?? (prev === 'settings' ? 'settings' : 'main'))
+    }
+    void window.mobMirror.tabs.list().then(apply)
+    return window.mobMirror.tabs.onChanged(apply)
+  }, [])
+  const selectTab = useCallback((id: string) => {
+    setEditorTab(id)
+    if (IS_HOST) window.mobMirror.tabs.select(id === 'main' || id === 'settings' ? null : id)
+  }, [])
   const compactRef = useRef(false)
   const openSettings = useCallback(() => {
     if (compactRef.current) setSettingsOpen(true)
     else {
       setSettingsTab(true)
       setEditorTab('settings')
+      if (IS_HOST) window.mobMirror.tabs.select(null)
     }
   }, [])
   const closeSettingsTab = useCallback(() => {
     setSettingsTab(false)
     setEditorTab('main')
+    if (IS_HOST) window.mobMirror.tabs.select(null)
   }, [])
   /** Phone details requests (menus anywhere dispatch PHONE_DETAILS_EVENT); the dialog loads on the first one. */
   const [detailsRequest, setDetailsRequest] = useState<{
@@ -222,6 +254,9 @@ export function App(): ReactNode {
         }
       } else if (action === 'unlock') {
         if (live) void quickUnlock()
+      } else if (action === 'disconnect' && EMBED) {
+        runAction('disconnect')
+        window.mobMirror.tabs.closeSelf()
       } else if (action === 'recents' && SECOND_SCREEN && live) {
         setGridOpen(false)
         setSwitcherOpen((o) => !o)
@@ -244,6 +279,11 @@ export function App(): ReactNode {
         const model = devices.list?.devices.find((d) => d.id === deviceId)?.model ?? t.model ?? deviceId
         const recent = [{ id: deviceId, model, at: Date.now() }, ...settings.recentDevices.filter((r) => r.id !== deviceId)].slice(0, 8)
         updateSettings({ lastDevice: deviceId, recentDevices: recent })
+      }
+      if (IS_HOST) {
+        // The main window doesn't mirror in its own page: every phone gets a tab.
+        void window.mobMirror.tabs.open({ serial: t.serial, kind: t.kind })
+        return
       }
       void connect(t, {
         audio: settings.audio,
@@ -287,6 +327,11 @@ export function App(): ReactNode {
   useEffect(() => {
     if (!live) setUnlockOpen(false)
   }, [live])
+
+  // A tab page names its tab after the phone.
+  useEffect(() => {
+    if (EMBED && mirror.state.deviceName) window.mobMirror.tabs.setTitle(SECOND_SCREEN ? `${mirror.state.deviceName} · Second screen` : mirror.state.deviceName)
+  }, [mirror.state.deviceName])
 
   // Windows opened for a phone ("new window", second screen) connect once on load. Scheduled and
   // cancelled in cleanup (StrictMode-safe): React's dev double-mount runs the mirror hook's unmount
@@ -344,10 +389,14 @@ export function App(): ReactNode {
               (r) => toast.success(r.kind === 'opened' ? 'Opened on the phone' : 'Copied to the phone'),
               (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
             )
-        } else if (cmd === 'toggle-view')
-          updateSettings({
-            viewMode: s.viewMode === 'compact' ? 'full' : 'compact',
-          })
+        } else if (cmd === 'toggle-view') {
+          // A tab page's "compact view" is popping out into its own window.
+          if (EMBED) window.mobMirror.tabs.popOut()
+          else {
+            setForceCompact(false)
+            updateSettings({ viewMode: s.viewMode === 'compact' || forceCompactRef.current ? 'full' : 'compact' })
+          }
+        }
         else if (cmd === 'toggle-sidebar') updateSettings({ sidebarOpen: !s.sidebarOpen })
         else
           updateSettings({
@@ -435,25 +484,56 @@ export function App(): ReactNode {
 
   // Compact mirror (default while a phone is mirrored): phone-shaped window + control rail. The full
   // view (devices, settings, toolbar) is one click away and is used when nothing is mirrored.
-  const compact = settings.viewMode === 'compact' && (mirror.state.phase === 'live' || mirror.state.phase === 'reconnecting')
+  const compact =
+    !EMBED && (settings.viewMode === 'compact' || forceCompact) && (mirror.state.phase === 'live' || mirror.state.phase === 'reconnecting')
+  /** VS Code's workbench (title bar, activity bar, side bar, status bar); a tab page has none of it. */
+  const workbench = !compact && !EMBED
   compactRef.current = compact
   const framed = compact && settings.frame !== 'none'
   const helpMounted = useOpenedOnce(helpOpen)
   const paletteMounted = useOpenedOnce(palette.open)
   const settingsMounted = useOpenedOnce(settingsOpen)
   const unlockMounted = useOpenedOnce(unlockOpen)
+  const onPhoneNow = mirror.state.phase !== 'idle'
+  const phoneNameNow = mirror.state.deviceName || (mirror.state.phase === 'connecting' ? 'Connecting…' : '')
   // Phone a second screen opens on: the mirrored one, else the home screen's first phone.
   const secondTarget: TransportInfo | undefined =
     mirror.state.transport ?? (devices.list?.devices.find((d) => d.id === settings.lastDevice) ?? devices.list?.devices[0])?.transports[0]
   /** Open a whole-phone second screen for the phone in front (new window, app grid as its home). */
-  const openSecondScreen = (): void => {
+  const openSecondScreen = (app?: string): void => {
     const t = secondTarget
-    if (t)
-      void window.mobMirror.openDeviceWindow(t.serial, t.kind, {
-        second: true,
-      })
-    else toast.error('Connect a phone first.')
+    if (!t) return void toast.error('Connect a phone first.')
+    if (IS_HOST) void window.mobMirror.tabs.open({ serial: t.serial, kind: t.kind, second: true, ...(app ? { app } : {}) })
+    else void window.mobMirror.openDeviceWindow(t.serial, t.kind, { second: true, ...(app ? { app } : {}) })
   }
+  const popOutOrCompact = (): void => {
+    if (EMBED) window.mobMirror.tabs.popOut()
+    else updateSettings({ viewMode: 'compact' })
+  }
+  const activeTabInfo = tabsState.tabs.find((x) => x.id === editorTab)
+  const tabSpecs: EditorTabSpec[] = [
+    IS_HOST || !onPhoneNow
+      ? { id: 'main', label: 'Welcome', kind: 'welcome' }
+      : {
+          id: 'main',
+          label: phoneNameNow,
+          kind: mirror.state.transport?.kind ?? 'phone',
+          detail: mirror.state.transport ? (mirror.state.transport.kind === 'usb' ? 'USB' : 'Wi-Fi') : undefined,
+          onClose: () => dispatch('disconnect'),
+          closeLabel: 'Disconnect',
+        },
+    ...tabsState.tabs.map(
+      (t): EditorTabSpec => ({
+        id: t.id,
+        label: t.title,
+        kind: t.second ? 'second' : t.kind === 'usb' ? 'usb' : 'wifi',
+        detail: t.kind === 'usb' ? 'USB' : 'Wi-Fi',
+        onClose: () => window.mobMirror.tabs.close(t.id),
+        closeLabel: t.second ? 'Close second screen' : 'Disconnect',
+      }),
+    ),
+    ...(settingsTab ? [{ id: 'settings', label: 'Settings', kind: 'settings', onClose: closeSettingsTab, closeLabel: 'Close Settings' } as EditorTabSpec] : []),
+  ]
   const frameButtons = frameSpec(settings.frame)?.buttons ?? 0
   const vw = mirror.state.stats?.width ?? 0
   const vh = mirror.state.stats?.height ?? 0
@@ -483,22 +563,58 @@ export function App(): ReactNode {
       updateSettings({ sidebarOpen: true })
     }
   }
-  const phoneName = mirror.state.deviceName || (mirror.state.phase === 'connecting' ? 'Connecting…' : '')
-  const onPhone = mirror.state.phase !== 'idle'
+  // The selected phone tab's page sits over this area: keep main told where it is, and hide the page
+  // while one of this window's menus, dialogs or popovers is open (a page would cover it).
+  const editorRef = useRef<HTMLDivElement>(null)
+  const tabShown = IS_HOST && workbench && editorTab !== 'main' && editorTab !== 'settings'
+  useEffect(() => {
+    if (!IS_HOST) return
+    const el = editorRef.current
+    if (!tabShown || !el) return void window.mobMirror.tabs.setBounds(null)
+    const send = (): void => {
+      const r = el.getBoundingClientRect()
+      window.mobMirror.tabs.setBounds({ x: r.left, y: r.top, width: r.width, height: r.height })
+    }
+    send()
+    const ro = new ResizeObserver(send)
+    ro.observe(el)
+    window.addEventListener('resize', send)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', send)
+    }
+  }, [tabShown, settings.sidebarOpen, settings.showStatusBar, sidebarLayout])
+  useEffect(() => {
+    if (!IS_HOST) return
+    const sel = '[role="dialog"],[role="alertdialog"],[role="menu"],[role="listbox"],[data-radix-popper-content-wrapper]'
+    let last = false
+    const check = (): void => {
+      const now = document.querySelector(sel) !== null
+      if (now !== last) window.mobMirror.tabs.setCovered((last = now))
+    }
+    const mo = new MutationObserver(check)
+    mo.observe(document.body, { childList: true, subtree: true })
+    return () => mo.disconnect()
+  }, [])
+  const phoneName = phoneNameNow
+  const onPhone = onPhoneNow
 
   return (
     // Full view is VS Code's workbench: title bar, activity bar, side bar, editor, status bar (a grid).
     // Every piece is a conditional slot before <main>, so <main> keeps its place in the tree in both
     // views and the video canvas inside it is never remounted.
     <div
-      className={cn('relative h-full', compact ? 'flex' : 'grid grid-cols-[auto_auto_minmax(0,1fr)] overflow-hidden rounded-[12px] bg-background')}
-      style={compact ? undefined : { gridTemplateRows: `${TITLE_BAR}px minmax(0,1fr) auto` }}
+      className={cn(
+        'relative h-full',
+        compact ? 'flex' : EMBED ? 'flex flex-col bg-background' : 'grid grid-cols-[auto_auto_minmax(0,1fr)] overflow-hidden rounded-[12px] bg-background',
+      )}
+      style={workbench ? { gridTemplateRows: `${TITLE_BAR}px minmax(0,1fr) auto` } : undefined}
     >
-      {!compact && (
+      {workbench && (
         <div className="col-span-3 row-start-1">
           <TitleBar
-            title={onPhone ? `${phoneName} — Twinglass` : 'Twinglass'}
-            onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
+            title={activeTabInfo ? `${activeTabInfo.title} — Twinglass` : onPhone ? `${phoneName} — Twinglass` : 'Twinglass'}
+            onOpenPalette={() => (tabShown ? window.mobMirror.tabs.command('open-palette') : setPalette({ open: true, mode: 'all' }))}
             sidebarOpen={settings.sidebarOpen}
             onToggleSidebar={() => updateSettings({ sidebarOpen: !settings.sidebarOpen })}
             statusBarOpen={settings.showStatusBar}
@@ -506,27 +622,27 @@ export function App(): ReactNode {
           />
         </div>
       )}
-      {!compact && (
+      {workbench && (
         <ActivityBar
           view={sideView}
           sidebarOpen={settings.sidebarOpen}
           onView={pickView}
           phones={devices.list?.devices.length ?? 0}
-          onSearch={() => setPalette({ open: true, mode: 'all' })}
-          onClipboard={() => setPalette({ open: true, mode: 'clipboard' })}
-          onSecondScreen={SECOND_SCREEN ? undefined : openSecondScreen}
+          onSearch={() => (tabShown ? window.mobMirror.tabs.command('open-palette') : setPalette({ open: true, mode: 'all' }))}
+          onClipboard={() => (tabShown ? window.mobMirror.tabs.command('open-clipboard') : setPalette({ open: true, mode: 'clipboard' }))}
+          onSecondScreen={SECOND_SCREEN ? undefined : () => openSecondScreen()}
           onShortcuts={() => setHelpOpen(true)}
           onSettings={openSettings}
         />
       )}
-      {!compact && (
+      {workbench && (
         <Sidebar
           view={sideView}
           list={devices.list}
           error={devices.error}
           adb={devices.adb}
           refresh={devices.refresh}
-          activeSerial={mirror.state.transport?.serial ?? null}
+          activeSerial={IS_HOST ? (activeTabInfo && !activeTabInfo.second ? activeTabInfo.serial : null) : (mirror.state.transport?.serial ?? null)}
           connecting={mirror.state.phase === 'connecting'}
           onMirror={onMirror}
           settings={settings}
@@ -538,7 +654,7 @@ export function App(): ReactNode {
       {/* Compact: the phone is one rounded dark block; the rail floats beside it (see-through gap). */}
       {/* Pinned to its cell: a floating (absolute) side bar leaves the grid, and auto-placement would
           otherwise drop the editor into the side bar's narrow column. */}
-      <main className={cn('flex min-w-0 flex-1 flex-col', compact && settings.frame === 'none' && 'overflow-hidden rounded-xl bg-stage', !compact && 'col-start-3 row-start-2 min-h-0')}>
+      <main className={cn('flex min-w-0 flex-1 flex-col', compact && settings.frame === 'none' && 'overflow-hidden rounded-xl bg-stage', workbench && 'col-start-3 row-start-2 min-h-0', EMBED && 'min-h-0')}>
         {compact ? (
           <CompactTitleBar
             name={SECOND_SCREEN ? `${mirror.state.deviceName} · ${SECOND_SCREEN.agent ? 'Agent screen' : 'Second screen'}` : mirror.state.deviceName}
@@ -549,35 +665,27 @@ export function App(): ReactNode {
         ) : (
           // One slot (a fragment) so the stage below keeps its position in the tree.
           <>
-            <EditorTabs
-              phone={onPhone ? phoneName : null}
-              transport={mirror.state.transport?.kind ?? null}
-              onDisconnect={onPhone ? () => dispatch('disconnect') : undefined}
-              settingsOpen={settingsTab}
-              active={settingsTab ? editorTab : 'main'}
-              onSelect={setEditorTab}
-              onCloseSettings={closeSettingsTab}
-            />
-            {onPhone && !(settingsTab && editorTab === 'settings') && (
+            {workbench && <EditorTabs tabs={tabSpecs} active={editorTab} onSelect={selectTab} />}
+            {onPhone && editorTab === 'main' && (
           <MirrorToolbar
-            onCompact={live ? () => updateSettings({ viewMode: 'compact' }) : undefined}
+            onCompact={live ? popOutOrCompact : undefined}
             mirror={mirror}
             onAction={dispatch}
             onShowHelp={() => setHelpOpen(true)}
             onOpenSettings={openSettings}
             onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
-            onSecondScreen={SECOND_SCREEN ? undefined : openSecondScreen}
+            onSecondScreen={SECOND_SCREEN ? undefined : () => openSecondScreen()}
             onOpenApps={SECOND_SCREEN ? () => setGridOpen(true) : undefined}
           />
             )}
           </>
         )}
         {/* Same tree position in both views: the decoder is bound to this canvas. */}
-        <div className="relative flex min-h-0 flex-1">
+        <div ref={editorRef} className="relative flex min-h-0 flex-1">
           {/* Lazy overlays get their own boundary: the canvas below must never suspend/unmount. */}
           <Suspense fallback={null}>
             {/* The Settings tab covers the stage; the mirror keeps running underneath. */}
-            {!compact && settingsTab && editorTab === 'settings' && (
+            {workbench && settingsTab && editorTab === 'settings' && (
               <div className="absolute inset-0 z-30">
                 <SettingsDialog
                   asTab
@@ -624,6 +732,9 @@ export function App(): ReactNode {
             reconnect={mirror.state.reconnect}
           dropFolder={settings.dropFolder}
             idleContent={
+              EMBED ? (
+                <EmbedIdle name={mirror.state.deviceName} onRetry={() => { const t = autoConnectTarget(); if (t) onMirror(t) }} onClose={() => window.mobMirror.tabs.closeSelf()} />
+              ) : (
               <Suspense fallback={null}>
                 <ConnectPanel
                   list={devices.list}
@@ -637,10 +748,8 @@ export function App(): ReactNode {
                   onOpenClipboard={() => setPalette({ open: true, mode: 'clipboard' })}
                   onOpenSettings={openSettings}
                   onShowHelp={() => setHelpOpen(true)}
-                  onSecondScreen={() => {
-                    // A whole phone, directly: its own home screen (app grid) with every app.
-                    if (secondTarget) void window.mobMirror.openDeviceWindow(secondTarget.serial, secondTarget.kind, { second: true })
-                  }}
+                  // A whole phone, directly: its own home screen (app grid) with every app.
+                  onSecondScreen={() => openSecondScreen()}
                   recentDevices={settings.recentDevices}
                   autoConnect={settings.autoConnect}
                   onAutoConnectChange={(on) => updateSettings({ autoConnect: on })}
@@ -648,6 +757,7 @@ export function App(): ReactNode {
                   frameColor={settings.frameColor}
                 />
               </Suspense>
+              )
             }
           />
         </div>
@@ -655,13 +765,14 @@ export function App(): ReactNode {
         {/* Framed: the dock attaches right under the phone body (absolute), this keeps its room. */}
         {compact && settings.navBar && framed && <div aria-hidden className="shrink-0" style={{ height: NAV }} />}
       </main>
-      {!compact && settings.showStatusBar && (
+      {workbench && settings.showStatusBar && (
         <div className="col-span-3 row-start-3">
           <StatusBar
             state={mirror.state}
             phones={devices.list?.devices.length ?? 0}
             adb={devices.adb}
             onRemote={() => pickView('phones')}
+            tab={activeTabInfo ? { title: activeTabInfo.title, kind: activeTabInfo.kind === 'usb' ? 'usb' : 'wifi' } : undefined}
           />
         </div>
       )}
@@ -694,7 +805,10 @@ export function App(): ReactNode {
           onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
           onOpenApps={SECOND_SCREEN ? () => setGridOpen(true) : undefined}
           onSecondScreen={SECOND_SCREEN ? undefined : openSecondScreen}
-          onFullView={() => updateSettings({ viewMode: 'full' })}
+          onFullView={() => {
+            setForceCompact(false)
+            updateSettings({ viewMode: 'full' })
+          }}
         />
       )}
       {framed && settings.navBar && phoneRect && (
@@ -720,10 +834,7 @@ export function App(): ReactNode {
             onAction={dispatch}
             phoneSerial={secondTarget?.serial}
             onPickSecondScreen={() => setPalette({ open: true, mode: 'second' })}
-            onOpenSecondScreen={(app) => {
-              if (!secondTarget) return toast.error('Connect a phone first.')
-              void window.mobMirror.openDeviceWindow(secondTarget.serial, secondTarget.kind, { second: true, app })
-            }}
+            onOpenSecondScreen={(app) => openSecondScreen(app)}
           />
         )}
         {detailsRequest && <PhoneDetailsDialog request={detailsRequest} />}
@@ -747,6 +858,25 @@ export function App(): ReactNode {
         )}
         {unlockMounted && <UnlockDialog open={unlockOpen} onOpenChange={setUnlockOpen} initialError={unlockError} requireTouchId={settings.requireTouchId} />}
       </Suspense>
+    </div>
+  )
+}
+
+/** A tab page whose mirror isn't running (it failed, or the phone went away): retry or close the tab. */
+function EmbedIdle({ name, onRetry, onClose }: { name: string; onRetry: () => void; onClose: () => void }): ReactNode {
+  return (
+    <div className="flex h-full w-full items-center justify-center p-6">
+      <div className="flex max-w-sm flex-col items-center gap-3 text-center">
+        <p className="text-[13px] font-semibold">{name ? `${name} isn’t mirrored` : 'Not mirrored'}</p>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={onRetry}>
+            Reconnect
+          </Button>
+          <Button size="sm" variant="secondary" onClick={onClose}>
+            Close tab
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
