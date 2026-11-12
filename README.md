@@ -65,6 +65,14 @@ There are no accounts and no analytics. Everything stays between your phone and 
 
 The Mac app speaks the [scrcpy](https://github.com/Genymobile/scrcpy) protocol itself over your system adb. In Wi-Fi mode, the phone app captures the screen and sends the same video format over its own encrypted link. Either way, one decoder draws it on the Mac.
 
+```mermaid
+flowchart LR
+  P["Android phone"] -- "USB / wireless adb<br/>scrcpy-server" --> M["Twinglass for Mac"]
+  P -- "Wi-Fi, encrypted<br/>phone app" --> M
+  M -- "mouse, keyboard, clipboard" --> P
+  A["Coding agents"] <-- "MCP, localhost" --> M
+```
+
 There are diagrams and details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and the verified protocol notes are in [docs/FACTS.md](docs/FACTS.md).
 
 ## Building it yourself
