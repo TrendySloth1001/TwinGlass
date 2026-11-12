@@ -11,28 +11,19 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import com.mobmirror.companion.R
 import kotlin.math.PI
 
-// The Twinglass phone app shares Sparky's visual language (agent-worker/frontend/lib/core):
-// monochrome surfaces (true black / warm off-white), one red accent kept for "on / active / live",
-// Space Grotesk for all text (one typeface, by the user's choice), a 4 dp grid, Android 16 grouped cells, dot-grid textures and damped-spring motion.
+// The Twinglass phone app wears the same VS Code look as the Mac app: VS Code's "Dark Modern" and
+// "Light Modern" colours (side bar, editor, widgets, borders, text), the system sans at small sizes,
+// 2–6 dp corners, one blue accent (#0078D4) for primary actions, toggles, focus and "live", red only
+// for errors, and a blue status bar at the bottom like VS Code's.
 
-/** Raw ramp (Sparky AppColors). Widgets read [Palette] roles, never these. */
-private object Ramp {
-    val black = Color(0xFF000000)
-    val white = Color(0xFFFFFFFF)
-    val red = Color(0xFFD71921)
-}
-
-/** Semantic colour roles (Sparky AppPalette). */
+/** Semantic colour roles. Widgets read these, never raw colours. */
 @Immutable
 data class Palette(
     val background: Color,
@@ -46,41 +37,56 @@ data class Palette(
     val textSecondary: Color,
     val textTertiary: Color,
     val textInverse: Color,
+    /** Blue: on / active / live, links. */
     val accent: Color,
+    /** Primary buttons and selected items (VS Code button.background) and their text. */
+    val primary: Color,
+    val onPrimary: Color,
+    val error: Color,
+    /** The status bar strip at the bottom. */
+    val statusBar: Color,
     val disabled: Color,
     val isDark: Boolean,
 ) {
     companion object {
         val Dark = Palette(
-            background = Ramp.black,
-            surface = Color(0xFF0A0A0A),
-            surfaceRaised = Color(0xFF141414),
-            surfaceHigh = Color(0xFF1F1F1F),
-            dotGrid = Color(0xFF1C1C1C),
-            border = Color(0xFF2A2A2A),
-            borderStrong = Color(0xFF3D3D3D),
-            textPrimary = Ramp.white,
-            textSecondary = Color(0xFF999999),
-            textTertiary = Color(0xFF5C5C5C),
-            textInverse = Ramp.black,
-            accent = Ramp.red,
-            disabled = Color(0xFF333333),
+            background = Color(0xFF181818), // sideBar.background
+            surface = Color(0xFF1F1F1F), // editor.background
+            surfaceRaised = Color(0xFF2B2B2B),
+            surfaceHigh = Color(0xFF313131), // input / secondary button
+            dotGrid = Color(0xFF222222),
+            border = Color(0xFF2B2B2B),
+            borderStrong = Color(0xFF3C3C3C),
+            textPrimary = Color(0xFFCCCCCC),
+            textSecondary = Color(0xFF9D9D9D),
+            textTertiary = Color(0xFF6E7681),
+            textInverse = Color(0xFF1F1F1F),
+            accent = Color(0xFF0078D4),
+            primary = Color(0xFF0078D4),
+            onPrimary = Color(0xFFFFFFFF),
+            error = Color(0xFFF85149),
+            statusBar = Color(0xFF0078D4),
+            disabled = Color(0xFF3C3C3C),
             isDark = true,
         )
         val Light = Palette(
-            background = Color(0xFFF4F4F2),
-            surface = Ramp.white,
-            surfaceRaised = Color(0xFFEBEBE8),
-            surfaceHigh = Color(0xFFDDDDD9),
-            dotGrid = Color(0xFFE2E2DE),
-            border = Color(0xFFD6D6D2),
-            borderStrong = Color(0xFFA8A8A3),
-            textPrimary = Color(0xFF0A0A0A),
-            textSecondary = Color(0xFF5E5E5A),
-            textTertiary = Color(0xFF8E8E89),
-            textInverse = Ramp.white,
-            accent = Ramp.red,
-            disabled = Color(0xFFD0D0CC),
+            background = Color(0xFFF8F8F8),
+            surface = Color(0xFFFFFFFF),
+            surfaceRaised = Color(0xFFF2F2F2),
+            surfaceHigh = Color(0xFFE5E5E5),
+            dotGrid = Color(0xFFEDEDED),
+            border = Color(0xFFE5E5E5),
+            borderStrong = Color(0xFFCECECE),
+            textPrimary = Color(0xFF3B3B3B),
+            textSecondary = Color(0xFF616161),
+            textTertiary = Color(0xFF868686),
+            textInverse = Color(0xFFFFFFFF),
+            accent = Color(0xFF005FB8),
+            primary = Color(0xFF005FB8),
+            onPrimary = Color(0xFFFFFFFF),
+            error = Color(0xFFC72E0F),
+            statusBar = Color(0xFF005FB8),
+            disabled = Color(0xFFD4D4D4),
             isDark = false,
         )
     }
@@ -98,15 +104,15 @@ object Space {
 }
 
 object Radius {
-    val sm = 4.dp
-    val md = 12.dp
-    val lg = 20.dp
+    val sm = 2.dp
+    val md = 4.dp
+    val lg = 6.dp
     val pill = 999.dp
 
-    /** Android 16 grouped cells: big outer corners, small inner ones, a thin gap. */
-    val groupOuter = 28.dp
-    val groupInner = 6.dp
-    val groupGap = 2.dp
+    /** Grouped cells: VS Code-small corners, a hairline gap. */
+    val groupOuter = 6.dp
+    val groupInner = 2.dp
+    val groupGap = 1.dp
 }
 
 object Sizes {
@@ -119,31 +125,28 @@ object Sizes {
     val dotGridRadius = 1.dp
 }
 
-@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
-private fun grotesk(weight: Int) =
-    Font(R.font.space_grotesk, FontWeight(weight), variationSettings = FontVariation.Settings(FontVariation.weight(weight)))
-
-/** One typeface throughout (the user's choice, 2026-11-08: "use normal font only"). */
+/** The system sans (VS Code's workbench uses the platform UI font); monospace for code-like values. */
 object Fonts {
-    val body = FontFamily(grotesk(300), grotesk(400), grotesk(500), grotesk(600), grotesk(700))
+    val body = FontFamily.Default
+    val mono = FontFamily.Monospace
 }
 
 /** Colour-free text styles (Sparky AppTextStyles). */
 object Type {
-    val displayLarge = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 56.sp, lineHeight = 56.sp, letterSpacing = (-1).sp)
-    val display = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 40.sp, lineHeight = 40.sp, letterSpacing = (-0.5).sp)
-    val headline = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 31.sp)
+    val displayLarge = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Light, fontSize = 48.sp, lineHeight = 52.sp, letterSpacing = (-0.5).sp)
+    val display = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Light, fontSize = 34.sp, lineHeight = 40.sp)
+    val headline = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Normal, fontSize = 26.sp, lineHeight = 32.sp)
     val metric = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 24.sp, lineHeight = 28.sp)
-    val title = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Medium, fontSize = 20.sp, lineHeight = 26.sp)
-    val body = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp)
+    val title = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Medium, fontSize = 17.sp, lineHeight = 24.sp)
+    val body = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp)
     val bodySmall = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp)
-    // Small caps labels: same face, medium weight, letter-spaced.
-    val label = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Medium, fontSize = 12.sp, letterSpacing = 0.08.em, lineHeight = 16.sp)
-    val caption = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Medium, fontSize = 11.sp, letterSpacing = 0.08.em, lineHeight = 14.sp)
-    val button = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 0.1.em)
+    // Small caps labels: VS Code's pane headers (bold caps, barely spaced).
+    val label = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 0.02.em, lineHeight = 16.sp)
+    val caption = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 0.02.em, lineHeight = 14.sp)
+    val button = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Medium, fontSize = 13.sp, letterSpacing = 0.02.em)
 
     /** Big figures (battery, memory, Hz): bold, tight. */
-    val figure = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 44.sp, lineHeight = 44.sp, letterSpacing = (-1).sp)
+    val figure = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Light, fontSize = 40.sp, lineHeight = 44.sp, letterSpacing = (-0.5).sp)
 }
 
 /**
@@ -171,7 +174,7 @@ val LocalReduceMotion = staticCompositionLocalOf { false }
 /** Settings → Haptics: a light tick on taps and switches. */
 val LocalHaptics = staticCompositionLocalOf { true }
 
-/** Sparky's palettes (no wallpaper colours); [mode] System follows the phone's dark mode. */
+/** VS Code Light / Dark Modern (no wallpaper colours); [mode] System follows the phone's dark mode. */
 @Composable
 fun TwinglassTheme(mode: com.mobmirror.companion.Prefs.Theme = com.mobmirror.companion.Prefs.Theme.System, content: @Composable () -> Unit) {
     val dark = when (mode) {
@@ -182,15 +185,15 @@ fun TwinglassTheme(mode: com.mobmirror.companion.Prefs.Theme = com.mobmirror.com
     val p = if (dark) Palette.Dark else Palette.Light
     val scheme = if (p.isDark) {
         darkColorScheme(
-            primary = p.textPrimary, onPrimary = p.textInverse, background = p.background, onBackground = p.textPrimary,
+            primary = p.primary, onPrimary = p.onPrimary, background = p.background, onBackground = p.textPrimary,
             surface = p.surface, onSurface = p.textPrimary, surfaceVariant = p.surfaceRaised, onSurfaceVariant = p.textSecondary,
-            outline = p.borderStrong, outlineVariant = p.border, error = p.accent, inverseSurface = p.textPrimary, inverseOnSurface = p.textInverse,
+            outline = p.borderStrong, outlineVariant = p.border, error = p.error, inverseSurface = p.textPrimary, inverseOnSurface = p.textInverse,
         )
     } else {
         lightColorScheme(
-            primary = p.textPrimary, onPrimary = p.textInverse, background = p.background, onBackground = p.textPrimary,
+            primary = p.primary, onPrimary = p.onPrimary, background = p.background, onBackground = p.textPrimary,
             surface = p.surface, onSurface = p.textPrimary, surfaceVariant = p.surfaceRaised, onSurfaceVariant = p.textSecondary,
-            outline = p.borderStrong, outlineVariant = p.border, error = p.accent, inverseSurface = p.textPrimary, inverseOnSurface = p.textInverse,
+            outline = p.borderStrong, outlineVariant = p.border, error = p.error, inverseSurface = p.textPrimary, inverseOnSurface = p.textInverse,
         )
     }
     CompositionLocalProvider(LocalPalette provides p) {

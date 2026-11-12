@@ -84,13 +84,12 @@ fun PillButton(text: String, modifier: Modifier = Modifier, primary: Boolean = t
     Box(
         modifier
             .fillMaxWidth()
-            .height(52.dp)
-            .clip(RoundedCornerShape(Radius.pill))
-            .background(if (primary) (if (enabled) p.textPrimary else p.disabled) else Color.Transparent)
-            .then(if (primary) Modifier else Modifier.border(1.dp, p.borderStrong, RoundedCornerShape(Radius.pill)))
+            .height(44.dp)
+            .clip(RoundedCornerShape(Radius.sm))
+            .background(if (primary) (if (enabled) p.primary else p.disabled) else p.surfaceHigh)
             .clickable(enabled = enabled) { tick(); onClick() },
         contentAlignment = Alignment.Center,
-    ) { Text(text, style = Type.title.copy(fontSize = Type.body.fontSize), color = if (primary) p.textInverse else p.textPrimary, textAlign = TextAlign.Center) }
+    ) { Text(text, style = Type.title.copy(fontSize = Type.body.fontSize), color = if (primary) p.onPrimary else p.textPrimary, textAlign = TextAlign.Center) }
 }
 
 /** Primary + secondary actions stacked (thumb-friendly). */

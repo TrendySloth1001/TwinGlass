@@ -222,10 +222,9 @@ class ShareActivity : ComponentActivity() {
         val p = LocalPalette.current
         Box(
             Modifier
-                .background(if (primary) p.textPrimary else Color.Transparent, RoundedCornerShape(Radius.pill))
-                .border(1.dp, if (primary) p.textPrimary else p.borderStrong, RoundedCornerShape(Radius.pill))
+                .background(if (primary) p.primary else p.surfaceHigh, RoundedCornerShape(Radius.sm))
                 .clickable(onClick = onClick)
                 .padding(horizontal = Space.xl, vertical = Space.md),
-        ) { Text(text.uppercase(), style = Type.button, color = if (primary) p.textInverse else p.textPrimary) }
+        ) { Text(text.uppercase(), style = Type.button, color = if (primary) p.onPrimary else p.textPrimary) }
     }
 }

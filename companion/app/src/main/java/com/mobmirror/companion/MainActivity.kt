@@ -32,6 +32,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.LinkOff
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
@@ -52,7 +54,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.mobmirror.companion.ui.FloatingNav
+import com.mobmirror.companion.ui.WorkbenchBar
+import com.mobmirror.companion.ui.Radius
 import com.mobmirror.companion.ui.LocalPalette
 import com.mobmirror.companion.ui.NavItem
 import com.mobmirror.companion.ui.Space
@@ -456,7 +459,7 @@ class MainActivity : ComponentActivity() {
             ) { n ->
                 LazyColumn(
                     Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = Space.lg, end = Space.lg, top = bars.calculateTopPadding() + Space.lg, bottom = bars.calculateBottomPadding() + 112.dp),
+                    contentPadding = PaddingValues(start = Space.lg, end = Space.lg, top = bars.calculateTopPadding() + Space.lg, bottom = bars.calculateBottomPadding() + 96.dp),
                 ) {
                     when {
                         n.page == Page.Connection -> connectionScreen(m, onBack = { nav = nav.copy(page = null) }, onForget = { confirmForget = true })
@@ -506,15 +509,23 @@ class MainActivity : ComponentActivity() {
                     .background(androidx.compose.ui.graphics.Brush.verticalGradient(0f to p.background.copy(alpha = 0f), 0.4f to p.background, 1f to p.background)),
             )
             if (nav.page == null) {
-                FloatingNav(
+                val mac = (link as? LinkState.Connected)?.status?.mac ?: direct.paired?.name
+                WorkbenchBar(
                     listOf(NavItem(Tab.Home, "Home", Icons.Rounded.Home), NavItem(Tab.Device, "Device", Icons.Rounded.PhoneAndroid), NavItem(Tab.Settings, "Settings", Icons.Rounded.Settings)),
                     nav.tab,
                     { nav = Nav(it) },
-                    Modifier.align(Alignment.BottomCenter).padding(bottom = bars.calculateBottomPadding() + Space.lg),
+                    status = when {
+                        link == LinkState.Forgotten -> "Forgotten by your Mac"
+                        mac != null -> "Linked · $mac"
+                        else -> "Not linked to a Mac"
+                    },
+                    statusIcon = if (mac != null && link != LinkState.Forgotten) Icons.Rounded.Link else Icons.Rounded.LinkOff,
+                    bottomInset = bars.calculateBottomPadding(),
+                    modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
-            SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = bars.calculateBottomPadding() + 84.dp)) {
-                Snackbar(it, shape = RoundedCornerShape(16.dp), containerColor = p.textPrimary, contentColor = p.textInverse)
+            SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = bars.calculateBottomPadding() + 88.dp)) {
+                Snackbar(it, shape = RoundedCornerShape(Radius.lg), containerColor = p.surfaceHigh, contentColor = p.textPrimary)
             }
         }
 

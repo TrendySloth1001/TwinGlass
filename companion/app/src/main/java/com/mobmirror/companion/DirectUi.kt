@@ -165,13 +165,13 @@ private fun ModeCard(selected: Boolean, icon: ImageVector, title: String, badge:
             .fillMaxWidth()
             .clip(shape)
             .background(p.surface)
-            .border(if (selected) 2.dp else 1.dp, if (selected) p.textPrimary else p.border, shape)
+            .border(if (selected) 2.dp else 1.dp, if (selected) p.primary else p.border, shape)
             .combinedClickable(onClick = onClick)
             .padding(Space.lg),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(40.dp).clip(RoundedCornerShape(Radius.pill)).background(if (selected) p.textPrimary else p.surfaceHigh), contentAlignment = Alignment.Center) {
-                Icon(icon, null, Modifier.size(22.dp), tint = if (selected) p.textInverse else p.textPrimary)
+            Box(Modifier.size(40.dp).clip(RoundedCornerShape(Radius.md)).background(if (selected) p.primary else p.surfaceHigh), contentAlignment = Alignment.Center) {
+                Icon(icon, null, Modifier.size(22.dp), tint = if (selected) p.onPrimary else p.textPrimary)
             }
             Spacer(Modifier.width(Space.md))
             Text(title, style = Type.title, color = p.textPrimary, modifier = Modifier.weight(1f))
@@ -390,7 +390,7 @@ private fun PairFlow(onDone: () -> Unit) {
     if (mac == null) {
         SheetHeader(Icons.Rounded.QrCodeScanner, "Pair with your Mac", "On your Mac: Twinglass → Add phone. Then scan the QR it shows. That’s it.", accent = true)
         PillButton("Scan QR code", onClick = ::scan)
-        error?.let { Text(it, style = Type.bodySmall, color = p.accent, modifier = Modifier.padding(top = Space.sm)) }
+        error?.let { Text(it, style = Type.bodySmall, color = p.error, modifier = Modifier.padding(top = Space.sm)) }
         Spacer(Modifier.height(Space.xl))
         Text("OR PICK YOUR MAC AND TYPE THE CODE", style = Type.caption, color = p.textTertiary, modifier = Modifier.padding(bottom = Space.sm))
         if (macs.isEmpty()) {
@@ -432,7 +432,7 @@ private fun PairFlow(onDone: () -> Unit) {
         )
         if (code.isEmpty()) Text("• • • • • •", style = Type.headline, color = p.textTertiary)
     }
-    error?.let { Text(it, style = Type.bodySmall, color = p.accent, modifier = Modifier.padding(top = Space.sm)) }
+    error?.let { Text(it, style = Type.bodySmall, color = p.error, modifier = Modifier.padding(top = Space.sm)) }
     Spacer(Modifier.height(Space.xl))
     SheetActions(
         if (busy) "Pairing…" else "Pair",
@@ -520,12 +520,12 @@ fun PotentialCard(
         Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(if (full) p.textPrimary else p.surface)
-            .border(1.dp, if (full) p.textPrimary else p.border, shape)
+            .background(if (full) p.primary else p.surface)
+            .border(1.dp, if (full) p.primary else p.border, shape)
             .padding(Space.lg),
     ) {
-        val fg = if (full) p.textInverse else p.textPrimary
-        val sub = if (full) p.textInverse.copy(alpha = 0.7f) else p.textSecondary
+        val fg = if (full) p.onPrimary else p.textPrimary
+        val sub = if (full) p.onPrimary.copy(alpha = 0.75f) else p.textSecondary
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusDot(if (full || debugging) p.accent else p.textTertiary, live = full)
             Spacer(Modifier.width(Space.sm))
@@ -551,8 +551,8 @@ fun PotentialCard(
         if (action != null) {
             Spacer(Modifier.height(Space.md))
             Box(
-                Modifier.clip(RoundedCornerShape(Radius.pill)).background(if (full) p.textInverse else p.textPrimary).clickable(onClick = action.second).padding(horizontal = Space.lg, vertical = 10.dp),
-            ) { Text(action.first, style = Type.bodySmall.copy(fontWeight = FontWeight.SemiBold), color = if (full) p.textPrimary else p.textInverse) }
+                Modifier.clip(RoundedCornerShape(Radius.sm)).background(if (full) p.onPrimary else p.primary).clickable(onClick = action.second).padding(horizontal = Space.lg, vertical = 10.dp),
+            ) { Text(action.first, style = Type.bodySmall.copy(fontWeight = FontWeight.SemiBold), color = if (full) p.primary else p.onPrimary) }
         }
     }
 }

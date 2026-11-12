@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -62,15 +63,15 @@ fun <T> Segmented(value: T, options: List<Pair<T, String>>, onChange: (T) -> Uni
     val p = LocalPalette.current
     val tick = rememberTick()
     Row(
-        modifier.height(36.dp).clip(RoundedCornerShape(Radius.pill)).border(1.dp, p.borderStrong, RoundedCornerShape(Radius.pill)).padding(2.dp),
+        modifier.height(32.dp).clip(RoundedCornerShape(Radius.md)).border(1.dp, p.borderStrong, RoundedCornerShape(Radius.md)).padding(2.dp),
     ) {
         options.forEach { (v, label) ->
             val on = v == value
-            val bg by animateColorAsState(if (on) p.textPrimary else Color.Transparent, label = "seg")
+            val bg by animateColorAsState(if (on) p.primary else Color.Transparent, label = "seg")
             Box(
-                Modifier.weight(1f).height(32.dp).clip(RoundedCornerShape(Radius.pill)).background(bg).clickable { if (!on) { tick(); onChange(v) } },
+                Modifier.weight(1f).height(28.dp).clip(RoundedCornerShape(Radius.sm)).background(bg).clickable { if (!on) { tick(); onChange(v) } },
                 contentAlignment = Alignment.Center,
-            ) { Text(label.uppercase(), style = Type.caption, color = if (on) p.textInverse else p.textSecondary, maxLines = 1) }
+            ) { Text(label, style = Type.bodySmall, color = if (on) p.onPrimary else p.textSecondary, maxLines = 1) }
         }
     }
 }
@@ -80,7 +81,7 @@ fun <T> Segmented(value: T, options: List<Pair<T, String>>, onChange: (T) -> Uni
 fun SearchField(value: String, onChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
     val p = LocalPalette.current
     Row(
-        modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(Radius.pill)).background(p.surface).border(1.dp, p.border, RoundedCornerShape(Radius.pill)).padding(horizontal = Space.lg),
+        modifier.fillMaxWidth().height(40.dp).clip(RoundedCornerShape(Radius.sm)).background(p.surfaceHigh).border(1.dp, p.borderStrong, RoundedCornerShape(Radius.sm)).padding(horizontal = Space.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(Icons.Rounded.Search, null, Modifier.size(20.dp), tint = p.textSecondary)
@@ -112,6 +113,52 @@ fun PageHeader(title: String, caption: String? = null, onBack: (() -> Unit)? = n
 }
 
 data class NavItem<T>(val value: T, val label: String, val icon: ImageVector)
+
+/**
+ * VS Code-style bottom of the app: a row of tabs (the active one marked by a blue bar on top, like
+ * VS Code's activity bar and editor tabs), then the blue status bar with the link state on the left,
+ * VS Code's remote indicator. It runs under the system navigation bar ([bottomInset]).
+ */
+@Composable
+fun <T> WorkbenchBar(
+    items: List<NavItem<T>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    status: String,
+    statusIcon: ImageVector,
+    bottomInset: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier,
+) {
+    val p = LocalPalette.current
+    val tick = rememberTick()
+    Column(modifier.fillMaxWidth().background(p.background)) {
+        Box(Modifier.fillMaxWidth().height(1.dp).background(p.border))
+        Row(Modifier.fillMaxWidth().height(52.dp)) {
+            items.forEach { item ->
+                val on = item.value == selected
+                val fg by animateColorAsState(if (on) p.textPrimary else p.textTertiary, label = "tab")
+                Box(
+                    Modifier.weight(1f).fillMaxHeight().clickable(role = Role.Tab) { tick(); onSelect(item.value) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (on) Box(Modifier.align(Alignment.TopCenter).fillMaxWidth(0.5f).height(2.dp).background(p.accent))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(item.icon, item.label, Modifier.size(22.dp), tint = fg)
+                        Text(item.label, style = Type.caption.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal), color = fg, maxLines = 1)
+                    }
+                }
+            }
+        }
+        Row(
+            Modifier.fillMaxWidth().background(p.statusBar).padding(bottom = bottomInset).height(24.dp).padding(horizontal = Space.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(statusIcon, null, Modifier.size(14.dp), tint = Color.White)
+            Spacer(Modifier.width(6.dp))
+            Text(status, style = Type.bodySmall.copy(fontSize = androidx.compose.ui.unit.TextUnit(12f, androidx.compose.ui.unit.TextUnitType.Sp)), color = Color.White, maxLines = 1)
+        }
+    }
+}
 
 /** Floating pill navigation bar: solid surface, selected item inverted with its label. */
 @Composable

@@ -302,7 +302,7 @@ private fun Metrics(s: DeviceInfo.Snapshot, onOpen: () -> Unit, decimal: Boolean
     val low = (s.battery ?: 100) <= 20 && !s.charging
     Column(Modifier.combinedClickable(onClick = onOpen), verticalArrangement = Arrangement.spacedBy(Space.md)) {
         Row(horizontalArrangement = Arrangement.spacedBy(Space.md)) {
-            Metric(Modifier.weight(1f), "Battery", s.battery?.toString() ?: "--", "%", (s.battery ?: 0) / 100f, if (low) p.accent else p.textPrimary, if (s.charging) "Charging" else if (low) "Low" else "On battery", live = s.charging)
+            Metric(Modifier.weight(1f), "Battery", s.battery?.toString() ?: "--", "%", (s.battery ?: 0) / 100f, if (low) p.error else p.textPrimary, if (s.charging) "Charging" else if (low) "Low" else "On battery", live = s.charging)
             val u = DeviceInfo.gbUnit(decimal)
             Metric(Modifier.weight(1f), "Memory", DeviceInfo.gb(s.ramFree, decimal), "$u free", ramUsed, p.textPrimary, "of ${DeviceInfo.gb(s.ramTotal, decimal)} $u")
         }

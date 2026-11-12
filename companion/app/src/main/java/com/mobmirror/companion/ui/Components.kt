@@ -143,9 +143,9 @@ fun Chip(text: String, modifier: Modifier = Modifier, leading: (@Composable () -
     val p = LocalPalette.current
     Row(
         modifier
-            .clip(RoundedCornerShape(Radius.pill))
-            .background(if (inverted) p.textPrimary else Color.Transparent)
-            .border(1.dp, if (inverted) p.textPrimary else p.borderStrong, RoundedCornerShape(Radius.pill))
+            .clip(RoundedCornerShape(Radius.sm))
+            .background(if (inverted) p.primary else Color.Transparent)
+            .border(1.dp, if (inverted) p.primary else p.borderStrong, RoundedCornerShape(Radius.sm))
             .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -153,7 +153,7 @@ fun Chip(text: String, modifier: Modifier = Modifier, leading: (@Composable () -
             leading()
             Spacer(Modifier.width(6.dp))
         }
-        Text(text.uppercase(), style = Type.caption, color = if (inverted) p.textInverse else p.textSecondary, maxLines = 1)
+        Text(text.uppercase(), style = Type.caption, color = if (inverted) p.onPrimary else p.textSecondary, maxLines = 1)
     }
 }
 
@@ -163,7 +163,7 @@ fun Chip(text: String, modifier: Modifier = Modifier, leading: (@Composable () -
 fun RoundIconButton(icon: ImageVector, description: String, onClick: () -> Unit) {
     val p = LocalPalette.current
     Box(
-        Modifier.size(40.dp).clip(CircleShape).border(1.dp, p.border, CircleShape).combinedClickable(onClick = onClick),
+        Modifier.size(40.dp).clip(RoundedCornerShape(Radius.md)).border(1.dp, p.border, RoundedCornerShape(Radius.md)).combinedClickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { Icon(icon, description, Modifier.size(20.dp), tint = p.textPrimary) }
 }
@@ -172,7 +172,7 @@ fun RoundIconButton(icon: ImageVector, description: String, onClick: () -> Unit)
 @Composable
 fun IconCircle(icon: ImageVector, tint: Color = LocalPalette.current.textPrimary) {
     val p = LocalPalette.current
-    Box(Modifier.size(Sizes.iconCircle).clip(CircleShape).background(p.surfaceHigh), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(Sizes.iconCircle).clip(RoundedCornerShape(Radius.md)).background(p.surfaceHigh), contentAlignment = Alignment.Center) {
         Icon(icon, null, Modifier.size(Sizes.icon), tint = tint)
     }
 }
