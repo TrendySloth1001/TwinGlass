@@ -4,12 +4,12 @@ Twinglass for Mac and the Twinglass phone app ship together: each Mac release ca
 
 ## [0.1.6](https://github.com/TrendySloth1001/TwinGlass/releases/tag/v0.1.6) · 2026-11-13 · Small fixes
 
-Readable shortcuts in tooltips, and tidier release notes.
+Tooltips are back to their standard dark style, with readable shortcuts.
 
 ### Twinglass for Mac 0.1.6
 
-- Keyboard shortcuts in tooltips are readable again in both themes.
-- Tooltips no longer draw an arrow.
+- Tooltips use the standard dark style with an arrow again.
+- Keyboard shortcuts in tooltips are readable in both themes.
 
 ### Phone app 0.9.0
 

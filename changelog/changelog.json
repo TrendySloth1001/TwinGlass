@@ -6,10 +6,10 @@
       "date": "2026-11-13",
       "phone": "0.9.0",
       "title": "Small fixes",
-      "summary": "Readable shortcuts in tooltips, and tidier release notes.",
+      "summary": "Tooltips are back to their standard dark style, with readable shortcuts.",
       "mac": [
-        "Keyboard shortcuts in tooltips are readable again in both themes.",
-        "Tooltips no longer draw an arrow."
+        "Tooltips use the standard dark style with an arrow again.",
+        "Keyboard shortcuts in tooltips are readable in both themes."
       ],
       "phoneApp": [
         "No changes in this release: 0.9.0 is still the current phone app."
