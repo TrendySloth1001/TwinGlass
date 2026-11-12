@@ -15,7 +15,7 @@ function S({ title, children }: { title: string; children: ReactNode }) {
 export function Privacy() {
   const date = new Date(`${POLICY_VERSION}T12:00:00`).toLocaleDateString('en', { day: 'numeric', month: 'long', year: 'numeric' })
   return (
-    <main className="mx-auto max-w-3xl px-4 pt-28 pb-10 sm:px-6">
+    <main className="mx-auto max-w-3xl px-4 pt-32 pb-10 sm:px-6">
       <a href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" /> Back to Twinglass
       </a>
@@ -98,8 +98,8 @@ export function Privacy() {
             <a className="underline" href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">
               Vercel’s privacy policy
             </a>
-            . The site sets no cookies and has no analytics. Your browser asks GitHub for the latest release so the download button stays current, and downloads
-            come from GitHub. If you tick the box before downloading, your browser remembers that on your device so you aren’t asked again for this version of
+            . The site sets no cookies and has no analytics. Your browser asks GitHub for the latest release so the download button stays current, loads my profile
+            picture from GitHub, and downloads come from GitHub. If you tick the box before downloading, your browser remembers that on your device so you aren’t asked again for this version of
             the policy.
           </p>
         </S>

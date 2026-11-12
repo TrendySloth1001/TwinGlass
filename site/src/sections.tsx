@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Smartphone,
+  Sparkles,
   Terminal,
   Unlink,
   Usb,
@@ -38,10 +39,40 @@ import {
 } from 'lucide-react'
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { siAndroid, siApple, siClaude, siCursor, siHomebrew, siJetpackcompose, siKotlin } from 'simple-icons'
+import {
+  siAndroid,
+  siApple,
+  siClaude,
+  siCursor,
+  siElectron,
+  siElectronbuilder,
+  siGithub,
+  siGnubash,
+  siGoogle,
+  siGradle,
+  siHomebrew,
+  siJetpackcompose,
+  siKotlin,
+  siLucide,
+  siMaterialdesign,
+  siModelcontextprotocol,
+  siNodedotjs,
+  siRadixui,
+  siReact,
+  siShadcnui,
+  siSimpleicons,
+  siTailwindcss,
+  siTypescript,
+  siVercel,
+  siVite,
+  siVitest,
+  siZod,
+  type SimpleIcon,
+} from 'simple-icons'
 import { Chip, FrameCorners, GhostLink, HoverButton, REPO, RELEASES, Tag } from './components/base'
 import { DownloadPanel, useDownload } from './components/download'
 import { BlurFade, Typewriter } from './components/fx'
+import { TOOL_INFO } from './pages/Tools'
 
 const WRAP = 'mx-auto max-w-6xl px-4 sm:px-6 lg:px-10'
 const DOCS = `${REPO}/blob/master/docs`
@@ -161,7 +192,7 @@ function HeroRotator() {
 export function Hero() {
   const { openDownload, latest } = useDownload()
   return (
-    <section className={`pt-24 sm:pt-28 ${WRAP}`}>
+    <section className={`pt-28 sm:pt-32 ${WRAP}`}>
       <BlurFade>
         <a href={`/changelog#v${latest.version}`} className="inline-flex items-center gap-2 text-sm text-foreground hover:text-heading">
           <Chip dot>New</Chip>
@@ -413,7 +444,7 @@ export function Features() {
             </div>
           </Mock>
         </Cell>
-        <Cell title="Coding agents that test on your phone" body={<>An MCP server for <Tag logo={siClaude}>Claude Code</Tag>, <Tag logo={siCursor}>Cursor</Tag> and more, with 42 tools. Agents work on their own screen of the phone and check every step.</>} link={['Agent setup', `${DOCS}/AGENTS.md`]}>
+        <Cell title="Coding agents that test on your phone" body={<>An MCP server for <Tag logo={siClaude}>Claude Code</Tag>, <Tag logo={siCursor}>Cursor</Tag> and more, with <a href="/tools" className="text-heading underline underline-offset-2 hover:text-mark">42 tools</a>. Agents work on their own screen of the phone and check every step.</>} link={['Agent setup', `${DOCS}/AGENTS.md`]}>
           <Mock className="w-full font-mono text-[11.5px]">
             <FrameCorners />
             <p className="flex items-center gap-2 border-b border-input-border px-3 py-2 text-muted-foreground">
@@ -562,7 +593,7 @@ export function Agents() {
         <div className="min-w-0">
           <H2>Let your agent test the app while you keep your phone.</H2>
           <p className="mt-4 max-w-lg text-lg">
-            <Tag logo={siClaude}>Claude Code</Tag>, <Tag logo={siCursor}>Cursor</Tag>, <Tag icon={Code2}>VS Code</Tag> or any MCP client get 42 tools: see the screen, act on it,
+            <Tag logo={siClaude}>Claude Code</Tag>, <Tag logo={siCursor}>Cursor</Tag>, <Tag icon={Code2}>VS Code</Tag> or any MCP client get <a href="/tools" className="text-heading underline underline-offset-2 hover:text-mark">42 tools</a>: see the screen, act on it,
             install and launch apps, read logs and crashes, measure jank.
           </p>
           <ul className="mt-8 flex flex-col gap-3 text-sm">
@@ -576,7 +607,7 @@ export function Agents() {
             ))}
           </ul>
           <div className="mt-8">
-            <MoreLink href={`${DOCS}/AGENTS.md`}>All 42 tools</MoreLink>
+            <MoreLink href="/tools">All 42 tools</MoreLink>
           </div>
         </div>
         <BlurFade className="relative flex min-w-0 flex-col border border-border bg-tile p-3 sm:p-6">
@@ -605,8 +636,37 @@ export function Agents() {
 
 /** An MCP tool name inside the story. */
 function T({ children }: { children: string }) {
+  const tool = TOOL_INFO.get(children)
+  const Icon = tool?.icon
+  const [shift, setShift] = useState(0)
+  // Centre the tooltip on the chip, nudged so it never runs off either side of the window.
+  const place = (e: { currentTarget: HTMLElement }) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    const w = Math.min(256, window.innerWidth - 16)
+    const left = r.left + r.width / 2 - w / 2
+    setShift(Math.max(8 - left, Math.min(0, window.innerWidth - 8 - (left + w))))
+  }
   return (
-    <code className="mx-px rounded-[3px] border border-primary/35 bg-primary/10 px-[0.35em] py-[0.08em] font-mono text-[0.84em] whitespace-nowrap text-mark">{children}</code>
+    // Hover or focus shows what the tool does (same icon and words as /tools).
+    <span tabIndex={tool ? 0 : undefined} onMouseEnter={place} onFocus={place} className="group/t relative inline-block outline-none">
+      <code className="mx-px inline-flex items-center gap-[0.3em] rounded-[3px] border border-primary/35 bg-primary/10 px-[0.35em] py-[0.08em] align-[-0.06em] font-mono text-[0.84em] leading-snug whitespace-nowrap text-mark transition-colors group-hover/t:border-primary/70 group-hover/t:bg-primary/20 group-focus-visible/t:border-primary/70">
+        {Icon && <Icon aria-hidden className="size-[1em] shrink-0" />}
+        {children}
+      </code>
+      {tool && (
+        <span
+          role="tooltip"
+          style={{ marginLeft: shift }}
+          className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-[min(16rem,calc(100vw-1rem))] -translate-x-1/2 translate-y-1 border border-input-border bg-background p-3 text-left font-sans text-[13px] leading-snug font-normal whitespace-normal text-foreground opacity-0 shadow-[0_16px_40px_-12px_rgb(0_0_0/0.6)] backdrop-blur-xl transition-all duration-150 group-hover/t:translate-y-0 group-hover/t:opacity-100 group-focus-visible/t:translate-y-0 group-focus-visible/t:opacity-100"
+        >
+          <span className="mb-1 flex items-center gap-1.5 font-mono text-xs text-heading">
+            {Icon && <Icon aria-hidden className="size-3.5 text-mark" />}
+            {children}
+          </span>
+          {tool.what}
+        </span>
+      )}
+    </span>
   )
 }
 
@@ -618,14 +678,15 @@ const STORY_TOOLS = [
 
 export function Story() {
   const [open, setOpen] = useState(false)
+  const [settled, setSettled] = useState(false)
   return (
     <section id="story" className={`pt-28 ${WRAP}`}>
       <BlurFade className="relative grid gap-10 border border-border bg-tile p-7 sm:p-10 lg:grid-cols-[15rem_1fr]">
         <FrameCorners />
         <div className="flex flex-row items-center gap-4 lg:flex-col lg:items-start">
-          <img src="/nikhil.webp" alt="Nikhil Kumawat" width={96} height={96} className="size-16 rounded-full border border-input-border lg:size-24" loading="lazy" />
+          <img src="https://github.com/TrendySloth1001.png?size=192" alt="Nikhil Kumawat" width={96} height={96} className="size-16 rounded-full border border-input-border lg:size-24" loading="lazy" />
           <div>
-            <p className="font-mono text-[11px] text-muted-foreground uppercase">The story me</p>
+            <p className="font-mono text-[11px] text-muted-foreground uppercase">The story of me</p>
             <p className="mt-1 font-medium text-heading">Nikhil Kumawat</p>
             <a href="https://github.com/TrendySloth1001" target="_blank" rel="noopener noreferrer" className="mt-0.5 inline-flex items-center gap-1 text-sm text-mark hover:underline">
               @TrendySloth1001 <ArrowUpRight className="size-3.5" />
@@ -651,8 +712,11 @@ export function Story() {
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
+                  // Clip only while it opens or closes, so the tool tooltips can rise above it.
+                  onAnimationStart={() => setSettled(false)}
+                  onAnimationComplete={() => setSettled(open)}
                   transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                  className="flex flex-col gap-4 overflow-hidden"
+                  className={`flex flex-col gap-4 ${settled ? '' : 'overflow-hidden'}`}
                 >
                   <p>
                     The agent used <T>install_apk</T> to put the debug build on, <T>app_info</T> to make sure it was the right version, and <T>launch_app</T> to open it.
@@ -692,7 +756,7 @@ export function Story() {
               {open ? 'Show less' : 'Read the whole story'}
               <ChevronDown className={`size-4 transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
-            <MoreLink href={`${DOCS}/AGENTS.md`}>Every tool, explained</MoreLink>
+            <MoreLink href="/tools">Every tool, explained</MoreLink>
           </div>
         </div>
       </BlurFade>
@@ -970,6 +1034,90 @@ export function DownloadSection() {
 
 // ---------------------------------------------------------------- footer
 
+/** Credits: everything Twinglass is made with (logos from Simple Icons, CC0; marks belong to their owners). */
+type Tech = [name: string, href: string, logo: SimpleIcon | LucideIcon]
+const MADE_WITH: [string, Tech[]][] = [
+  [
+    'Mac app',
+    [
+      ['Electron', 'https://www.electronjs.org', siElectron],
+      ['Node.js', 'https://nodejs.org', siNodedotjs],
+      ['TypeScript', 'https://www.typescriptlang.org', siTypescript],
+      ['React', 'https://react.dev', siReact],
+      ['electron-vite', 'https://electron-vite.org', siVite],
+      ['Tailwind CSS', 'https://tailwindcss.com', siTailwindcss],
+      ['shadcn/ui', 'https://ui.shadcn.com', siShadcnui],
+      ['Radix UI', 'https://www.radix-ui.com', siRadixui],
+      ['Magic UI', 'https://magicui.design', Sparkles],
+      ['Lucide', 'https://lucide.dev', siLucide],
+      ['WebCodecs', 'https://developer.mozilla.org/docs/Web/API/WebCodecs_API', Video],
+      ['electron-builder', 'https://www.electron.build', siElectronbuilder],
+    ],
+  ],
+  [
+    'Phone app',
+    [
+      ['Kotlin', 'https://kotlinlang.org', siKotlin],
+      ['Jetpack Compose', 'https://developer.android.com/compose', siJetpackcompose],
+      ['Material 3', 'https://m3.material.io', siMaterialdesign],
+      ['Gradle', 'https://gradle.org', siGradle],
+      ['ML Kit code scanner', 'https://developers.google.com/ml-kit/vision/barcode-scanning/code-scanner', siGoogle],
+    ],
+  ],
+  [
+    'Phone link & agents',
+    [
+      ['scrcpy', 'https://github.com/Genymobile/scrcpy', Terminal],
+      ['adb', 'https://developer.android.com/tools/adb', siAndroid],
+      ['Model Context Protocol', 'https://modelcontextprotocol.io', siModelcontextprotocol],
+      ['Zod', 'https://zod.dev', siZod],
+      ['Vitest', 'https://vitest.dev', siVitest],
+      ['Claude Code', 'https://claude.com/claude-code', siClaude],
+    ],
+  ],
+  [
+    'Shipping & this site',
+    [
+      ['GitHub', REPO, siGithub],
+      ['Homebrew', 'https://brew.sh', siHomebrew],
+      ['Bash', 'https://www.gnu.org/software/bash/', siGnubash],
+      ['Vite', 'https://vite.dev', siVite],
+      ['Motion', 'https://motion.dev', Sparkles],
+      ['Simple Icons', 'https://simpleicons.org', siSimpleicons],
+      ['Vercel', 'https://vercel.com', siVercel],
+    ],
+  ],
+]
+
+/** Credits, just above the footer: one short paragraph with every project as a linked chip. */
+export function MadeWith() {
+  const all = new Map(MADE_WITH.flatMap(([, items]) => items).map((t) => [t[0], t]))
+  const c = (name: string) => {
+    const [, href, logo] = all.get(name)!
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-75">
+        {'path' in logo ? <Tag logo={logo}>{name}</Tag> : <Tag icon={logo}>{name}</Tag>}
+      </a>
+    )
+  }
+  return (
+    <section aria-labelledby="made-with" className={`mt-32 text-center ${WRAP}`}>
+      <p id="made-with" className="font-mono text-[11px] text-muted-foreground uppercase">
+        Made with
+      </p>
+      <p className="mx-auto mt-4 max-w-4xl text-base leading-[2.1] text-balance sm:text-lg">
+        The Mac app is {c('Electron')} and {c('Node.js')}, written in {c('TypeScript')} with {c('React')}, built by {c('electron-vite')} and styled with{' '}
+        {c('Tailwind CSS')}, {c('shadcn/ui')}, {c('Radix UI')}, {c('Magic UI')} and {c('Lucide')} icons. Video decodes in hardware through {c('WebCodecs')}, and{' '}
+        {c('electron-builder')} packs it up. The phone app is {c('Kotlin')} and {c('Jetpack Compose')} with {c('Material 3')}, built with {c('Gradle')}, and pairs
+        using Google’s {c('ML Kit code scanner')}. Underneath, {c('scrcpy')} and {c('adb')} carry the screen and the input, agents talk through the{' '}
+        {c('Model Context Protocol')} with {c('Zod')} checking every call, and {c('Vitest')} keeps the protocol honest. A lot of it was written alongside{' '}
+        {c('Claude Code')}. It ships from {c('GitHub')} and {c('Homebrew')} with a little {c('Bash')}, and this site is {c('Vite')}, {c('Motion')} and{' '}
+        {c('Simple Icons')} on {c('Vercel')}. Thank you to everyone behind them.
+      </p>
+    </section>
+  )
+}
+
 export function Footer() {
   const link = 'flex min-h-8 items-center gap-1 text-sm hover:text-heading'
   const out = (href: string, label: string) => (
@@ -993,7 +1141,7 @@ export function Footer() {
     </nav>
   )
   return (
-    <footer className={`mt-32 pb-10 ${WRAP}`}>
+    <footer className={`mt-16 pb-10 ${WRAP}`}>
       <div className="relative border border-border px-6 py-10 sm:px-10">
         <FrameCorners />
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
@@ -1003,9 +1151,9 @@ export function Footer() {
             </span>
             <p className="text-sm">An indie Mac app for people who work next to an Android phone. No accounts, no analytics.</p>
           </div>
-          {col('Product', [local('/#features', 'Features'), local('/#how', 'How it works'), local('/#agents', 'For agents'), local('/#download', 'Download')])}
+          {col('Product', [local('/#features', 'Features'), local('/#how', 'How it works'), local('/#agents', 'For agents'), local('/tools', 'Agent tools'), local('/#download', 'Download')])}
           {col('Project', [out(REPO, 'GitHub'), local('/releases', 'Releases'), local('/changelog', 'Changelog')])}
-          {col('Help & legal', [local('/docs', 'Documentation'), local('/privacy', 'Privacy Policy'), out(`${REPO}/issues/new`, 'Report a problem'), out(`${DOCS}/AGENTS.md`, 'Agent setup')])}
+          {col('Help & legal', [local('/privacy', 'Privacy Policy'), out(`${REPO}/issues/new`, 'Report a problem'), out(`${DOCS}/AGENTS.md`, 'Agent setup')])}
         </div>
         <p className="mt-12 text-xs text-muted-foreground">
           © 2026 Nikhil Kumawat · Built on{' '}

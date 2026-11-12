@@ -181,7 +181,10 @@ export function DownloadFlow() {
           </label>
         }
       />
-      <Step n={2} state={agreed ? 'now' : 'next'} title="Install">
+      <Step n={2} state={agreed ? 'now' : 'next'} last={!agreed} title="Install">
+        {/* The install guide only appears once the policy is agreed to. */}
+        {agreed ? (
+          <>
         <div className="flex flex-wrap items-center gap-3">
           <DownloadButton label={`Download Twinglass ${latest.version}`} />
           <span className="font-mono text-[11px] text-muted-foreground">DMG · ~120 MB · Apple Silicon</span>
@@ -221,12 +224,20 @@ export function DownloadFlow() {
             </span>
           )}
         </p>
+          </>
+        ) : (
+          <p className="flex items-center gap-2 border border-dashed border-input-border px-3 py-3 text-sm text-muted-foreground">
+            <Lock className="size-4 shrink-0" /> The download and install steps appear once you agree to the privacy policy.
+          </p>
+        )}
       </Step>
+      {agreed && (
       <Step n={3} state="next" last title="Then">
-        <p className="text-sm leading-[2.1]">
-          Open <Tag icon={AppWindow}>Twinglass</Tag>, click <Tag icon={Plus}>Add phone</Tag>, and scan the <Tag icon={QrCode}>QR</Tag> with your phone.
-        </p>
-      </Step>
+          <p className="text-sm leading-[2.1]">
+            Open <Tag icon={AppWindow}>Twinglass</Tag>, click <Tag icon={Plus}>Add phone</Tag>, and scan the <Tag icon={QrCode}>QR</Tag> with your phone.
+          </p>
+        </Step>
+      )}
     </ol>
   )
 }

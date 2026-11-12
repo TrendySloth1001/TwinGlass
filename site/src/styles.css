@@ -71,7 +71,7 @@
   }
   html {
     @apply scroll-smooth font-sans antialiased;
-    scroll-padding-top: 4rem;
+    scroll-padding-top: 6rem;
     color-scheme: dark;
   }
   body {

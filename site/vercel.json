@@ -66,11 +66,11 @@
       "destination": "/index.html"
     },
     {
-      "source": "/docs",
+      "source": "/tools",
       "destination": "/index.html"
     },
     {
-      "source": "/docs/",
+      "source": "/tools/",
       "destination": "/index.html"
     }
   ]

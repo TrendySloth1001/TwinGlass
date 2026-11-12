@@ -3,20 +3,20 @@ import { useEffect } from 'react'
 import { SiteHeader } from './components/chrome'
 import { DownloadProvider } from './components/download'
 import { Changelog } from './pages/Changelog'
-import { Docs } from './pages/Docs'
 import { Privacy } from './pages/Privacy'
 import { Releases } from './pages/Releases'
-import { Agents, Capabilities, Connect, DownloadSection, Faq, Features, Footer, Hero, PhoneApp, PrivacyBlock, Steps, Story, Strip, WhatsNew } from './sections'
+import { Tools } from './pages/Tools'
+import { Agents, Capabilities, Connect, DownloadSection, Faq, Features, Footer, Hero, MadeWith, PhoneApp, PrivacyBlock, Steps, Story, Strip, WhatsNew } from './sections'
 
 export function App() {
   const path = window.location.pathname.replace(/\/+$/, '') || '/'
-  const page = path === '/privacy' ? 'privacy' : path === '/changelog' ? 'changelog' : path === '/releases' ? 'releases' : path === '/docs' ? 'docs' : 'home'
+  const page = path === '/privacy' ? 'privacy' : path === '/changelog' ? 'changelog' : path === '/releases' ? 'releases' : path === '/tools' ? 'tools' : 'home'
   useEffect(() => {
     document.title = {
       privacy: 'Privacy Policy · Twinglass',
       changelog: 'Changelog · Twinglass',
       releases: 'Releases · Twinglass',
-      docs: 'Docs · Twinglass',
+      tools: 'Agent tools · Twinglass',
       home: 'Twinglass · Your Android phone, on your Mac',
     }[page]
   }, [page])
@@ -31,8 +31,8 @@ export function App() {
           <Changelog />
         ) : page === 'releases' ? (
           <Releases />
-        ) : page === 'docs' ? (
-          <Docs />
+        ) : page === 'tools' ? (
+          <Tools />
         ) : (
           <main>
             <Hero />
@@ -50,6 +50,7 @@ export function App() {
             <DownloadSection />
           </main>
         )}
+        <MadeWith />
         <Footer />
       </DownloadProvider>
     </MotionConfig>

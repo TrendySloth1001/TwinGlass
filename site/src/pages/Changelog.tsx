@@ -10,7 +10,7 @@ export function Changelog() {
     if (id) setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'start' }), 60)
   }, [])
   return (
-    <main className="mx-auto max-w-6xl px-4 pt-20 pb-10 sm:px-6 lg:px-10">
+    <main className="mx-auto max-w-6xl px-4 pt-32 pb-10 sm:px-6 lg:px-10">
       <p className="font-mono text-[11px] text-muted-foreground uppercase">Changelog</p>
       <h1 className="font-soft mt-3 text-5xl sm:text-6xl">What’s new in Twinglass</h1>
       <p className="mt-4 max-w-2xl text-lg">
