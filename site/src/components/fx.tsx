@@ -1,16 +1,17 @@
 // Motion building blocks in the spirit of Magic UI / Aceternity, written for this site.
 // All of them calm down for people who asked their system for reduced motion.
 import { AnimatePresence, motion, useInView, useMotionValue, useReducedMotion, useSpring } from 'motion/react'
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 
 /** Fades and un-blurs its children in when they scroll into view. */
-export function BlurFade({ children, delay = 0, className, y = 12 }: { children: ReactNode; delay?: number; className?: string; y?: number }) {
+export function BlurFade({ children, delay = 0, className, style, y = 12 }: { children: ReactNode; delay?: number; className?: string; style?: CSSProperties; y?: number }) {
   const ref = useRef<HTMLDivElement>(null)
   const seen = useInView(ref, { once: true, margin: '-60px' })
   return (
     <motion.div
       ref={ref}
       className={className}
+      style={style}
       initial={{ opacity: 0, y, filter: 'blur(6px)' }}
       animate={seen ? { opacity: 1, y: 0, filter: 'blur(0px)' } : undefined}
       transition={{ duration: 0.55, delay, ease: [0.22, 1, 0.36, 1] }}

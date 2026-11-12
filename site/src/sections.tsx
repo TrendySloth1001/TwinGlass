@@ -38,7 +38,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import {
   siAndroid,
   siApple,
@@ -129,25 +129,6 @@ function Ok() {
 
 // ---------------------------------------------------------------- hero
 
-function DemoVideo() {
-  const [still, setStill] = useState(false)
-  useEffect(() => {
-    const q = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setStill(q.matches)
-    const on = (e: MediaQueryListEvent) => setStill(e.matches)
-    q.addEventListener('change', on)
-    return () => q.removeEventListener('change', on)
-  }, [])
-  const cls = 'w-full [clip-path:inset(1px_round_14px)]'
-  if (still) return <img src="/demo-poster.jpg" alt="Twinglass on a Mac, mirroring an Android phone" className={cls} width={1440} height={1098} />
-  return (
-    <video className={cls} width={1440} height={1098} poster="/demo-poster.jpg" autoPlay muted loop playsInline preload="auto" aria-label="Twinglass on a Mac, mirroring an Android phone">
-      <source src="/demo.webm" type="video/webm" />
-      <source src="/demo.mp4" type="video/mp4" />
-    </video>
-  )
-}
-
 const HERO_LINES: [LucideIcon, string][] = [
   [MonitorSmartphone, 'Mirror it.'],
   [Keyboard, 'Control it from your keyboard.'],
@@ -189,6 +170,159 @@ function HeroRotator() {
   )
 }
 
+/** Long dashed guides along a card's edges, running past its corners (the collage's blueprint grid). */
+function Guides() {
+  const line = 'pointer-events-none absolute border-dashed border-border'
+  return (
+    <span aria-hidden className="hidden lg:block">
+      <span className={`${line} -inset-x-24 top-0 border-t`} />
+      <span className={`${line} -inset-x-24 bottom-0 border-b`} />
+      <span className={`${line} -inset-y-24 left-0 border-l`} />
+      <span className={`${line} -inset-y-24 right-0 border-r`} />
+    </span>
+  )
+}
+
+/** One collage card. On large screens it's placed by --l/--t/--w/--h; on small ones it flows. */
+function Piece({ pos, className = '', delay = 0, children }: { pos: [string, string, string, string]; className?: string; delay?: number; children: ReactNode }) {
+  const [l, t, w, h] = pos
+  return (
+    <BlurFade
+      delay={delay}
+      className="lg:absolute lg:top-[var(--t)] lg:left-[var(--l)] lg:h-[var(--h)] lg:w-[var(--w)]"
+      style={{ '--l': l, '--t': t, '--w': w, '--h': h } as CSSProperties}
+    >
+      <div className={`relative h-full border border-border bg-tile ${className}`}>
+        <Guides />
+        <FrameCorners />
+        {children}
+      </div>
+    </BlurFade>
+  )
+}
+
+/** The hero's product collage: the Mac app, the phone app and what they do, laid out on a dashed grid. */
+function HeroCollage() {
+  return (
+    <div className="relative mt-16 flex flex-col gap-4 lg:block lg:h-[860px]">
+      {/* Intro, top left (the reference layout's headline slot). */}
+      <BlurFade delay={0.1} className="lg:absolute lg:top-6 lg:left-0 lg:w-[52%]">
+        <h2 className="font-soft text-3xl leading-tight text-heading sm:text-[2.1rem]">
+          Mirror it, drive it,
+          <br />
+          or hand it to your <span className="text-mark">AI agent.</span>
+        </h2>
+        <p className="mt-4 max-w-md text-[15px] leading-relaxed">
+          A VS Code-style workbench on your Mac, a small app on your phone, and 42 tools so <Tag logo={siClaude}>Claude Code</Tag>,{' '}
+          <Tag logo={siCursor}>Cursor</Tag> or any MCP client can test on it.
+        </p>
+      </BlurFade>
+
+      {/* The Mac app on a violet glow. */}
+      <Piece pos={['57%', '0px', '43%', '470px']} delay={0.15} className="min-h-[360px] overflow-hidden bg-[#0d0b16] sm:min-h-[460px] lg:min-h-0">
+        <Glow className="inset-0 opacity-90 [background:radial-gradient(ellipse_90%_80%_at_50%_100%,rgb(124_92_255/0.8),rgb(70_60_200/0.35)_45%,transparent_75%)]" />
+        <div className="relative flex items-center justify-between px-5 pt-4 text-[12px] text-white/80">
+          <span className="flex items-center gap-2 font-medium text-white">
+            <img src="/icon.png" alt="" className="size-4 rounded-[4px]" /> Twinglass for Mac
+          </span>
+          <span className="font-mono text-[11px] text-white/60">workbench</span>
+        </div>
+        <p className="relative px-5 pt-3 text-[22px] leading-tight font-medium text-white">Your phone, as a tab.</p>
+        <div className="absolute inset-x-5 bottom-0 top-[110px] overflow-hidden rounded-t-[10px] border border-b-0 border-white/15 bg-[#181818] shadow-2xl lg:inset-x-6">
+          <div className="flex h-5 items-center gap-1.5 border-b border-white/10 px-2.5">
+            <span className="size-2 rounded-full bg-[#ff5f57]" />
+            <span className="size-2 rounded-full bg-[#febc2e]" />
+            <span className="size-2 rounded-full bg-[#28c840]" />
+          </div>
+          <img src="/app-workbench.jpg" alt="Twinglass for Mac: phones in a side bar, the Welcome tab and a status bar" width={1600} height={1220} className="w-full" loading="eager" />
+        </div>
+      </Piece>
+
+      {/* The phone app. */}
+      <Piece pos={['0%', '260px', '25%', '580px']} delay={0.2} className="overflow-hidden">
+        <div className="p-5">
+          <p className="flex items-center gap-2 text-[13px] font-medium text-heading">
+            <Smartphone className="size-4 text-mark" /> The phone app
+          </p>
+          <p className="mt-1 text-[13px] leading-snug">Pairs with a QR, sends files and clipboard, and shows what your Mac may read.</p>
+        </div>
+        <div className="relative mx-auto mt-1 w-[60%] max-w-[220px] overflow-hidden lg:w-[78%] lg:max-w-[260px] rounded-[26px] border-[5px] border-black bg-black shadow-2xl [mask-image:linear-gradient(to_bottom,black_70%,transparent)]">
+          <img src="/phone-app.webp" alt="The Twinglass phone app" width={565} height={1256} className="w-full" loading="lazy" />
+        </div>
+      </Piece>
+
+      {/* An agent working on its own screen. */}
+      <Piece pos={['27%', '220px', '28%', '270px']} delay={0.25}>
+        <div className="flex h-full flex-col p-5">
+          <p className="flex items-center gap-2 text-[13px] font-medium text-heading">
+            <Bot className="size-4 text-mark" /> Agents get their own screen
+          </p>
+          <div className="mt-4 flex-1 space-y-1.5 border border-border bg-input/70 p-3 font-mono text-[11.5px] leading-relaxed">
+            <p className="text-muted-foreground">agent · second screen</p>
+            <p className="text-heading">launch_app “Settings”</p>
+            <p className="text-heading">tap_element “Display”</p>
+            <p className="text-heading">set_device_state dark_mode=on</p>
+            <p className="text-ok">✓ settled in 320 ms · screenshot saved</p>
+          </div>
+          <p className="mt-3 text-[12px]">You keep using your phone meanwhile.</p>
+        </div>
+      </Piece>
+
+      {/* Unlock. */}
+      <Piece pos={['27%', '515px', '28%', '220px']} delay={0.3}>
+        <div className="flex h-full flex-col justify-between p-5">
+          <span className="flex size-12 items-center justify-center rounded-full border border-border bg-input">
+            <Fingerprint className="size-6 text-mark" strokeWidth={1.6} />
+          </span>
+          <div>
+            <p className="text-[15px] font-medium text-heading">Unlock with Touch ID</p>
+            <p className="mt-1 text-[13px] leading-snug">Your PIN stays in the Mac’s keychain. Agents can’t unlock without your finger.</p>
+          </div>
+        </div>
+      </Piece>
+
+      {/* Wi-Fi, no setup. */}
+      <Piece pos={['57%', '500px', '20%', '250px']} delay={0.35} className="overflow-hidden">
+        <div className="relative flex h-[130px] items-center justify-center">
+          {[0, 1, 2].map((k) => (
+            <span
+              key={k}
+              aria-hidden
+              className="absolute size-16 rounded-full border border-mark/40 motion-safe:animate-ping"
+              style={{ animationDelay: `${k * 0.6}s`, animationDuration: '2.4s' }}
+            />
+          ))}
+          <span className="relative flex size-11 items-center justify-center rounded-full bg-mark/15">
+            <Wifi className="size-5 text-mark" />
+          </span>
+        </div>
+        <div className="px-5 pb-5">
+          <p className="text-[15px] font-medium text-heading">Wi-Fi, no setup</p>
+          <p className="mt-1 text-[13px] leading-snug">Scan a code once. No cable, no developer options.</p>
+        </div>
+      </Piece>
+
+      {/* Second screens. */}
+      <Piece pos={['79%', '500px', '21%', '330px']} delay={0.4}>
+        <div className="flex h-full flex-col p-5">
+          <p className="flex items-center gap-2 text-[13px] font-medium text-heading">
+            <Layers className="size-4 text-mark" /> Second screens
+          </p>
+          <div className="relative mt-4 flex-1">
+            <div className="absolute top-0 left-0 h-[78%] w-[52%] rounded-[12px] border-[3px] border-black bg-gradient-to-b from-[#2a2346] to-[#120f1f] shadow-xl" />
+            <div className="absolute right-0 bottom-0 flex h-[78%] w-[52%] flex-col gap-1.5 rounded-[12px] border-[3px] border-black bg-[#1f1f1f] p-2 shadow-xl">
+              <span className="h-2 w-2/3 rounded-full bg-white/25" />
+              <span className="h-2 w-1/2 rounded-full bg-white/15" />
+              <span className="mt-auto h-6 rounded-[5px] bg-mark/70" />
+            </div>
+          </div>
+          <p className="mt-3 text-[12px] leading-snug">Run another app on a screen of its own, next to your phone’s.</p>
+        </div>
+      </Piece>
+    </div>
+  )
+}
+
 export function Hero() {
   const { openDownload, latest } = useDownload()
   return (
@@ -220,39 +354,7 @@ export function Hero() {
         </div>
       </BlurFade>
 
-      <BlurFade delay={0.15}>
-        <div className="relative mt-14 border border-border bg-tile px-3 pt-3 sm:px-10 sm:pt-10">
-          <FrameCorners />
-          <Glow className="inset-0" />
-          {/* Render's signature: a bright grainy band under the product. */}
-          <Glow className="inset-x-0 bottom-0 h-3/4 opacity-90 [background:radial-gradient(ellipse_90%_70%_at_50%_110%,rgb(124_92_255/0.75),rgb(70_60_200/0.3)_50%,transparent_80%)]" />
-          <div className="relative">
-            <DemoVideo />
-          </div>
-          {/* Small live-looking cards over the product, as Render does with its dashboard. */}
-          <div className="pointer-events-none absolute bottom-[20%] left-[8%] hidden w-64 lg:block">
-            <Mock className="bg-tile/95 p-3 shadow-2xl backdrop-blur">
-              <FrameCorners />
-              <p className="flex items-center justify-between text-heading">
-                A024{' '}
-                <span className="flex items-center gap-1.5 text-[11px] text-ok">
-                  <span className="size-1.5 animate-pulse rounded-full bg-ok" />
-                  Mirroring
-                </span>
-              </p>
-              <p className="mt-1 font-mono text-[11px] text-muted-foreground">Wi-Fi · 10 ms · 120 Hz · H.265</p>
-            </Mock>
-          </div>
-          <div className="pointer-events-none absolute top-[30%] right-[8%] hidden w-72 lg:block">
-            <Mock className="bg-tile/95 p-3 font-mono text-[11px] shadow-2xl backdrop-blur">
-              <FrameCorners />
-              <p className="text-muted-foreground">agent · second screen</p>
-              <p className="mt-1.5 text-heading">tap_element “Sign in”</p>
-              <p className="mt-0.5 text-ok">✓ pressed · settled in 320 ms</p>
-            </Mock>
-          </div>
-        </div>
-      </BlurFade>
+      <HeroCollage />
     </section>
   )
 }
