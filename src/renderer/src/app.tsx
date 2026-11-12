@@ -14,7 +14,7 @@ import { notify, setPopups } from '@/lib/notify'
 import { MirrorToolbar } from '@/components/mirror-toolbar'
 import { Sidebar } from '@/components/sidebar'
 import { StatusBar } from '@/components/status-bar'
-import { ActivityBar, EditorTabs, TitleBar, TITLE_BAR, type SideView } from '@/components/workbench'
+import { ActivityBar, EditorTabs, TitleBar, TITLE_BAR, type EditorTab, type SideView } from '@/components/workbench'
 import type { DeviceAction } from '@shared/shortcuts'
 import { useDevices } from '@/hooks/use-devices'
 import { useMirror } from '@/hooks/use-mirror'
@@ -120,6 +120,21 @@ export function App(): ReactNode {
   const [settings, updateSettings] = useSettings()
   const [helpOpen, setHelpOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  /** Full view: Settings is an editor tab next to the phone (or Welcome), like VS Code's. */
+  const [settingsTab, setSettingsTab] = useState(false)
+  const [editorTab, setEditorTab] = useState<EditorTab>('main')
+  const compactRef = useRef(false)
+  const openSettings = useCallback(() => {
+    if (compactRef.current) setSettingsOpen(true)
+    else {
+      setSettingsTab(true)
+      setEditorTab('settings')
+    }
+  }, [])
+  const closeSettingsTab = useCallback(() => {
+    setSettingsTab(false)
+    setEditorTab('main')
+  }, [])
   /** Phone details requests (menus anywhere dispatch PHONE_DETAILS_EVENT); the dialog loads on the first one. */
   const [detailsRequest, setDetailsRequest] = useState<{
     serial: string
@@ -317,7 +332,7 @@ export function App(): ReactNode {
     () =>
       window.mobMirror.onUiCommand((cmd) => {
         const s = settingsRef.current
-        if (cmd === 'open-settings') setSettingsOpen(true)
+        if (cmd === 'open-settings') openSettings()
         else if (cmd === 'open-second-screen') setPalette({ open: true, mode: 'second' })
         else if (cmd === 'open-palette') setPalette({ open: true, mode: 'all' })
         else if (cmd === 'open-clipboard') setPalette({ open: true, mode: 'clipboard' })
@@ -421,6 +436,7 @@ export function App(): ReactNode {
   // Compact mirror (default while a phone is mirrored): phone-shaped window + control rail. The full
   // view (devices, settings, toolbar) is one click away and is used when nothing is mirrored.
   const compact = settings.viewMode === 'compact' && (mirror.state.phase === 'live' || mirror.state.phase === 'reconnecting')
+  compactRef.current = compact
   const framed = compact && settings.frame !== 'none'
   const helpMounted = useOpenedOnce(helpOpen)
   const paletteMounted = useOpenedOnce(palette.open)
@@ -500,7 +516,7 @@ export function App(): ReactNode {
           onClipboard={() => setPalette({ open: true, mode: 'clipboard' })}
           onSecondScreen={SECOND_SCREEN ? undefined : openSecondScreen}
           onShortcuts={() => setHelpOpen(true)}
-          onSettings={() => setSettingsOpen(true)}
+          onSettings={openSettings}
         />
       )}
       {!compact && (
@@ -533,14 +549,22 @@ export function App(): ReactNode {
         ) : (
           // One slot (a fragment) so the stage below keeps its position in the tree.
           <>
-            <EditorTabs phone={onPhone ? phoneName : null} transport={mirror.state.transport?.kind ?? null} onClose={onPhone ? () => dispatch('disconnect') : undefined} />
-            {onPhone && (
+            <EditorTabs
+              phone={onPhone ? phoneName : null}
+              transport={mirror.state.transport?.kind ?? null}
+              onDisconnect={onPhone ? () => dispatch('disconnect') : undefined}
+              settingsOpen={settingsTab}
+              active={settingsTab ? editorTab : 'main'}
+              onSelect={setEditorTab}
+              onCloseSettings={closeSettingsTab}
+            />
+            {onPhone && !(settingsTab && editorTab === 'settings') && (
           <MirrorToolbar
             onCompact={live ? () => updateSettings({ viewMode: 'compact' }) : undefined}
             mirror={mirror}
             onAction={dispatch}
             onShowHelp={() => setHelpOpen(true)}
-            onOpenSettings={() => setSettingsOpen(true)}
+            onOpenSettings={openSettings}
             onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
             onSecondScreen={SECOND_SCREEN ? undefined : openSecondScreen}
             onOpenApps={SECOND_SCREEN ? () => setGridOpen(true) : undefined}
@@ -552,6 +576,23 @@ export function App(): ReactNode {
         <div className="relative flex min-h-0 flex-1">
           {/* Lazy overlays get their own boundary: the canvas below must never suspend/unmount. */}
           <Suspense fallback={null}>
+            {/* The Settings tab covers the stage; the mirror keeps running underneath. */}
+            {!compact && settingsTab && editorTab === 'settings' && (
+              <div className="absolute inset-0 z-30">
+                <SettingsDialog
+                  asTab
+                  open
+                  onOpenChange={(o) => !o && closeSettingsTab()}
+                  settings={settings}
+                  onSettingsChange={onSettingsChange}
+                  adb={devices.adb}
+                  refreshDevices={devices.refresh}
+                  live={live}
+                  narrow={narrow}
+                  onReset={() => onSettingsChange({ ...DEFAULT_SETTINGS, lastDevice: settings.lastDevice })}
+                />
+              </div>
+            )}
             {switcherOpen && live && (
               <AppSwitcher
                 onClose={() => setSwitcherOpen(false)}
@@ -594,7 +635,7 @@ export function App(): ReactNode {
                   onMirror={onMirror}
                   onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
                   onOpenClipboard={() => setPalette({ open: true, mode: 'clipboard' })}
-                  onOpenSettings={() => setSettingsOpen(true)}
+                  onOpenSettings={openSettings}
                   onShowHelp={() => setHelpOpen(true)}
                   onSecondScreen={() => {
                     // A whole phone, directly: its own home screen (app grid) with every app.
@@ -649,7 +690,7 @@ export function App(): ReactNode {
           mirror={mirror}
           onAction={dispatch}
           onShowHelp={() => setHelpOpen(true)}
-          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenSettings={openSettings}
           onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
           onOpenApps={SECOND_SCREEN ? () => setGridOpen(true) : undefined}
           onSecondScreen={SECOND_SCREEN ? undefined : openSecondScreen}

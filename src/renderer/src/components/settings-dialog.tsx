@@ -99,6 +99,8 @@ interface SettingsDialogProps {
   live: boolean
   /** The window is narrower than 900 px: the sidebar always floats there. */
   narrow: boolean
+  /** Full view: render as an editor tab (VS Code's Settings editor) instead of a dialog. */
+  asTab?: boolean
   onReset: () => void
 }
 
@@ -167,12 +169,17 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
 
   const restartNote = p.live ? 'Applies now (the mirror restarts for a second).' : undefined
 
-  return (
-    <Dialog open={p.open} onOpenChange={p.onOpenChange}>
-      <DialogContent className="@container flex h-[min(600px,calc(100vh-48px))] w-[min(800px,calc(100vw-32px))] max-w-none gap-0 overflow-hidden p-0 sm:max-w-none">
-        <nav className="flex w-12 shrink-0 flex-col gap-0.5 border-r bg-sidebar p-2 pt-4 @2xl:w-48">
-          <DialogTitle className="sr-only px-2 pb-3 text-sm @2xl:not-sr-only">Settings</DialogTitle>
-          <DialogDescription className="sr-only">Twinglass preferences</DialogDescription>
+  const body = (
+    <>
+        <nav className={cn('flex w-12 shrink-0 flex-col gap-0.5 border-r bg-sidebar p-2 pt-4 @2xl:w-48', p.asTab && 'bg-background pt-3 @2xl:w-52')}>
+          {p.asTab ? (
+            <h1 className="sr-only">Settings</h1>
+          ) : (
+            <>
+              <DialogTitle className="sr-only px-2 pb-3 text-sm @2xl:not-sr-only">Settings</DialogTitle>
+              <DialogDescription className="sr-only">Twinglass preferences</DialogDescription>
+            </>
+          )}
           {PAGES.map((pg) => (
             <button
               key={pg.id}
@@ -181,8 +188,8 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
               title={pg.label}
               aria-label={pg.label}
               className={cn(
-                'flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-accent [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground',
-                page === pg.id && 'bg-accent font-medium',
+                'flex items-center gap-2 rounded-[3px] px-2 py-1 text-left text-[13px] transition-colors hover:bg-accent [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground',
+                page === pg.id && 'bg-selection font-semibold text-foreground',
               )}
             >
               {pg.icon}
@@ -191,8 +198,9 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
           ))}
         </nav>
 
-        <div className="min-w-0 flex-1 overflow-y-auto p-4 @2xl:p-6">
-          <h2 className="mb-4 text-base font-semibold">{PAGES.find((x) => x.id === page)?.label}</h2>
+        <div className={cn('min-w-0 flex-1 overflow-y-auto p-4 @2xl:p-6', p.asTab && '@2xl:px-10')}>
+          <div className={cn(p.asTab && 'max-w-[860px]')}>
+          <h2 className={cn('mb-4 text-base font-semibold', p.asTab && 'text-[26px] font-normal')}>{PAGES.find((x) => x.id === page)?.label}</h2>
 
           {page === 'general' && (
             <>
@@ -707,7 +715,15 @@ export function SettingsDialog(p: SettingsDialogProps): ReactNode {
               </Group>
             </>
           )}
+          </div>
         </div>
+    </>
+  )
+  if (p.asTab) return <div className="@container flex h-full min-h-0 w-full bg-background">{body}</div>
+  return (
+    <Dialog open={p.open} onOpenChange={p.onOpenChange}>
+      <DialogContent className="@container flex h-[min(600px,calc(100vh-48px))] w-[min(800px,calc(100vw-32px))] max-w-none gap-0 overflow-hidden p-0 sm:max-w-none">
+        {body}
       </DialogContent>
     </Dialog>
   )

@@ -150,39 +150,106 @@ export function ActivityBar({
   )
 }
 
-/** The editor tab strip: Welcome when nothing is mirrored, the phone's tab while it is. */
+function Tab({
+  icon: Icon,
+  iconClass,
+  label,
+  detail,
+  active,
+  onSelect,
+  onClose,
+  closeLabel,
+}: {
+  icon: LucideIcon
+  iconClass?: string
+  label: string
+  detail?: string
+  active: boolean
+  onSelect: () => void
+  onClose?: () => void
+  closeLabel?: string
+}): ReactNode {
+  return (
+    <div
+      role="tab"
+      aria-selected={active}
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelect()}
+      onMouseDown={(e) => {
+        // Middle-click closes, like VS Code.
+        if (e.button === 1 && onClose) {
+          e.preventDefault()
+          onClose()
+        }
+      }}
+      className={cn(
+        'group relative -mb-px flex min-w-0 cursor-default items-center gap-1.5 border-r border-border pr-1.5 pl-3 text-[13px] outline-none',
+        active ? 'bg-background text-foreground' : 'bg-tab-inactive text-muted-foreground hover:text-foreground',
+      )}
+    >
+      {active && <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-tab-active-border" />}
+      <Icon className={cn('size-4 shrink-0', iconClass)} />
+      <span className="truncate">{label}</span>
+      {detail && <span className="text-[12px] text-muted-foreground">{detail}</span>}
+      {onClose ? (
+        <Tip label={closeLabel ?? 'Close'}>
+          <button
+            type="button"
+            aria-label={closeLabel ?? 'Close'}
+            onClick={(e) => {
+              e.stopPropagation()
+              onClose()
+            }}
+            className={cn('ml-1 flex size-5 items-center justify-center rounded-[4px] hover:bg-foreground/10', !active && 'opacity-0 group-hover:opacity-100')}
+          >
+            <X className="size-4" />
+          </button>
+        </Tip>
+      ) : (
+        <span className="ml-1 size-5" />
+      )}
+    </div>
+  )
+}
+
+export type EditorTab = 'main' | 'settings'
+
+/** The editor tab strip: Welcome or the mirrored phone, plus Settings when it's open. */
 export function EditorTabs({
   phone,
   transport,
-  onClose,
+  onDisconnect,
+  settingsOpen,
+  active,
+  onSelect,
+  onCloseSettings,
 }: {
   /** The mirrored phone's name, or null on the Welcome page. */
   phone: string | null
   transport: 'usb' | 'wifi' | null
-  onClose?: () => void
+  onDisconnect?: () => void
+  settingsOpen: boolean
+  active: EditorTab
+  onSelect: (t: EditorTab) => void
+  onCloseSettings: () => void
 }): ReactNode {
   const Icon = phone ? (transport === 'usb' ? Usb : transport === 'wifi' ? Wifi : Smartphone) : House
   return (
     <div role="tablist" className="flex h-[35px] shrink-0 items-stretch border-b border-border bg-tab-inactive">
-      <div
-        role="tab"
-        aria-selected
-        className="group relative -mb-px flex min-w-0 items-center gap-1.5 border-r border-border bg-background pr-1.5 pl-3 text-[13px] text-foreground"
-      >
-        <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-tab-active-border" />
-        <Icon className={cn('size-4 shrink-0', phone ? 'text-link' : 'text-primary')} />
-        <span className="truncate">{phone ?? 'Welcome'}</span>
-        {phone && transport && <span className="text-[12px] text-muted-foreground">{transport === 'usb' ? 'USB' : 'Wi-Fi'}</span>}
-        {onClose ? (
-          <Tip label="Disconnect">
-            <button type="button" aria-label="Disconnect" onClick={onClose} className="ml-1 flex size-5 items-center justify-center rounded-[4px] hover:bg-foreground/10">
-              <X className="size-4" />
-            </button>
-          </Tip>
-        ) : (
-          <span className="ml-1 size-5" />
-        )}
-      </div>
+      <Tab
+        icon={Icon}
+        iconClass={phone ? 'text-link' : 'text-primary'}
+        label={phone ?? 'Welcome'}
+        detail={phone && transport ? (transport === 'usb' ? 'USB' : 'Wi-Fi') : undefined}
+        active={active === 'main'}
+        onSelect={() => onSelect('main')}
+        onClose={onDisconnect}
+        closeLabel="Disconnect"
+      />
+      {settingsOpen && (
+        <Tab icon={Settings} label="Settings" active={active === 'settings'} onSelect={() => onSelect('settings')} onClose={onCloseSettings} closeLabel="Close Settings" />
+      )}
     </div>
   )
 }
