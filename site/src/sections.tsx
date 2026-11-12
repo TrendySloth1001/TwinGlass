@@ -26,9 +26,9 @@ function DemoVideo() {
     q.addEventListener('change', on)
     return () => q.removeEventListener('change', on)
   }, [])
-  if (still) return <img src="/demo-poster.jpg" alt="Twinglass on a Mac, mirroring an Android phone" className="w-full" width={1440} height={1098} />
+  if (still) return <img src="/demo-poster.jpg" alt="Twinglass on a Mac, mirroring an Android phone" className="w-full [clip-path:inset(1px_round_14px)]" width={1440} height={1098} />
   return (
-    <video className="w-full" width={1440} height={1098} poster="/demo-poster.jpg" autoPlay muted loop playsInline preload="auto" aria-label="Twinglass on a Mac, mirroring an Android phone">
+    <video className="w-full [clip-path:inset(1px_round_14px)]" width={1440} height={1098} poster="/demo-poster.jpg" autoPlay muted loop playsInline preload="auto" aria-label="Twinglass on a Mac, mirroring an Android phone">
       <source src="/demo.webm" type="video/webm" />
       <source src="/demo.mp4" type="video/mp4" />
     </video>
