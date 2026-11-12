@@ -10,7 +10,7 @@
   <img alt="MCP" src="https://img.shields.io/badge/MCP-ready-6d4cff?style=flat-square">
 </p>
 
-Twinglass puts your Android phone on your Mac. You can mirror it, use it with your mouse and keyboard, open a second screen of it next to the real one, and let coding agents test apps on it.
+Twinglass puts your Android phone on your Mac ([twinglass.vercel.app](https://twinglass.vercel.app)). You can mirror it, use it with your mouse and keyboard, open a second screen of it next to the real one, and let coding agents test apps on it.
 
 I built it because I spend most of my day on a Mac with an Android phone next to me, and I wanted the phone to feel like part of the desktop instead of something I keep picking up. It runs over USB, wireless debugging, or plain Wi-Fi with no developer options at all.
 

@@ -1,0 +1,38 @@
+@import 'tailwindcss';
+
+/* Credoodle's language: white sheet, monochrome, hairlines, one accent dot. */
+@theme {
+  --font-sans: 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, monospace;
+  --font-serif: 'Fraunces Variable', ui-serif, Georgia, serif;
+  --color-background: oklch(1 0 0);
+  --color-foreground: oklch(0.145 0 0);
+  --color-muted: oklch(0.97 0 0);
+  --color-muted-foreground: oklch(0.556 0 0);
+  --color-border: oklch(0.922 0 0);
+  --color-tile: oklch(0.98 0 0);
+  /* Twinglass violet, from the app icon. */
+  --color-mark: oklch(0.55 0.24 285);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    @apply scroll-smooth font-sans antialiased;
+    scroll-padding-top: 5rem;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--color-mark) 22%, transparent);
+  }
+}
+
+/* The soft book face for headlines, as on Credoodle's landing. */
+.font-soft {
+  font-family: var(--font-serif);
+  font-variation-settings: 'SOFT' 100, 'WONK' 1;
+}
