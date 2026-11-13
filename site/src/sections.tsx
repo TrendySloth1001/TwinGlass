@@ -312,7 +312,8 @@ function HeroCollage() {
           <span className="flex items-center gap-1.5 border border-border px-1.5 py-0.5 font-mono text-[10px]">⌘K</span>
         </div>
         <p className="relative px-5 pt-3 text-[22px] leading-tight font-medium text-heading">Your phone, as a tab.</p>
-        <div className="absolute inset-x-5 bottom-0 top-[110px] overflow-hidden rounded-t-[10px] border border-b-0 border-border bg-background shadow-2xl ring-1 ring-mark/20 lg:inset-x-6">
+        {/* A glimpse, not the whole app: the window runs past the card's right and bottom edges. */}
+        <div className="absolute top-[104px] left-5 w-[165%] overflow-hidden rounded-tl-[10px] border-t border-l border-border bg-background shadow-2xl ring-1 ring-mark/20 [mask-image:linear-gradient(to_bottom,black_70%,transparent)] lg:left-6">
           <div className="flex h-5 items-center gap-1.5 border-b border-border px-2.5">
             <span className="size-2 rounded-full bg-[#ff5f57]" />
             <span className="size-2 rounded-full bg-[#febc2e]" />
