@@ -53,7 +53,7 @@ The phone app shows what's connected and the phone's details, sends files and te
 
 ## For coding agents
 
-Twinglass includes an MCP server for Claude Code, Cursor, VS Code and others, with 45 tools: screenshots, element trees, taps and typing, installing and launching apps, logcat, crash reports and performance numbers. Agents work on their own second screen of the phone, so you can keep using it while they do.
+Twinglass includes an MCP server for Claude Code, Cursor, VS Code and others, with 46 tools: screenshots, element trees, taps and typing, installing and launching apps, logcat, crash reports and performance numbers. Agents work on their own second screen of the phone, so you can keep using it while they do.
 
 It's off by default and only listens on your Mac. Setup is in [docs/AGENTS.md](docs/AGENTS.md).
 

@@ -2,8 +2,9 @@
 // size and position in dp, insets, gap, text size and colours; click to pin it, pin a second one to
 // measure the space between them. Clicks don't reach the phone while inspecting. R re-reads the
 // screen, Esc leaves.
-import { Loader2, RefreshCw, ScanSearch, X } from 'lucide-react'
-import { useCallback, useEffect, useState, type ReactNode, type RefObject } from 'react'
+import { Accessibility, Loader2, RefreshCw, ScanSearch, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode, type RefObject } from 'react'
+import { auditScreen, type AuditIssue } from '@shared/a11y-audit'
 import type { MapNode, ScreenMap } from '../../../main/agent/screen-map'
 import { Button } from '@/components/ui/button'
 import { nodeAt, spacing } from '@/lib/inspect'
@@ -81,6 +82,10 @@ export function InspectOverlay({
   const [hover, setHover] = useState<MapNode | null>(null)
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null)
   const [pinned, setPinned] = useState<MapNode[]>([])
+  /** Audit: mark accessibility problems on the mirror and list them. */
+  const [audit, setAudit] = useState(false)
+  const issues = useMemo<AuditIssue[]>(() => (map ? auditScreen(map) : []), [map])
+  const byN = useMemo(() => new Map(map?.nodes.map((n) => [n.n, n]) ?? []), [map])
 
   const load = useCallback(() => {
     setLoading(true)
@@ -162,6 +167,11 @@ export function InspectOverlay({
     >
       {/* A faint outline of every element, so the structure is visible at a glance. */}
       {map?.nodes.map((n) => box(n, 'border border-sky-400/15'))}
+      {audit &&
+        issues.map((i) => {
+          const n = byN.get(i.n)
+          return n ? box(n, i.severity === 'error' ? 'border-2 border-red-500 bg-red-500/15' : 'border-2 border-amber-400 bg-amber-400/10') : null
+        })}
       {pinned.map((n, i) => box(n, 'border-2 border-[#a78bfa] bg-[#a78bfa]/10', `${i + 1} · ${n.w}×${n.h}`))}
       {hover && box(hover, 'border-2 border-sky-400 bg-sky-400/15', `${hover.w}×${hover.h}`)}
 
@@ -172,6 +182,17 @@ export function InspectOverlay({
         <span className="min-w-0 truncate text-white/60" title="Click an element to pin it; pin two to measure the space between them">
           {loading ? 'reading…' : error ? 'couldn’t read the screen' : `${map?.nodes.length ?? 0} elements · click to pin`}
         </span>
+        <Button
+          size="icon-xs"
+          variant="ghost"
+          className={`hover:bg-white/15 [&_svg]:size-3.5 ${audit ? 'bg-white/20 text-amber-300' : 'text-white'}`}
+          onClick={() => setAudit((a) => !a)}
+          title="Accessibility audit: small targets, missing labels, low contrast, tiny text"
+          aria-label="Accessibility audit"
+          aria-pressed={audit}
+        >
+          <Accessibility />
+        </Button>
         <Button size="icon-xs" variant="ghost" className="text-white hover:bg-white/15 [&_svg]:size-3.5" onClick={load} title="Read the screen again (R)" aria-label="Read the screen again">
           {loading ? <Loader2 className="animate-spin" /> : <RefreshCw />}
         </Button>
@@ -179,6 +200,37 @@ export function InspectOverlay({
           <X />
         </Button>
       </div>
+      {audit && map && (
+        <div
+          className="absolute bottom-2 left-2 z-20 max-h-[45%] w-[min(20rem,calc(100%-16px))] overflow-auto rounded-[6px] border border-white/15 bg-[#1f1f1f]/95 p-2 text-[11px] text-white/90 shadow-2xl"
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerMove={(e) => e.stopPropagation()}
+        >
+          <p className="mb-1 font-semibold text-white">
+            {issues.length ? `${issues.length} accessibility issue${issues.length === 1 ? '' : 's'}` : 'No accessibility issues on this screen'}
+          </p>
+          <ul className="flex flex-col gap-0.5">
+            {issues.map((i, k) => {
+              const n = byN.get(i.n)
+              return (
+                <li key={k}>
+                  <button
+                    type="button"
+                    onClick={() => n && setPinned([n])}
+                    className="flex w-full items-start gap-1.5 rounded-[3px] px-1 py-0.5 text-left hover:bg-white/10"
+                  >
+                    <span className={`mt-1 size-1.5 shrink-0 rounded-full ${i.severity === 'error' ? 'bg-red-500' : 'bg-amber-400'}`} />
+                    <span className="min-w-0">
+                      {i.message}
+                      {n?.text && <span className="text-white/50"> · “{n.text.slice(0, 30)}”</span>}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
       {error && <div className="absolute top-12 left-1/2 max-w-[90%] -translate-x-1/2 rounded-[4px] bg-black/80 px-2 py-1 text-[12px] text-white">{error}</div>}
 
       {/* The element's details, beside the pointer (or the last pinned one). */}

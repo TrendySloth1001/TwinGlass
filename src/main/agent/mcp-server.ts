@@ -7,6 +7,7 @@
 //  - Unlocking is only possible with a PIN the user saved, and only after Touch ID on the Mac.
 //  - Every action is shown in the app ("Agent: tapped …") so the user can see what happens.
 // API verified against @modelcontextprotocol/server 2.4.0 / node 2.1.2 (docs/FACTS.md).
+import { auditScreen } from '@shared/a11y-audit'
 import { compareWithFigma } from '../design-ipc'
 import { listTests, runTest } from '../tests-ipc'
 import { describeStep } from '@shared/tests'
@@ -643,6 +644,25 @@ function buildServer(ctl: DeviceController): McpServer {
       const r = await runTest(ctl, t, device, undefined, screen ?? 'agent')
       const lines = r.results.map((x) => `${x.ok ? '✓' : '✗'} ${x.index + 1}. ${describeStep(t.steps[x.index]!)}: ${x.message}`)
       return text(`${r.ok ? 'PASSED' : 'FAILED'} “${t.name}” (${r.results.length}/${t.steps.length} steps)\n${lines.join('\n')}`)
+    },
+  )
+
+  s.registerTool(
+    'audit_accessibility',
+    {
+      description:
+        'Accessibility check of the screen: pressable elements under 48×48 dp or with no label (screen readers can’t name them), text contrast below WCAG AA (from the sampled colours) and text under 12 sp. Each issue names the element (n…, as in screen_map) with its text and position.',
+      inputSchema: z.object({ device: deviceArg, screen: screenArg }),
+    },
+    async ({ device, screen }) => {
+      const { map } = await ctl.screenMap({ detail: 'full', image: false, colors: true, maxNodes: 1500 }, device, screen)
+      const issues = auditScreen(map)
+      const byN = new Map(map.nodes.map((n) => [n.n, n]))
+      const lines = issues.map((i) => {
+        const n = byN.get(i.n)!
+        return `- ${i.severity === 'error' ? '✗' : '!'} ${i.message} · ${n.n} ${n.kind}${n.id ? ` #${n.id}` : ''}${n.text ? ` “${n.text.slice(0, 40)}”` : ''} at ${n.x}, ${n.y} dp`
+      })
+      return text(issues.length ? `${issues.length} accessibility issue${issues.length === 1 ? '' : 's'}:\n${lines.join('\n')}` : 'No accessibility issues found on this screen.')
     },
   )
 

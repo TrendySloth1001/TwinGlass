@@ -1,6 +1,7 @@
 // /tools: every tool the Twinglass MCP server gives a coding agent, explained in plain words.
 // Source of truth: src/main/agent/mcp-server.ts (keep the list and the count in step with it).
 import {
+  Accessibility,
   AppWindow,
   ArrowUpRight,
   Bell,
@@ -181,6 +182,11 @@ const GROUPS: Group[] = [
         icon: PlayCircle,
         what: 'Replays a recorded test. Each step finds its element by what it says, not where it was, and waits for the screen to settle. Stops at the first failure and says why.',
         example: 'run_test “Sign in”',
+      },
+      {
+        name: 'audit_accessibility',
+        icon: Accessibility,
+        what: 'Checks the screen for touch targets under 48 dp, buttons with no label, low text contrast and tiny text, naming each element.',
       },
       {
         name: 'compare_design',
