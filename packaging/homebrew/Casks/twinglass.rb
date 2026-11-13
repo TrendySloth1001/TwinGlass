@@ -2,8 +2,8 @@
 # Install:  brew install --cask TrendySloth1001/tap/twinglass
 # Updated by scripts/update-cask.mjs after each release (version + sha256).
 cask "twinglass" do
-  version "0.1.6"
-  sha256 "9ea50ae5e05df6f21c576cba0e544274ad4a06106f2c2a54d49900e5f14c4ec2"
+  version "0.1.7"
+  sha256 "ac4273fff3753a85fa5fe4859166058544c1888b10c1057958fd957c119bd5eb"
 
   url "https://github.com/TrendySloth1001/TwinGlass/releases/download/v#{version}/Twinglass-#{version}-arm64.dmg"
   name "Twinglass"
