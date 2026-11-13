@@ -3,6 +3,16 @@ package com.mobmirror.companion
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import com.mobmirror.companion.ui.Radius
+import com.mobmirror.companion.ui.Sizes
+import com.mobmirror.companion.ui.Springs
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -293,6 +303,7 @@ private fun PhoneTitle(s: DeviceInfo.Snapshot) {
     }
 }
 
+/** Phone at a glance: one card, a row per figure (icon tile, name, value, a thin meter, detail). */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Metrics(s: DeviceInfo.Snapshot, onOpen: () -> Unit, decimal: Boolean) {
@@ -300,39 +311,56 @@ private fun Metrics(s: DeviceInfo.Snapshot, onOpen: () -> Unit, decimal: Boolean
     val ramUsed = 1f - s.ramFree.toFloat() / s.ramTotal.coerceAtLeast(1)
     val diskUsed = 1f - s.storageFree.toFloat() / s.storageTotal.coerceAtLeast(1)
     val low = (s.battery ?: 100) <= 20 && !s.charging
-    Column(Modifier.combinedClickable(onClick = onOpen), verticalArrangement = Arrangement.spacedBy(Space.md)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(Space.md)) {
-            Metric(Modifier.weight(1f), "Battery", s.battery?.toString() ?: "--", "%", (s.battery ?: 0) / 100f, if (low) p.error else p.textPrimary, if (s.charging) "Charging" else if (low) "Low" else "On battery", live = s.charging)
-            val u = DeviceInfo.gbUnit(decimal)
-            Metric(Modifier.weight(1f), "Memory", DeviceInfo.gb(s.ramFree, decimal), "$u free", ramUsed, p.textPrimary, "of ${DeviceInfo.gb(s.ramTotal, decimal)} $u")
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(Space.md)) {
-            val u = DeviceInfo.gbUnit(decimal)
-            Metric(Modifier.weight(1f), "Storage", DeviceInfo.gb(s.storageFree, decimal), "$u free", diskUsed, p.textPrimary, "of ${DeviceInfo.gb(s.storageTotal, decimal)} $u")
-            Metric(Modifier.weight(1f), "Display", s.refreshHz.toString(), "Hz", null, p.textPrimary, s.resolution)
-        }
+    val u = DeviceInfo.gbUnit(decimal)
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(Radius.lg)).background(p.surface).combinedClickable(onClick = onOpen).padding(vertical = Space.xs),
+    ) {
+        Metric(
+            if (s.charging) Icons.Rounded.BatteryChargingFull else Icons.Rounded.BatteryFull, "Battery",
+            s.battery?.toString() ?: "--", "%", (s.battery ?: 0) / 100f,
+            if (low) p.error else if (s.charging) p.accent else p.textPrimary,
+            if (s.charging) "Charging" else if (low) "Low" else "On battery",
+        )
+        MetricDivider()
+        Metric(Icons.Rounded.Memory, "Memory", DeviceInfo.gb(s.ramFree, decimal), "$u free", ramUsed, p.textPrimary, "${DeviceInfo.gb(s.ramTotal, decimal)} $u in all")
+        MetricDivider()
+        Metric(Icons.Rounded.Storage, "Storage", DeviceInfo.gb(s.storageFree, decimal), "$u free", diskUsed, p.textPrimary, "${DeviceInfo.gb(s.storageTotal, decimal)} $u in all")
+        MetricDivider()
+        Metric(Icons.Rounded.Smartphone, "Display", s.refreshHz.toString(), "Hz", null, p.textPrimary, s.resolution)
     }
 }
 
+/** A hairline between rows, starting after the icon column. */
 @Composable
-private fun Metric(modifier: Modifier, label: String, figure: String, unit: String, fraction: Float?, lit: Color, caption: String, live: Boolean = false) {
+private fun MetricDivider() {
+    Box(Modifier.fillMaxWidth().padding(start = Space.lg + Sizes.iconCircle + Space.md).height(1.dp).background(LocalPalette.current.border))
+}
+
+@Composable
+private fun Metric(icon: ImageVector, label: String, figure: String, unit: String, fraction: Float?, tint: Color, caption: String) {
     val p = LocalPalette.current
-    Tile(modifier) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(label, style = Type.caption, color = p.textTertiary, modifier = Modifier.weight(1f))
-                if (live) StatusDot(p.accent, live = true)
-            }
-            Spacer(Modifier.height(Space.md))
+    val shown by animateFloatAsState((fraction ?: 0f).coerceIn(0f, 1f), Springs.gentle(), label = "meter")
+    Row(Modifier.fillMaxWidth().padding(horizontal = Space.lg, vertical = Space.md), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(Sizes.iconCircle).clip(RoundedCornerShape(Radius.md)).background(p.surfaceHigh), contentAlignment = Alignment.Center) {
+            Icon(icon, null, Modifier.size(Sizes.icon), tint = if (tint == p.textPrimary) p.textPrimary else tint)
+        }
+        Spacer(Modifier.width(Space.md))
+        Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(figure, style = Type.figure, color = p.textPrimary)
-                Spacer(Modifier.width(Space.xs))
-                Text(unit, style = Type.caption, color = p.textSecondary, modifier = Modifier.padding(bottom = 6.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(label, style = Type.body.copy(fontWeight = FontWeight.Medium), color = p.textPrimary)
+                    Text(caption, style = Type.caption, color = p.textSecondary, maxLines = 1)
+                }
+                Text(figure, style = Type.metric, color = if (tint == p.error) p.error else p.textPrimary)
+                Spacer(Modifier.width(3.dp))
+                Text(unit, style = Type.caption, color = p.textSecondary, modifier = Modifier.padding(bottom = 3.dp))
             }
-            Spacer(Modifier.height(Space.md))
-            if (fraction != null) DotMeter(fraction, count = 14, lit = lit) else Spacer(Modifier.height(6.dp))
-            Spacer(Modifier.height(Space.sm))
-            Text(caption, style = Type.caption, color = p.textSecondary, maxLines = 1)
+            if (fraction != null) {
+                Spacer(Modifier.height(Space.sm))
+                Box(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(Radius.pill)).background(p.surfaceHigh)) {
+                    Box(Modifier.fillMaxWidth(shown).height(4.dp).clip(RoundedCornerShape(Radius.pill)).background(if (tint == p.textPrimary) p.primary else tint))
+                }
+            }
         }
     }
 }
@@ -501,7 +529,7 @@ fun LazyListScope.settingsScreen(m: AppModel, onForget: () -> Unit, onReset: () 
         Grouped(4) { pos ->
             when (pos.index) {
                 0 -> ChoiceCell(pos, "Open on", "The tab the app starts on.", Icons.Rounded.Home, s.startTab, listOf(Prefs.StartTab.Home to "Home", Prefs.StartTab.Device to "Device")) { m.set("startTab", it) }
-                1 -> ToggleCell(pos, "Phone at a glance", "Battery, memory, storage and display tiles.", Icons.Rounded.Dashboard, s.showMetrics) { m.set("showMetrics", it) }
+                1 -> ToggleCell(pos, "Phone at a glance", "Battery, memory, storage and display in one card.", Icons.Rounded.Dashboard, s.showMetrics) { m.set("showMetrics", it) }
                 2 -> ToggleCell(pos, "Quick actions", "Send clipboard, share tips and agent access on Home.", Icons.Rounded.Bolt, s.showQuickActions) { m.set("showQuickActions", it) }
                 else -> ChoiceCell(pos, "Check the Mac every", "How often the link status and response time refresh while the app is open.", Icons.Rounded.Speed, s.refreshSec, Prefs.refreshChoices) { m.set("refreshSec", it) }
             }
