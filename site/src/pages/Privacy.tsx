@@ -28,7 +28,7 @@ export function Privacy() {
         <ul className="mt-3 flex flex-col gap-1.5 text-sm text-muted-foreground [&_li]:ml-5 [&_li]:list-disc">
           <li>No accounts, no analytics, no ads, no tracking. I don’t collect or sell anything about you.</li>
           <li>Your phone’s screen, input, clipboard and files only travel between your phone and your Mac.</li>
-          <li>The Mac app’s only internet request is the update check against GitHub. The phone app never uses the internet.</li>
+          <li>The Mac app talks to GitHub to check for updates, and to Figma only when you use Design check with your own token. The phone app never uses the internet.</li>
           <li>If you turn on agent access, the AI tools you connect can see your phone. That part is up to you and their policies.</li>
         </ul>
       </div>
@@ -76,6 +76,15 @@ export function Privacy() {
               GitHub’s privacy statement
             </a>
             . Nothing about you, your phone or your usage is sent.
+          </p>
+          <p>
+            <strong>Design check</strong> is off until you add a Figma personal access token. The token stays on your Mac, encrypted with your keychain, and is only
+            sent to Figma. When you compare, the Mac asks Figma for that one frame (its layout and an image of it); your phone’s screen is compared on your Mac and
+            never uploaded. Figma’s handling of those requests is covered by{' '}
+            <a className="underline" href="https://www.figma.com/legal/privacy/" target="_blank" rel="noopener noreferrer">
+              Figma’s privacy policy
+            </a>
+            .
           </p>
           <p>
             <strong>The phone app</strong> doesn’t use the internet. Updates come from your Mac. The QR scanner uses Google’s code scanner in Google Play services,

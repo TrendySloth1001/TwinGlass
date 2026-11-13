@@ -15,6 +15,8 @@ import { notify, setPopups } from '@/lib/notify'
 import { MirrorToolbar } from '@/components/mirror-toolbar'
 import { Sidebar } from '@/components/sidebar'
 import { StatusBar, type TabStats } from '@/components/status-bar'
+import { RecorderBar } from '@/components/tests-view'
+import { useTestRecorder } from '@/hooks/use-test-recorder'
 import { ActivityBar, EditorTabs, TitleBar, TITLE_BAR, type EditorTabSpec, type SideView } from '@/components/workbench'
 import type { TabsState } from '../../preload/api'
 import type { DeviceAction } from '@shared/shortcuts'
@@ -201,6 +203,10 @@ export function App(): ReactNode {
   }, [])
   const [unlockOpen, setUnlockOpen] = useState(false)
   const { connect, runAction } = mirror
+  // Recording a test on this page's mirror (a tab page, or a window's own mirror).
+  const recorder = useTestRecorder(mirror, mirror.state.transport?.serial ?? null)
+  const recorderRef = useRef(recorder)
+  recorderRef.current = recorder
   const live = mirror.state.phase === 'live'
 
   const [unlockError, setUnlockError] = useState<string | null>(null)
@@ -254,6 +260,10 @@ export function App(): ReactNode {
         }
       } else if (action === 'unlock') {
         if (live) void quickUnlock()
+      } else if ((action === 'back' || action === 'home' || action === 'recents') && recorderRef.current.state) {
+        recorderRef.current.key(action)
+        runAction(action)
+        if (action === 'home' && SECOND_SCREEN && live) setGridOpen(true)
       } else if (action === 'disconnect' && EMBED) {
         runAction('disconnect')
         window.mobMirror.tabs.closeSelf()
@@ -394,7 +404,8 @@ export function App(): ReactNode {
     () =>
       window.mobMirror.onUiCommand((cmd) => {
         const s = settingsRef.current
-        if (cmd === 'open-settings') openSettings()
+        if (cmd === 'record-test') void recorderRef.current.start()
+        else if (cmd === 'open-settings') openSettings()
         else if (cmd === 'open-second-screen') setPalette({ open: true, mode: 'second' })
         else if (cmd === 'open-palette') setPalette({ open: true, mode: 'all' })
         else if (cmd === 'open-clipboard') setPalette({ open: true, mode: 'clipboard' })
@@ -636,6 +647,23 @@ export function App(): ReactNode {
     mo.observe(document.body, { childList: true, subtree: true })
     return () => mo.disconnect()
   }, [])
+  // Tests run on, and designs are checked against, the phone in front: the selected phone tab, this
+  // window's own mirror, or else the first phone connected.
+  const firstDevice = devices.list?.devices[0]
+  const testTarget: { serial: string; name: string } | null =
+    activeTabInfo && !activeTabInfo.second
+      ? { serial: activeTabInfo.serial, name: activeTabInfo.title }
+      : mirror.state.transport
+        ? { serial: mirror.state.transport.serial, name: mirror.state.deviceName || 'Phone' }
+        : firstDevice?.transports[0]
+          ? { serial: firstDevice.transports[0].serial, name: firstDevice.model }
+          : null
+  const onRecord = (): void => {
+    if (IS_HOST) {
+      if (tabShown) window.mobMirror.tabs.command('record-test')
+      else toast.info('Open a phone first', { description: 'Mirror it (Phones → ▷), then press Record: the recording happens on its tab.' })
+    } else void recorder.start()
+  }
   const phoneName = phoneNameNow
   const onPhone = onPhoneNow
 
@@ -697,6 +725,8 @@ export function App(): ReactNode {
           error={devices.error}
           adb={devices.adb}
           refresh={devices.refresh}
+          target={testTarget}
+          onRecord={onRecord}
           activeSerial={IS_HOST ? (activeTabInfo && !activeTabInfo.second ? activeTabInfo.serial : null) : (mirror.state.transport?.serial ?? null)}
           connecting={mirror.state.phase === 'connecting'}
           onMirror={onMirror}
@@ -739,6 +769,7 @@ export function App(): ReactNode {
         <div ref={editorRef} className="relative flex min-h-0 flex-1">
           {/* Lazy overlays get their own boundary: the canvas below must never suspend/unmount. */}
           <Suspense fallback={null}>
+            {recorder.state && <RecorderBar recorder={recorder} />}
             {/* The Settings tab covers the stage; the mirror keeps running underneath. */}
             {workbench && settingsTab && editorTab === 'settings' && (
               <div className="absolute inset-0 z-30">

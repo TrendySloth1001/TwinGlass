@@ -1,4 +1,6 @@
 // Wires the agent MCP server to the app: settings toggle, setup command, activity feed.
+import { registerTestsIpc } from './tests-ipc'
+import { registerDesignIpc } from './design-ipc'
 import { BrowserWindow, clipboard, ipcMain, webContents } from 'electron'
 import type { Adb } from './adb/adb'
 import { DeviceController, type DisplaySpec } from './agent/controller'
@@ -48,6 +50,8 @@ export function registerAgentIpc(
     record: recordIn,
     unlock: unlockForAgent,
   })
+  registerTestsIpc(ctl)
+  registerDesignIpc(ctl)
   ctl.on('activity', (summary) => {
     for (const w of BrowserWindow.getAllWindows()) w.webContents.send('agent:activity', { summary, at: Date.now() })
   })

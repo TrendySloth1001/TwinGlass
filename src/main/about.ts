@@ -19,7 +19,7 @@ export interface AboutInfo {
   packaged: boolean
 }
 
-export type AboutLink = 'repo' | 'releases' | 'issues' | 'new-issue' | 'changelog' | 'scrcpy'
+export type AboutLink = 'repo' | 'releases' | 'issues' | 'new-issue' | 'changelog' | 'scrcpy' | 'figma-tokens'
 
 function about(): AboutInfo {
   return {
@@ -61,6 +61,7 @@ const LINKS: Record<AboutLink, () => string> = {
   'new-issue': newIssueUrl,
   changelog: () => `${REPO_URL}/blob/master/CHANGELOG.md`,
   scrcpy: () => 'https://github.com/Genymobile/scrcpy',
+  'figma-tokens': () => 'https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens',
 }
 
 export function registerAboutIpc(): void {

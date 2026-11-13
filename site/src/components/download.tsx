@@ -8,7 +8,7 @@ import { Chip, CopyInline, FrameCorners, HoverButton, INSTALL, REPO, Tag } from 
 import { BorderBeam } from './fx'
 import release from '../data/release.json'
 
-export const POLICY_VERSION = '2026-11-12'
+export const POLICY_VERSION = '2026-11-13'
 const KEY = 'twinglass:privacy-accepted'
 
 type Latest = { version: string; dmg: string }

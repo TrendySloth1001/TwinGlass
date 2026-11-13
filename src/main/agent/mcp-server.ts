@@ -7,6 +7,9 @@
 //  - Unlocking is only possible with a PIN the user saved, and only after Touch ID on the Mac.
 //  - Every action is shown in the app ("Agent: tapped …") so the user can see what happens.
 // API verified against @modelcontextprotocol/server 2.4.0 / node 2.1.2 (docs/FACTS.md).
+import { compareWithFigma } from '../design-ipc'
+import { listTests, runTest } from '../tests-ipc'
+import { describeStep } from '@shared/tests'
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { createServer, type Server } from 'node:http'
@@ -618,6 +621,48 @@ function buildServer(ctl: DeviceController): McpServer {
     z.object({ action: z.literal('wait'), ms: z.number().min(50).max(10000) }),
     z.object({ action: z.literal('wait_for'), ...elementArgs, gone: z.boolean().optional(), timeout_ms: z.number().min(200).max(30000).optional() }),
   ])
+  s.registerTool(
+    'list_tests',
+    {
+      description: 'Tests the user recorded in Twinglass (Tests view): their names and steps. Run one with run_test.',
+      inputSchema: z.object({}),
+    },
+    async () => text(JSON.stringify((await listTests()).map((t) => ({ name: t.name, device: t.device, steps: t.steps.map(describeStep) })), null, 1)),
+  )
+
+  s.registerTool(
+    'run_test',
+    {
+      description:
+        "Replay a test the user recorded, on the phone's own screen: each step finds its element by text or id (not position) and waits for the screen to settle. Stops at the first failing step and reports which and why.",
+      inputSchema: z.object({ name: z.string().min(1), device: deviceArg }),
+    },
+    async ({ name, device }) => {
+      const t = (await listTests()).find((x) => x.name === name)
+      if (!t) throw new Error(`No test named “${name}”. Call list_tests.`)
+      const r = await runTest(ctl, t, device)
+      const lines = r.results.map((x) => `${x.ok ? '✓' : '✗'} ${x.index + 1}. ${describeStep(t.steps[x.index]!)}: ${x.message}`)
+      return text(`${r.ok ? 'PASSED' : 'FAILED'} “${t.name}” (${r.results.length}/${t.steps.length} steps)\n${lines.join('\n')}`)
+    },
+  )
+
+  s.registerTool(
+    'compare_design',
+    {
+      description:
+        "Compare a Figma frame with the phone's screen: texts missing from the screen or not in the design, and for every text in both, position, width, font size and colour that are off (in dp / sp, after lining the two up). Needs the user's Figma token, added in Twinglass (Design check view).",
+      inputSchema: z.object({ figma_url: z.string().url().describe('Link to the frame (Copy link to selection)'), device: deviceArg }),
+    },
+    async ({ figma_url, device }) => {
+      const { report } = await compareWithFigma(ctl, figma_url, device, false)
+      const lines = report.issues.map((i) => `- ${i.kind}: “${i.text}”${i.design ? ` design ${i.design}` : ''}${i.screen ? ` · screen ${i.screen}` : ''}${i.delta !== undefined ? ` (Δ ${i.delta})` : ''}`)
+      return text(
+        `Frame “${report.frame}”: ${report.matched} texts matched, ${report.issues.length} issue${report.issues.length === 1 ? '' : 's'}. ` +
+          `Design scale ${report.scale}× dp; content offset ${report.offset.dx}, ${report.offset.dy} dp (ignored).\n${lines.join('\n') || 'Everything matches.'}`,
+      )
+    },
+  )
+
   s.registerTool(
     'run_steps',
     {

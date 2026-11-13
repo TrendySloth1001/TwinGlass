@@ -43,6 +43,25 @@ interface Drag {
   /** Present while a second (virtual) finger is down. */
   mirror: MirrorMode | null
   last: Point
+  /** Where and when it started (the test recorder tells taps, long presses and swipes apart). */
+  start: Point
+  t0: number
+}
+
+/** A point as a fraction of the screen (0..1), the way recorded tests store positions. */
+export type NormPoint = [number, number]
+
+/**
+ * Listens to what the user does on the mirror, for recording a test. Nothing changes for the phone,
+ * except in check mode: then a click names an element instead of reaching the phone.
+ */
+export interface InputRecorder {
+  checking: boolean
+  gesture(g: { kind: 'tap' | 'long' | 'swipe'; from: NormPoint; to: NormPoint; ms: number }): void
+  check(at: NormPoint): void
+  scroll(direction: 'up' | 'down' | 'left' | 'right'): void
+  text(t: string): void
+  key(k: 'back' | 'home' | 'recents' | 'enter' | 'delete' | 'tab' | 'escape'): void
 }
 
 interface WheelPinch {
@@ -78,8 +97,12 @@ export interface InputOptions {
   scrollSpeed: number
 }
 
+const norm = (p: Point, size: Size): NormPoint => [Math.min(1, Math.max(0, p.x / size.width)), Math.min(1, Math.max(0, p.y / size.height))]
+
 export class InputController {
   options: InputOptions = { mouseShortcuts: true, invertScroll: false, scrollSpeed: 1 }
+  /** Set while a test is being recorded. */
+  recorder: InputRecorder | null = null
   private drag: Drag | null = null
   private wheelPinch: WheelPinch | null = null
   private pressedKeys = new Set<string>()
@@ -146,9 +169,9 @@ export class InputController {
     e.preventDefault()
     // Mouse buttons like scrcpy: right = Back, middle = Home, 4th = Recents, 5th = notifications.
     if (this.options.mouseShortcuts) {
-      if (e.button === 2) return this.send(backOrScreenOn(KeyAction.DOWN))
-      if (e.button === 1) return this.pressKey(AndroidKey.HOME)
-      if (e.button === 3) return this.pressKey(AndroidKey.APP_SWITCH)
+      if (e.button === 2) return this.recorder?.key('back'), this.send(backOrScreenOn(KeyAction.DOWN))
+      if (e.button === 1) return this.recorder?.key('home'), this.pressKey(AndroidKey.HOME)
+      if (e.button === 3) return this.recorder?.key('recents'), this.pressKey(AndroidKey.APP_SWITCH)
       if (e.button === 4) return this.send(expandNotificationPanel())
     }
     if (e.button !== 0 || this.drag) return
@@ -156,10 +179,12 @@ export class InputController {
     if (!size) return
     const p = clientToVideo(e.clientX, e.clientY, this.canvas.getBoundingClientRect(), size)
     if (!p) return
+    // Recording a check: this click names the element under it; the phone doesn't get it.
+    if (this.recorder?.checking) return this.recorder.check(norm(p, size))
     this.endWheelPinch()
     this.canvas.setPointerCapture(e.pointerId)
     const mirror: MirrorMode | null = e.altKey ? (e.shiftKey ? 'tilt' : 'pinch') : null
-    const drag: Drag = { pointerId: e.pointerId, mirror, last: p }
+    const drag: Drag = { pointerId: e.pointerId, mirror, last: p, start: p, t0: performance.now() }
     this.drag = drag
     this.touch(MotionAction.DOWN, PointerId.MOUSE, p, size, true)
     if (mirror) this.touch(MotionAction.DOWN, PointerId.VIRTUAL_FINGER, virtualFinger(p, size, mirror), size, false)
@@ -208,6 +233,14 @@ export class InputController {
         this.touch(MotionAction.UP, PointerId.VIRTUAL_FINGER, virtualFinger(drag.last, size, drag.mirror), size, false)
       }
       this.touch(MotionAction.UP, PointerId.MOUSE, drag.last, size, true)
+      // Pinch / tilt gestures aren't recorded (no step for them yet).
+      if (this.recorder && !drag.mirror) {
+        const from = norm(drag.start, size)
+        const to = norm(drag.last, size)
+        const ms = Math.round(performance.now() - drag.t0)
+        const moved = Math.hypot(to[0] - from[0], to[1] - from[1]) > 0.02
+        this.recorder.gesture({ kind: moved ? 'swipe' : ms >= 500 ? 'long' : 'tap', from, to, ms })
+      }
     }
     this.onFingers([], size ?? { width: 1, height: 1 })
   }
@@ -227,7 +260,11 @@ export class InputController {
     const k = this.options.scrollSpeed * (this.options.invertScroll ? -1 : 1)
     const h = clamp((e.deltaX / unit) * k)
     const v = clamp((-e.deltaY / unit) * k)
-    if (h || v) this.send(injectScroll({ x: p.x, y: p.y, screen: size }, h, v))
+    if (h || v) {
+      this.send(injectScroll({ x: p.x, y: p.y, screen: size }, h, v))
+      // Content moves the other way to the wheel: wheel down = content scrolls down ("down").
+      if (this.recorder) this.recorder.scroll(Math.abs(v) >= Math.abs(h) ? (v < 0 ? 'down' : 'up') : h > 0 ? 'right' : 'left')
+    }
   }
 
   private pinchWheel(cursor: Point, deltaY: number, size: Size): void {
@@ -270,12 +307,15 @@ export class InputController {
     e.preventDefault()
     // Printable characters go in as text, so they follow the Mac keyboard layout.
     if ([...e.key].length === 1 && !e.ctrlKey && !e.altKey) {
+      this.recorder?.text(e.key)
       if (PRINTABLE_ASCII.test(e.key)) this.send(injectText(e.key))
       else this.send(setClipboard(this.clipboardSeq++, e.key, true)) // non-ASCII: paste via clipboard
       return
     }
     const keycode = domCodeToKeycode(e.code)
     if (keycode === undefined) return
+    const recorded = ({ Enter: 'enter', Backspace: 'delete', Tab: 'tab', Escape: 'escape' } as const)[e.key as 'Enter']
+    if (recorded && !e.repeat) this.recorder?.key(recorded)
     this.pressedKeys.add(e.code)
     this.send(injectKeycode(KeyAction.DOWN, keycode, e.repeat ? 1 : 0, metaStateOf(e)))
   }
@@ -291,6 +331,7 @@ export class InputController {
   private onPaste(e: ClipboardEvent): void {
     e.preventDefault()
     const text = e.clipboardData?.getData('text/plain') ?? ''
+    if (text) this.recorder?.text(text)
     if (text) this.send(setClipboard(this.clipboardSeq++, text, true))
   }
 

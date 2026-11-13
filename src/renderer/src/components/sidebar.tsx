@@ -21,6 +21,8 @@ import type { AdbStatusInfo, DeviceListInfo, TransportInfo } from '../../../prel
 import { AddDeviceDialog } from '@/components/add-device-dialog'
 import { AddPhoneSheet } from '@/components/add-phone-sheet'
 import { AgentAccess } from '@/components/agent-access'
+import { DesignView } from '@/components/design-view'
+import { TestsView } from '@/components/tests-view'
 import { DeviceCard } from '@/components/device-card'
 import { IconButton } from '@/components/icon-button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -33,7 +35,11 @@ import { cn } from '@/lib/utils'
 
 interface SidebarProps {
   /** Which view the activity bar picked. */
-  view: 'phones' | 'agents'
+  view: 'phones' | 'tests' | 'design' | 'agents'
+  /** The phone tests run on and designs are checked against (the one in front). */
+  target: { serial: string; name: string } | null
+  /** Start recording a test on the phone in front. */
+  onRecord: () => void
   list: DeviceListInfo | null
   error: string | null
   adb: AdbStatusInfo | null
@@ -134,7 +140,7 @@ export function Sidebar(p: SidebarProps): ReactNode {
       <div className="flex h-full w-72 flex-col">
         {/* View title, like VS Code's "EXPLORER": caps on the left, view actions on the right. */}
         <header className="group/title flex h-[35px] shrink-0 items-center gap-0.5 pr-2 pl-5">
-          <span className="mr-auto text-[11px] tracking-[0.02em] text-foreground/80 uppercase">{p.view === 'agents' ? 'Agents' : 'Phones'}</span>
+          <span className="mr-auto text-[11px] tracking-[0.02em] text-foreground/80 uppercase">{{ phones: 'Phones', tests: 'Tests', design: 'Design check', agents: 'Agents' }[p.view]}</span>
           {p.view === 'phones' && (
             <IconButton label="Refresh phones" size="icon-xs" className="[&_svg]:size-4" onClick={p.refresh}>
               <RefreshCw />
@@ -262,6 +268,8 @@ export function Sidebar(p: SidebarProps): ReactNode {
 
           </>
           )}
+          {p.view === 'tests' && <TestsView target={p.target} onRecord={p.onRecord} />}
+          {p.view === 'design' && <DesignView target={p.target} />}
           {p.view === 'agents' && (
             <Section title="Agent access" icon={<Bot />} closed={closed.has('agent-view')} onToggle={() => toggleSection('agent-view')}>
               <AgentAccess />
