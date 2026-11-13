@@ -532,34 +532,34 @@ class MainActivity : ComponentActivity() {
         if (confirmForgetDirect) {
             AlertDialog(
                 onDismissRequest = { confirmForgetDirect = false },
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(Radius.xl),
                 containerColor = p.surface,
                 title = { Text("Forget ${direct.paired?.name ?: "this Mac"}?", style = Type.title, color = p.textPrimary) },
                 text = { Text("It’s removed on this phone and on the Mac. To use it again, pair with a new code.", style = Type.bodySmall, color = p.textSecondary) },
-                confirmButton = { TextButton({ confirmForgetDirect = false; forgetDirectEverywhere() }) { Text("FORGET", style = Type.button, color = p.accent) } },
-                dismissButton = { TextButton({ confirmForgetDirect = false }) { Text("CANCEL", style = Type.button, color = p.textPrimary) } },
+                confirmButton = { TextButton({ confirmForgetDirect = false; forgetDirectEverywhere() }) { Text("Forget", style = Type.button, color = p.accent) } },
+                dismissButton = { TextButton({ confirmForgetDirect = false }) { Text("Cancel", style = Type.button, color = p.textPrimary) } },
             )
         }
         if (confirmReset) {
             AlertDialog(
                 onDismissRequest = { confirmReset = false },
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(Radius.xl),
                 containerColor = p.surface,
                 title = { Text("Reset settings?", style = Type.title, color = p.textPrimary) },
                 text = { Text("Everything in Settings goes back to its default. The link to your Mac and the “What the Mac may use” switches stay as they are.", style = Type.bodySmall, color = p.textSecondary) },
-                confirmButton = { TextButton({ confirmReset = false; m.resetSettings() }) { Text("RESET", style = Type.button, color = p.accent) } },
-                dismissButton = { TextButton({ confirmReset = false }) { Text("CANCEL", style = Type.button, color = p.textPrimary) } },
+                confirmButton = { TextButton({ confirmReset = false; m.resetSettings() }) { Text("Reset", style = Type.button, color = p.accent) } },
+                dismissButton = { TextButton({ confirmReset = false }) { Text("Cancel", style = Type.button, color = p.textPrimary) } },
             )
         }
         if (confirmForget) {
             AlertDialog(
                 onDismissRequest = { confirmForget = false },
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(Radius.xl),
                 containerColor = p.surface,
                 title = { Text("Forget ${Link.macName(this)}?", style = Type.title, color = p.textPrimary) },
                 text = { Text("The link is removed from this phone, and the Mac can’t link again by itself. Choose “Link again” when you want it back.", style = Type.bodySmall, color = p.textSecondary) },
-                confirmButton = { TextButton({ confirmForget = false; m.forget(); nav = Nav(Tab.Home) }) { Text("FORGET", style = Type.button, color = p.accent) } },
-                dismissButton = { TextButton({ confirmForget = false }) { Text("CANCEL", style = Type.button, color = p.textPrimary) } },
+                confirmButton = { TextButton({ confirmForget = false; m.forget(); nav = Nav(Tab.Home) }) { Text("Forget", style = Type.button, color = p.accent) } },
+                dismissButton = { TextButton({ confirmForget = false }) { Text("Cancel", style = Type.button, color = p.textPrimary) } },
             )
         }
     }

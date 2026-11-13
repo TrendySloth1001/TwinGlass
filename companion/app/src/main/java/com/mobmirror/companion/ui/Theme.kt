@@ -14,21 +14,26 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import kotlin.math.PI
 
-// The Twinglass phone app wears the same VS Code look as the Mac app: VS Code's "Dark Modern" and
-// "Light Modern" colours (side bar, editor, widgets, borders, text), the system sans at small sizes,
-// 2–6 dp corners, one blue accent (#0078D4) for primary actions, toggles, focus and "live", red only
-// for errors, and a blue status bar at the bottom like VS Code's.
+// The Twinglass phone app wears VS Code's modernized look (2026): the "Dark 2026" and "Light 2026"
+// theme colours (microsoft/vscode extensions/theme-defaults/themes/2026-*.json) laid out with the
+// grammar of VS Code's own phone layout (src/vs/sessions/browser/mobile/media/mobileWorkbench.css):
+// surfaces layered by tint instead of borders, 44 dp targets and 56 dp rows, the phone corner ramp
+// (6 / 10 / 12 / 16 / 20), sentence-case labels (no all caps), and a quiet status bar.
+// See docs/FACTS.md → "VS Code modernized UI (2026)".
 
 /** Semantic colour roles. Widgets read these, never raw colours. */
 @Immutable
 data class Palette(
+    /** The page (agents.background). */
     val background: Color,
+    /** Cards and grouped cells (agentsPanel.background). */
     val surface: Color,
+    /** Widgets, sheets' inner fields (editorWidget / chat input). */
     val surfaceRaised: Color,
+    /** Control fills: icon tiles, secondary buttons (checkbox.background / button.secondaryBackground). */
     val surfaceHigh: Color,
     val dotGrid: Color,
     val border: Color,
@@ -37,62 +42,69 @@ data class Palette(
     val textSecondary: Color,
     val textTertiary: Color,
     val textInverse: Color,
-    /** Blue: on / active / live, links. */
+    /** Links, on / live states (textLink.foreground). */
     val accent: Color,
-    /** Primary buttons and selected items (VS Code button.background) and their text. */
+    /** Primary buttons (button.background) and their text. */
     val primary: Color,
     val onPrimary: Color,
     val error: Color,
-    /** The status bar strip at the bottom. */
+    /** The status bar strip at the bottom: the page colour with a hairline, like VS Code 2026. */
     val statusBar: Color,
+    val statusBarText: Color,
+    /** The active item's tinted square (modern activity bar / list selection). */
+    val selection: Color,
     val disabled: Color,
     val isDark: Boolean,
 ) {
     companion object {
         val Dark = Palette(
-            background = Color(0xFF181818), // sideBar.background
-            surface = Color(0xFF1F1F1F), // editor.background
-            surfaceRaised = Color(0xFF2B2B2B),
-            surfaceHigh = Color(0xFF313131), // input / secondary button
-            dotGrid = Color(0xFF222222),
-            border = Color(0xFF2B2B2B),
-            borderStrong = Color(0xFF3C3C3C),
-            textPrimary = Color(0xFFCCCCCC),
-            textSecondary = Color(0xFF9D9D9D),
-            textTertiary = Color(0xFF6E7681),
-            textInverse = Color(0xFF1F1F1F),
-            accent = Color(0xFF0078D4),
-            primary = Color(0xFF0078D4),
+            background = Color(0xFF121314),
+            surface = Color(0xFF191A1B),
+            surfaceRaised = Color(0xFF202122),
+            surfaceHigh = Color(0xFF242526),
+            dotGrid = Color(0xFF1C1D1E),
+            border = Color(0xFF2A2B2C),
+            borderStrong = Color(0xFF333536),
+            textPrimary = Color(0xFFBFBFBF),
+            textSecondary = Color(0xFF8C8C8C),
+            textTertiary = Color(0xFF707070),
+            textInverse = Color(0xFF121314),
+            accent = Color(0xFF48A0C7),
+            primary = Color(0xFF297AA0),
             onPrimary = Color(0xFFFFFFFF),
-            error = Color(0xFFF85149),
-            statusBar = Color(0xFF0078D4),
-            disabled = Color(0xFF3C3C3C),
+            error = Color(0xFFF48771),
+            statusBar = Color(0xFF191A1B),
+            statusBarText = Color(0xFF8C8C8C),
+            selection = Color(0x22FFFFFF),
+            disabled = Color(0xFF555555),
             isDark = true,
         )
         val Light = Palette(
-            background = Color(0xFFF8F8F8),
+            background = Color(0xFFFAFAFD),
             surface = Color(0xFFFFFFFF),
-            surfaceRaised = Color(0xFFF2F2F2),
-            surfaceHigh = Color(0xFFE5E5E5),
-            dotGrid = Color(0xFFEDEDED),
-            border = Color(0xFFE5E5E5),
-            borderStrong = Color(0xFFCECECE),
-            textPrimary = Color(0xFF3B3B3B),
-            textSecondary = Color(0xFF616161),
+            surfaceRaised = Color(0xFFF7F7FA),
+            surfaceHigh = Color(0xFFEAEAEA),
+            dotGrid = Color(0xFFF0F1F2),
+            border = Color(0xFFE4E5E6),
+            borderStrong = Color(0xFFD8D8D8),
+            textPrimary = Color(0xFF202020),
+            textSecondary = Color(0xFF606060),
             textTertiary = Color(0xFF868686),
             textInverse = Color(0xFFFFFFFF),
-            accent = Color(0xFF005FB8),
-            primary = Color(0xFF005FB8),
+            accent = Color(0xFF0069CC),
+            primary = Color(0xFF0069CC),
             onPrimary = Color(0xFFFFFFFF),
-            error = Color(0xFFC72E0F),
-            statusBar = Color(0xFF005FB8),
-            disabled = Color(0xFFD4D4D4),
+            error = Color(0xFFAD0707),
+            statusBar = Color(0xFFFAFAFD),
+            statusBarText = Color(0xFF606060),
+            selection = Color(0x14000000),
+            disabled = Color(0xFFBBBBBB),
             isDark = false,
         )
     }
 }
 
-/** Spacing on a 4 dp grid, radii and sizes (Sparky AppSpacing / AppRadius / SettingsSizes). */
+/** Spacing on a 4 dp grid. */
 object Space {
     val xs = 4.dp
     val sm = 8.dp
@@ -103,22 +115,28 @@ object Space {
     val xxxl = 48.dp
 }
 
+/** VS Code's phone corner ramp (cornerRadius-xSmall … xLarge). */
 object Radius {
-    val sm = 2.dp
-    val md = 4.dp
-    val lg = 6.dp
+    val sm = 6.dp
+    val md = 10.dp
+    val lg = 16.dp
+    val xl = 20.dp
     val pill = 999.dp
 
-    /** Grouped cells: VS Code-small corners, a hairline gap. */
-    val groupOuter = 6.dp
-    val groupInner = 2.dp
-    val groupGap = 1.dp
+    /** Grouped cells: the run is one rounded surface, cells split by a hairline gap. */
+    val groupOuter = 16.dp
+    val groupInner = 6.dp
+    val groupGap = 2.dp
 }
 
 object Sizes {
+    /** A list row (--mobile-row). */
     val touch = 56.dp
-    val iconCircle = 40.dp
-    val icon = 22.dp
+    /** The smallest tap target (--mobile-target). */
+    val target = 44.dp
+    /** A round control's visual inside its 44 dp target (--mobile-control). */
+    val iconCircle = 36.dp
+    val icon = 20.dp
     val statusDot = 8.dp
     val meterDot = 6.dp
     val dotGridSpacing = 18.dp
@@ -131,22 +149,22 @@ object Fonts {
     val mono = FontFamily.Monospace
 }
 
-/** Colour-free text styles (Sparky AppTextStyles). */
+/** Colour-free text styles on VS Code's phone type scale (heading 28 / 20 / 17, body 16 / 15, label 13 / 12). */
 object Type {
-    val displayLarge = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Light, fontSize = 48.sp, lineHeight = 52.sp, letterSpacing = (-0.5).sp)
-    val display = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Light, fontSize = 34.sp, lineHeight = 40.sp)
-    val headline = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Normal, fontSize = 26.sp, lineHeight = 32.sp)
-    val metric = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 24.sp, lineHeight = 28.sp)
-    val title = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Medium, fontSize = 17.sp, lineHeight = 24.sp)
-    val body = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp)
+    val displayLarge = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 40.sp, lineHeight = 46.sp, letterSpacing = (-0.5).sp)
+    val display = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 30.sp, lineHeight = 36.sp, letterSpacing = (-0.3).sp)
+    val headline = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 28.sp, lineHeight = 34.sp, letterSpacing = (-0.2).sp)
+    val metric = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp)
+    val title = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 24.sp)
+    val body = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp)
     val bodySmall = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp)
-    // Small caps labels: VS Code's pane headers (bold caps, barely spaced).
-    val label = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 0.02.em, lineHeight = 16.sp)
-    val caption = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 0.02.em, lineHeight = 14.sp)
-    val button = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Medium, fontSize = 13.sp, letterSpacing = 0.02.em)
+    /** Section and pane headers: sentence case, semibold (modern VS Code dropped all-caps labels). */
+    val label = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 18.sp)
+    val caption = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp)
+    val button = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 20.sp)
 
-    /** Big figures (battery, memory, Hz): bold, tight. */
-    val figure = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.Light, fontSize = 40.sp, lineHeight = 44.sp, letterSpacing = (-0.5).sp)
+    /** Big figures (battery, memory, Hz). */
+    val figure = TextStyle(fontFamily = Fonts.body, fontWeight = FontWeight.SemiBold, fontSize = 36.sp, lineHeight = 40.sp, letterSpacing = (-0.5).sp)
 }
 
 /**
@@ -174,7 +192,7 @@ val LocalReduceMotion = staticCompositionLocalOf { false }
 /** Settings → Haptics: a light tick on taps and switches. */
 val LocalHaptics = staticCompositionLocalOf { true }
 
-/** VS Code Light / Dark Modern (no wallpaper colours); [mode] System follows the phone's dark mode. */
+/** VS Code Light / Dark 2026 (no wallpaper colours); [mode] System follows the phone's dark mode. */
 @Composable
 fun TwinglassTheme(mode: com.mobmirror.companion.Prefs.Theme = com.mobmirror.companion.Prefs.Theme.System, content: @Composable () -> Unit) {
     val dark = when (mode) {

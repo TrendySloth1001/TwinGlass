@@ -99,14 +99,12 @@ fun DotField(modifier: Modifier = Modifier, color: Color = LocalPalette.current.
     }
 }
 
-/** Mono caps caption followed by a hairline (Sparky SectionHeader). */
+/** Section header: a sentence-case label over the group (modern VS Code pane header, no rule). */
 @Composable
 fun SectionHeader(title: String, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
     val p = LocalPalette.current
-    Row(modifier.fillMaxWidth().padding(top = Space.xl, bottom = Space.md), verticalAlignment = Alignment.CenterVertically) {
-        Text(title.uppercase(), style = Type.caption, color = p.textTertiary)
-        Spacer(Modifier.width(Space.md))
-        Box(Modifier.weight(1f).height(1.dp).background(p.border))
+    Row(modifier.fillMaxWidth().padding(start = Space.xs, top = Space.xl, bottom = Space.sm), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, style = Type.label, color = p.textSecondary, modifier = Modifier.weight(1f))
         if (trailing != null) {
             Spacer(Modifier.width(Space.md))
             trailing()
@@ -137,35 +135,35 @@ fun StatusDot(color: Color, live: Boolean = false) {
     Box(Modifier.size(Sizes.statusDot).graphicsLayer { alpha = pulse }.clip(CircleShape).background(color))
 }
 
-/** Pill chip: thin strong border, mono caps (Sparky chips / segmented look). */
+/** Small tag: a tinted fill, no outline (VS Code 2026 badges and pills). */
 @Composable
 fun Chip(text: String, modifier: Modifier = Modifier, leading: (@Composable () -> Unit)? = null, inverted: Boolean = false) {
     val p = LocalPalette.current
     Row(
         modifier
             .clip(RoundedCornerShape(Radius.sm))
-            .background(if (inverted) p.primary else Color.Transparent)
-            .border(1.dp, if (inverted) p.primary else p.borderStrong, RoundedCornerShape(Radius.sm))
-            .padding(horizontal = 10.dp, vertical = 5.dp),
+            .background(if (inverted) p.primary else p.surfaceHigh)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leading != null) {
             leading()
             Spacer(Modifier.width(6.dp))
         }
-        Text(text.uppercase(), style = Type.caption, color = if (inverted) p.onPrimary else p.textSecondary, maxLines = 1)
+        Text(text, style = Type.caption, color = if (inverted) p.onPrimary else p.textSecondary, maxLines = 1)
     }
 }
 
-/** Round, bordered icon button (Sparky top-bar buttons). */
+/** Round icon button: a 36 dp tinted circle inside a 44 dp target (VS Code's phone control). */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RoundIconButton(icon: ImageVector, description: String, onClick: () -> Unit) {
     val p = LocalPalette.current
-    Box(
-        Modifier.size(40.dp).clip(RoundedCornerShape(Radius.md)).border(1.dp, p.border, RoundedCornerShape(Radius.md)).combinedClickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) { Icon(icon, description, Modifier.size(20.dp), tint = p.textPrimary) }
+    Box(Modifier.size(Sizes.target).clip(CircleShape).combinedClickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(Sizes.iconCircle).clip(CircleShape).background(p.surfaceHigh), contentAlignment = Alignment.Center) {
+            Icon(icon, description, Modifier.size(18.dp), tint = p.textPrimary)
+        }
+    }
 }
 
 /** Tonal icon circle used at the start of grouped cells. */
@@ -257,12 +255,12 @@ fun Expandable(visible: Boolean, content: @Composable ColumnScope.() -> Unit) {
     }
 }
 
-/** Card surface: 20 dp corners, hairline border (metric tiles, hero). */
+/** Card surface: layered by tint, no outline (metric tiles, hero). */
 @Composable
 fun Tile(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
     val p = LocalPalette.current
     Box(
-        modifier.clip(RoundedCornerShape(Radius.lg)).background(p.surface).border(1.dp, p.border, RoundedCornerShape(Radius.lg)).padding(Space.lg),
+        modifier.clip(RoundedCornerShape(Radius.lg)).background(p.surface).padding(Space.lg),
         content = content,
     )
 }

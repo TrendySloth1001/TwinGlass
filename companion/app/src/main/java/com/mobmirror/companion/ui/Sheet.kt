@@ -42,7 +42,7 @@ fun TwinglassSheet(onDismiss: () -> Unit, content: @Composable ColumnScope.() ->
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = RoundedCornerShape(topStart = Radius.groupOuter, topEnd = Radius.groupOuter),
+        shape = RoundedCornerShape(topStart = Radius.xl, topEnd = Radius.xl),
         containerColor = p.surface,
         contentColor = p.textPrimary,
         dragHandle = { Box(Modifier.padding(top = Space.md).size(36.dp, 4.dp).clip(RoundedCornerShape(Radius.pill)).background(p.borderStrong)) },
@@ -55,8 +55,8 @@ fun TwinglassSheet(onDismiss: () -> Unit, content: @Composable ColumnScope.() ->
 @Composable
 fun SheetHeader(icon: ImageVector, title: String, body: String, accent: Boolean = false) {
     val p = LocalPalette.current
-    Box(Modifier.size(56.dp).clip(CircleShape).background(if (accent) p.accent else p.surfaceHigh), contentAlignment = Alignment.Center) {
-        Icon(icon, null, Modifier.size(28.dp), tint = if (accent) Color.White else p.textPrimary)
+    Box(Modifier.size(56.dp).clip(RoundedCornerShape(Radius.lg)).background(if (accent) p.primary else p.surfaceHigh), contentAlignment = Alignment.Center) {
+        Icon(icon, null, Modifier.size(26.dp), tint = if (accent) p.onPrimary else p.textPrimary)
     }
     Spacer(Modifier.height(Space.lg))
     Text(title, style = Type.headline, color = p.textPrimary)

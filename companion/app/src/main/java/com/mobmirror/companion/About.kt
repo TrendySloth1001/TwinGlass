@@ -228,13 +228,13 @@ private fun ReleaseCard(r: About.Release, installed: Boolean) {
                 Spacer(Modifier.width(Space.sm))
                 if (installed) Chip("Installed", inverted = true)
                 Spacer(Modifier.weight(1f))
-                Text(About.date(r.date).uppercase(), style = Type.caption, color = p.textTertiary)
+                Text(About.date(r.date), style = Type.caption, color = p.textTertiary)
             }
             Spacer(Modifier.height(Space.xs))
             Text(r.title, style = Type.body.copy(fontWeight = FontWeight.SemiBold), color = p.textPrimary)
             Spacer(Modifier.height(Space.xs))
             Text(r.summary, style = Type.bodySmall, color = p.textSecondary)
-            Notes("ON THIS PHONE", r.phoneNotes)
+            Notes("On this phone", r.phoneNotes)
             Notes("ON THE MAC · TWINGLASS ${r.mac}", r.macNotes)
         }
     }

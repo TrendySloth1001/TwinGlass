@@ -113,7 +113,7 @@ fun Landing(onChoose: (Prefs.Mode) -> Unit) {
                 Box(Modifier.fillMaxWidth()) {
                     DotField(Modifier.align(Alignment.TopEnd).size(150.dp), color = p.accent)
                     Column {
-                        Text("TWINGLASS", style = Type.caption, color = p.textTertiary)
+                        Text("Twinglass", style = Type.caption, color = p.textTertiary)
                         Spacer(Modifier.height(Space.lg))
                         Text("Your phone,\non your Mac.", style = Type.display, color = p.textPrimary)
                         Spacer(Modifier.height(Space.md))
@@ -165,7 +165,7 @@ private fun ModeCard(selected: Boolean, icon: ImageVector, title: String, badge:
             .fillMaxWidth()
             .clip(shape)
             .background(p.surface)
-            .border(if (selected) 2.dp else 1.dp, if (selected) p.primary else p.border, shape)
+            .then(if (selected) Modifier.border(2.dp, p.primary, shape) else Modifier)
             .combinedClickable(onClick = onClick)
             .padding(Space.lg),
     ) {
@@ -215,8 +215,8 @@ private fun State(on: Boolean) {
     if (on) Row(verticalAlignment = Alignment.CenterVertically) {
         StatusDot(p.accent)
         Spacer(Modifier.width(6.dp))
-        Text("ON", style = Type.caption.copy(fontWeight = FontWeight.Bold), color = p.textPrimary)
-    } else Text("SET UP", style = Type.caption.copy(fontWeight = FontWeight.Bold), color = p.textSecondary)
+        Text("On", style = Type.caption.copy(fontWeight = FontWeight.Bold), color = p.textPrimary)
+    } else Text("Set up", style = Type.caption.copy(fontWeight = FontWeight.Bold), color = p.textSecondary)
 }
 
 @Composable
@@ -234,10 +234,10 @@ private fun DirectHero(d: DirectState, onSheet: (Sheet) -> Unit, onMirror: () ->
                 Spacer(Modifier.width(Space.sm))
                 Text(
                     when {
-                        d.mirroring -> "MIRRORING TO"
-                        d.paired != null -> "PAIRED WITH"
-                        gone != null -> "FORGOTTEN"
-                        else -> "NOT PAIRED YET"
+                        d.mirroring -> "Mirroring to"
+                        d.paired != null -> "Paired with"
+                        gone != null -> "Forgotten"
+                        else -> "Not paired yet"
                     },
                     style = Type.caption,
                     color = p.textSecondary,
@@ -392,7 +392,7 @@ private fun PairFlow(onDone: () -> Unit) {
         PillButton("Scan QR code", onClick = ::scan)
         error?.let { Text(it, style = Type.bodySmall, color = p.error, modifier = Modifier.padding(top = Space.sm)) }
         Spacer(Modifier.height(Space.xl))
-        Text("OR PICK YOUR MAC AND TYPE THE CODE", style = Type.caption, color = p.textTertiary, modifier = Modifier.padding(bottom = Space.sm))
+        Text("Or pick your Mac and type the code", style = Type.caption, color = p.textTertiary, modifier = Modifier.padding(bottom = Space.sm))
         if (macs.isEmpty()) {
             Row(Modifier.fillMaxWidth().padding(vertical = Space.lg), verticalAlignment = Alignment.CenterVertically) {
                 if (searching) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = p.textSecondary)
@@ -418,7 +418,7 @@ private fun PairFlow(onDone: () -> Unit) {
     SheetHeader(Icons.Rounded.Lock, "Enter the code", "Type the 6-digit code shown on ${mac.name}.")
     // One big field, spaced like six boxes.
     Box(
-        Modifier.fillMaxWidth().height(72.dp).clip(RoundedCornerShape(Radius.lg)).background(p.surfaceRaised).border(1.dp, if (error != null) p.accent else p.border, RoundedCornerShape(Radius.lg)),
+        Modifier.fillMaxWidth().height(72.dp).clip(RoundedCornerShape(Radius.lg)).background(p.surfaceRaised).border(1.dp, if (error != null) p.error else p.borderStrong, RoundedCornerShape(Radius.lg)),
         contentAlignment = Alignment.Center,
     ) {
         BasicTextField(
@@ -475,7 +475,7 @@ fun UpdateCard(version: String, mac: String, wifi: Boolean, updating: Boolean, o
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusDot(p.accent, live = updating)
             Spacer(Modifier.width(Space.sm))
-            Text("UPDATE AVAILABLE", style = Type.caption, color = p.textSecondary)
+            Text("Update available", style = Type.caption, color = p.textSecondary)
         }
         Spacer(Modifier.height(Space.sm))
         Text("Twinglass $version", style = Type.title, color = p.textPrimary)
@@ -510,10 +510,10 @@ fun PotentialCard(
     val debugging = dev.usbDebugging || dev.wirelessDebugging
     val full = debugging && adbLinkedTo != null
     val (label, title, body) = when {
-        full -> Triple("FULL POTENTIAL", "Running at full potential", "Developer mode is on and $adbLinkedTo is linked: second screens, coding agents, app testing and the lowest latency are all available.")
-        debugging && forgotten -> Triple("DEVELOPER MODE ON", "Almost at full potential", "You forgot your Mac, so it can’t link over adb. Tap Link again below to get second screens, coding agents, app testing and the lowest latency back.")
-        debugging -> Triple("DEVELOPER MODE ON", "Almost at full potential", "${if (dev.wirelessDebugging && !dev.usbDebugging) "Wireless" else "USB"} debugging is on. Connect to your Mac (cable or wireless debugging) with Twinglass open to link it.")
-        else -> Triple("WI-FI MODE", "Mirroring and basic control", "Turn on Developer mode to unlock second screens, coding agents, app testing and the lowest latency.")
+        full -> Triple("Full potential", "Running at full potential", "Developer mode is on and $adbLinkedTo is linked: second screens, coding agents, app testing and the lowest latency are all available.")
+        debugging && forgotten -> Triple("Developer mode on", "Almost at full potential", "You forgot your Mac, so it can’t link over adb. Tap Link again below to get second screens, coding agents, app testing and the lowest latency back.")
+        debugging -> Triple("Developer mode on", "Almost at full potential", "${if (dev.wirelessDebugging && !dev.usbDebugging) "Wireless" else "USB"} debugging is on. Connect to your Mac (cable or wireless debugging) with Twinglass open to link it.")
+        else -> Triple("Wi-Fi mode", "Mirroring and basic control", "Turn on Developer mode to unlock second screens, coding agents, app testing and the lowest latency.")
     }
     val shape = RoundedCornerShape(Radius.lg)
     Column(
@@ -521,19 +521,18 @@ fun PotentialCard(
             .fillMaxWidth()
             .clip(shape)
             .background(if (full) p.primary else p.surface)
-            .border(1.dp, if (full) p.primary else p.border, shape)
             .padding(Space.lg),
     ) {
         val fg = if (full) p.onPrimary else p.textPrimary
         val sub = if (full) p.onPrimary.copy(alpha = 0.75f) else p.textSecondary
         Row(verticalAlignment = Alignment.CenterVertically) {
-            StatusDot(if (full || debugging) p.accent else p.textTertiary, live = full)
+            StatusDot(if (full) p.onPrimary else if (debugging) p.accent else p.textTertiary, live = full)
             Spacer(Modifier.width(Space.sm))
             Text(label, style = Type.caption, color = sub, modifier = Modifier.weight(1f))
             // The three things that decide it, at a glance.
             Text(
-                listOf(if (dev.developerOptions) "DEV OPTIONS ✓" else "DEV OPTIONS ✗", if (debugging) "DEBUGGING ✓" else "DEBUGGING ✗", if (adbLinkedTo != null) "LINKED ✓" else "LINKED ✗").joinToString("  "),
-                style = Type.caption.copy(fontSize = 9.sp),
+                listOf(if (dev.developerOptions) "Dev options ✓" else "Dev options ✗", if (debugging) "Debugging ✓" else "Debugging ✗", if (adbLinkedTo != null) "Linked ✓" else "Linked ✗").joinToString("  "),
+                style = Type.caption.copy(fontSize = 11.sp),
                 color = sub,
             )
         }

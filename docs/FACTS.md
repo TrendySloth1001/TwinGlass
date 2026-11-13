@@ -347,3 +347,17 @@ adb shell CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobi
 - Full-resolution frames queue in the phone's encoder. That is why USB at native felt slower than Wi-Fi (capped at 1600).
 - USB "High" (and Auto on USB) is now 1920 px / 12 Mbps; native is only "Maximum".
 - A second full-resolution 120 fps stream (agent screen) showed ~15 ms main → window IPC delay on that window. Keep concurrent streams capped.
+
+## VS Code modernized UI (2026) — the phone app's look (verified 2026-11-13)
+Sources: VS Code blog "Modernizing the VS Code UI" (2026-10-15, code.visualstudio.com/blogs/2026/10/15/modern-ui) and microsoft/vscode main:
+- Themes `extensions/theme-defaults/themes/2026-dark.json` / `2026-light.json` ("Dark 2026", "Light 2026").
+  - Dark: page `agents.background` #121314, card `agentsPanel.background` #191A1B, widget #202122, control fill `checkbox.background` #242526, borders #2A2B2C / input #333536, text #BFBFBF / #8C8C8C, link #48A0C7, button #297AA0, error #F48771, list selection #FFFFFF22, status bar #191A1B with #8C8C8C text (no longer blue).
+  - Light: page #FAFAFD, card #FFFFFF, chat input #F7F7FA, control fill #EAEAEA, borders #E4E5E6 / #D8D8D8, text #202020 / #606060, button and link #0069CC, error #AD0707, selection #00000014, status bar #FAFAFD with #606060 text.
+- Modern UI rules (blog): layered surfaces with consistent spacing, corner radii and elevation; all-caps labels removed (`workbench.experimental.modernUIUppercaseViewHeaders` brings them back); "connected tabs" (the active tab joins its editor); compact density option.
+- Active activity-bar item: a rounded square (`cornerRadius-small`) filled with `modernActivityBarItem-activeBackground`, no side line (`src/vs/workbench/contrib/modernUI/browser/media/activityBar.css`).
+- VS Code's own phone layout (`src/vs/sessions/browser/mobile/media/mobileWorkbench.css`):
+  - "layered surfaces instead of borders, 44px targets, reveal on intent (not hover)";
+  - type scale heading 28 / 20 / 17, body 16 / 15, label 13 / 12 / 11;
+  - corner ramp 6 / 10 / 12 / 16 / 20;
+  - rows 56 px, round controls 36 px inside a 44 px target, glyphs 18 px;
+  - motion 250 ms push / 150 ms fade.

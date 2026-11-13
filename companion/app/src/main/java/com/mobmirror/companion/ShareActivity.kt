@@ -177,10 +177,10 @@ class ShareActivity : ComponentActivity() {
                         Spacer(Modifier.width(Space.sm))
                         Text(
                             when (s) {
-                                is State.Confirm -> "SEND TO ${Link.macName(this@ShareActivity).uppercase()}?"
-                                is State.Sending -> "SENDING TO ${Link.macName(this@ShareActivity).uppercase()}"
-                                is State.Done -> "SENT"
-                                is State.Failed -> "NOT SENT"
+                                is State.Confirm -> "Send to ${Link.macName(this@ShareActivity)}?"
+                                is State.Sending -> "Sending to ${Link.macName(this@ShareActivity)}"
+                                is State.Done -> "Sent"
+                                is State.Failed -> "Not sent"
                             },
                             style = Type.caption,
                             color = p.textSecondary,
@@ -225,6 +225,6 @@ class ShareActivity : ComponentActivity() {
                 .background(if (primary) p.primary else p.surfaceHigh, RoundedCornerShape(Radius.sm))
                 .clickable(onClick = onClick)
                 .padding(horizontal = Space.xl, vertical = Space.md),
-        ) { Text(text.uppercase(), style = Type.button, color = if (primary) p.onPrimary else p.textPrimary) }
+        ) { Text(text, style = Type.button, color = if (primary) p.onPrimary else p.textPrimary) }
     }
 }

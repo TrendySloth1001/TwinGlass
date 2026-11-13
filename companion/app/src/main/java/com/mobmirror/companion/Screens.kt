@@ -219,7 +219,7 @@ private fun OnOff(on: Boolean, live: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         StatusDot(if (on) p.accent else p.textTertiary, live = live)
         Spacer(Modifier.width(6.dp))
-        Text(if (on) "ON" else "OFF", style = Type.caption.copy(fontWeight = FontWeight.Bold), color = if (on) p.textPrimary else p.textTertiary)
+        Text(if (on) "On" else "Off", style = Type.caption.copy(fontWeight = FontWeight.Bold), color = if (on) p.textPrimary else p.textTertiary)
     }
 }
 
@@ -237,11 +237,11 @@ private fun LinkHero(link: LinkState, forgottenMac: String?, onOpen: () -> Unit,
                 Spacer(Modifier.width(Space.sm))
                 Text(
                     when (link) {
-                        is LinkState.Connected -> "CONNECTED TO"
-                        is LinkState.Unreachable -> "NOT REACHABLE"
-                        LinkState.NotPaired -> "NOT PAIRED"
-                        LinkState.Forgotten -> "FORGOTTEN"
-                        LinkState.Checking -> "CHECKING"
+                        is LinkState.Connected -> "Connected to"
+                        is LinkState.Unreachable -> "Not reachable"
+                        LinkState.NotPaired -> "Not paired"
+                        LinkState.Forgotten -> "Forgotten"
+                        LinkState.Checking -> "Checking"
                     },
                     style = Type.caption,
                     color = p.textSecondary,
@@ -268,7 +268,7 @@ private fun LinkHero(link: LinkState, forgottenMac: String?, onOpen: () -> Unit,
             Spacer(Modifier.height(Space.lg))
             Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                 if (st != null) {
-                    if (me?.mirroring == true) Chip("Mirroring", inverted = true, leading = { StatusDot(p.accent, live = true) })
+                    if (me?.mirroring == true) Chip("Mirroring", inverted = true, leading = { StatusDot(p.onPrimary, live = true) })
                     Chip(linksLabel(me?.links ?: emptyList()))
                     Chip("${st.pingMs} ms")
                 } else if (link != LinkState.Forgotten) Chip("USB or wireless debugging")
@@ -288,8 +288,8 @@ private fun PhoneTitle(s: DeviceInfo.Snapshot) {
     Column(Modifier.padding(top = Space.xxl, bottom = Space.lg)) {
         Text(s.model, style = Type.display, color = p.textPrimary)
         Spacer(Modifier.height(Space.sm))
-        Text("${s.maker}  ·  Android ${s.android}  ·  API ${s.api}".uppercase(), style = Type.caption, color = p.textSecondary)
-        if (s.soc.isNotBlank()) Text(s.soc.uppercase(), style = Type.caption, color = p.textTertiary)
+        Text("${s.maker}  ·  Android ${s.android}  ·  API ${s.api}", style = Type.caption, color = p.textSecondary)
+        if (s.soc.isNotBlank()) Text(s.soc, style = Type.caption, color = p.textTertiary)
     }
 }
 
@@ -320,19 +320,19 @@ private fun Metric(modifier: Modifier, label: String, figure: String, unit: Stri
     Tile(modifier) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(label.uppercase(), style = Type.caption, color = p.textTertiary, modifier = Modifier.weight(1f))
+                Text(label, style = Type.caption, color = p.textTertiary, modifier = Modifier.weight(1f))
                 if (live) StatusDot(p.accent, live = true)
             }
             Spacer(Modifier.height(Space.md))
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(figure, style = Type.figure, color = p.textPrimary)
                 Spacer(Modifier.width(Space.xs))
-                Text(unit.uppercase(), style = Type.caption, color = p.textSecondary, modifier = Modifier.padding(bottom = 6.dp))
+                Text(unit, style = Type.caption, color = p.textSecondary, modifier = Modifier.padding(bottom = 6.dp))
             }
             Spacer(Modifier.height(Space.md))
             if (fraction != null) DotMeter(fraction, count = 14, lit = lit) else Spacer(Modifier.height(6.dp))
             Spacer(Modifier.height(Space.sm))
-            Text(caption.uppercase(), style = Type.caption, color = p.textSecondary, maxLines = 1)
+            Text(caption, style = Type.caption, color = p.textSecondary, maxLines = 1)
         }
     }
 }
@@ -380,14 +380,14 @@ fun LazyListScope.deviceScreen(m: AppModel, query: String, onQuery: (String) -> 
 private fun SpecRow(r: DeviceInfo.Row, onCopy: () -> Unit) {
     val p = LocalPalette.current
     Column(Modifier.fillMaxWidth().combinedClickable(onClick = {}, onLongClick = onCopy).padding(vertical = 6.dp)) {
-        Text(r.label.uppercase(), style = Type.caption, color = p.textTertiary)
+        Text(r.label, style = Type.caption, color = p.textTertiary)
         Text(r.value, style = Type.bodySmall, color = p.textPrimary)
     }
 }
 
 @Composable
 private fun Footnote(text: String) =
-    Text(text.uppercase(), style = Type.caption, color = LocalPalette.current.textTertiary, modifier = Modifier.fillMaxWidth().padding(top = Space.xl))
+    Text(text, style = Type.caption, color = LocalPalette.current.textTertiary, modifier = Modifier.fillMaxWidth().padding(top = Space.xl))
 
 // ---------------------------------------------------------------- Connection (pushed from Home / Settings)
 
@@ -407,7 +407,7 @@ fun LazyListScope.connectionScreen(m: AppModel, onBack: () -> Unit, onForget: ()
                     Spacer(Modifier.height(Space.md))
                     Text(st?.mac ?: (m.link as? LinkState.Unreachable)?.mac ?: "No Mac yet", style = Type.display, color = p.textPrimary)
                     Spacer(Modifier.height(Space.sm))
-                    Text(listOfNotNull(st?.os, st?.version?.let { "Twinglass $it" }).joinToString("  ·  ").ifEmpty { "Twinglass for Mac" }.uppercase(), style = Type.caption, color = p.textSecondary)
+                    Text(listOfNotNull(st?.os, st?.version?.let { "Twinglass $it" }).joinToString("  ·  ").ifEmpty { "Twinglass for Mac" }, style = Type.caption, color = p.textSecondary)
                 }
             }
         }
