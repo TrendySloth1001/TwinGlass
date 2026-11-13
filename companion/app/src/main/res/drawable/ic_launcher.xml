@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Twinglass launcher icon (same design as the Mac app: build/icon.svg): twin glass panes of the
-     same size on a violet gradient; the one behind is clear glass, the one in front frosted, and the
-     back pane's edge shows faintly through the front one. -->
+<!-- Twinglass launcher icon (same design as the Mac app: build/icon.svg): a Mac laptop of clear
+     glass with an Android phone in front, on a violet gradient. Paths are in the SVG's 1024 grid,
+     scaled into the adaptive icon's safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
@@ -13,16 +13,20 @@
             </gradient>
         </aapt:attr>
     </path>
-    <!-- Back pane: clear glass. -->
-    <path android:strokeColor="#A0FFFFFF" android:strokeWidth="1.4" android:fillColor="#24FFFFFF"
-        android:pathData="M36.5,33h15a7.5,7.5 0 0 1 7.5,7.5v32a7.5,7.5 0 0 1 -7.5,7.5h-15a7.5,7.5 0 0 1 -7.5,-7.5v-32a7.5,7.5 0 0 1 7.5,-7.5z" />
-    <!-- Front pane: frosted. -->
-    <path android:fillColor="#F5FFFFFF"
-        android:pathData="M56.5,28h15a7.5,7.5 0 0 1 7.5,7.5v32a7.5,7.5 0 0 1 -7.5,7.5h-15a7.5,7.5 0 0 1 -7.5,-7.5v-32a7.5,7.5 0 0 1 7.5,-7.5z" />
-    <!-- The back pane's edge, seen through the front one. -->
-    <group>
-        <clip-path android:pathData="M56.5,28h15a7.5,7.5 0 0 1 7.5,7.5v32a7.5,7.5 0 0 1 -7.5,7.5h-15a7.5,7.5 0 0 1 -7.5,-7.5v-32a7.5,7.5 0 0 1 7.5,-7.5z" />
-        <path android:strokeColor="#597C5CFF" android:strokeWidth="1.2" android:fillColor="#1F7C5CFF"
-            android:pathData="M36.5,33h15a7.5,7.5 0 0 1 7.5,7.5v32a7.5,7.5 0 0 1 -7.5,7.5h-15a7.5,7.5 0 0 1 -7.5,-7.5v-32a7.5,7.5 0 0 1 7.5,-7.5z" />
+    <group android:scaleX="0.09" android:scaleY="0.09" android:translateX="6.12" android:translateY="9.54">
+        <group android:translateX="20" android:translateY="-30">
+            <!-- Laptop screen (clear glass) and notch. -->
+            <path android:fillColor="#38FFFFFF" android:strokeColor="#CCFFFFFF" android:strokeWidth="13"
+                android:pathData="M244,318h460a30,30 0 0 1 30,30v280a30,30 0 0 1 -30,30h-460a30,30 0 0 1 -30,-30v-280a30,30 0 0 1 30,-30z" />
+            <path android:fillColor="#CCFFFFFF" android:pathData="M434,318h80v14a12,12 0 0 1 -12,12h-56a12,12 0 0 1 -12,-12z" />
+            <!-- Laptop base. -->
+            <path android:fillColor="#F2FFFFFF" android:pathData="M168,666h612a10,10 0 0 1 10,10v6a26,26 0 0 1 -26,26H184a26,26 0 0 1 -26,-26v-6a10,10 0 0 1 10,-10z" />
+            <path android:fillColor="#597C5CFF" android:pathData="M430,666h88a6,6 0 0 1 6,6v0a6,6 0 0 1 -6,6h-88a6,6 0 0 1 -6,-6v-0a6,6 0 0 1 6,-6z" />
+            <!-- Android phone in front: a soft shadow, the body, the punch-hole camera. -->
+            <path android:fillColor="#401A0A66" android:pathData="M660,420h128a42,42 0 0 1 42,42v302a42,42 0 0 1 -42,42h-128a42,42 0 0 1 -42,-42v-302a42,42 0 0 1 42,-42z" />
+            <path android:fillColor="#FFFFFFFF" android:pathData="M656,404h128a42,42 0 0 1 42,42v302a42,42 0 0 1 -42,42h-128a42,42 0 0 1 -42,-42v-302a42,42 0 0 1 42,-42z" />
+            <path android:fillColor="#8C4A27D4" android:pathData="M720,429a11,11 0 1 1 0,22a11,11 0 1 1 0,-22z" />
+            <path android:fillColor="#667C5CFF" android:pathData="M684,756h72a4,4 0 0 1 4,4v0a4,4 0 0 1 -4,4h-72a4,4 0 0 1 -4,-4v-0a4,4 0 0 1 4,-4z" />
+        </group>
     </group>
 </vector>

@@ -177,14 +177,14 @@ const COLLAGE: Record<string, [string, string, string, string]> = {
   mac: ['57%', '0px', '43%', '470px'],
   phone: ['0%', '260px', '25%', '580px'],
   agent: ['27%', '220px', '28%', '270px'],
-  unlock: ['27%', '515px', '28%', '220px'],
-  wifi: ['57%', '500px', '20%', '250px'],
-  second: ['79%', '500px', '21%', '330px'],
+  unlock: ['27%', '518px', '28%', '220px'],
+  wifi: ['57%', '498px', '20%', '250px'],
+  second: ['79%', '498px', '21%', '332px'],
 }
 /** Empty cells of the grid, filled with hatching (cut-out detailing, not content). */
 const HATCH: [string, string, string, string][] = [
-  ['27%', '765px', '28%', '75px'],
-  ['57%', '780px', '20%', '60px'],
+  ['27%', '766px', '28%', '64px'],
+  ['57%', '776px', '20%', '54px'],
 ]
 
 /**
@@ -197,10 +197,10 @@ function Guides() {
     <div aria-hidden className="pointer-events-none absolute inset-0 z-0 hidden lg:block">
       {Object.entries(COLLAGE).map(([k, [l, t, w, h]]) => (
         <span key={k} className="absolute" style={{ left: l, top: t, width: w, height: h }}>
-          <span className={`${line} -inset-x-24 top-0 border-t`} />
-          <span className={`${line} -inset-x-24 bottom-0 border-b`} />
-          <span className={`${line} -inset-y-24 left-0 border-l`} />
-          <span className={`${line} -inset-y-24 right-0 border-r`} />
+          <span className={`${line} -inset-x-10 top-0 border-t`} />
+          <span className={`${line} -inset-x-10 bottom-0 border-b`} />
+          <span className={`${line} -inset-y-10 left-0 border-l`} />
+          <span className={`${line} -inset-y-10 right-0 border-r`} />
         </span>
       ))}
       {HATCH.map(([l, t, w, h]) => (
@@ -222,16 +222,6 @@ function IconTile({ icon: Icon, badge: Badge }: { icon: LucideIcon; badge: Lucid
       <span className="absolute -right-2 -bottom-2 flex size-6 items-center justify-center rounded-full border border-input-border bg-tile">
         <Badge className="size-3 text-heading" strokeWidth={2} />
       </span>
-    </span>
-  )
-}
-
-/** A "+" registration mark centred on a card corner. */
-function Cross({ className }: { className: string }) {
-  return (
-    <span aria-hidden className={`pointer-events-none absolute z-20 size-[15px] ${className}`}>
-      <span className="absolute top-1/2 left-0 h-px w-full -translate-y-1/2 bg-input-border" />
-      <span className="absolute top-0 left-1/2 h-full w-px -translate-x-1/2 bg-input-border" />
     </span>
   )
 }
@@ -268,10 +258,6 @@ function Piece({
         <span className="size-1 rounded-full bg-mark" />
         {tag}
       </span>
-      <Cross className="-top-[8px] -left-[8px]" />
-      <Cross className="-top-[8px] -right-[8px]" />
-      <Cross className="-bottom-[8px] -left-[8px]" />
-      <Cross className="-right-[8px] -bottom-[8px]" />
       {overlay}
     </BlurFade>
   )
