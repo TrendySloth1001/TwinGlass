@@ -93,6 +93,9 @@ const api: MobMirrorApi = {
   openDeviceWindow: (serial, kind, opts) => ipcRenderer.invoke('window:open-device', serial, kind, opts),
   onDeviceAction: (cb) => subscribe('device:action', cb),
   onUiCommand: (cb) => subscribe('ui:command', cb),
+  inspect: {
+    map: (device) => ipcRenderer.invoke('inspect:map', device),
+  },
   design: {
     tokenStatus: () => ipcRenderer.invoke('design:token-status'),
     setToken: (t) => ipcRenderer.invoke('design:set-token', t),

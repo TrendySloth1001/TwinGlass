@@ -1,6 +1,7 @@
 // The only surface the renderer can reach (contextIsolation + sandbox).
 import type { SavedTest, StepResult, TestRunResult, TestStep } from '../shared/tests'
 import type { DesignCompareResult } from '../main/design-ipc'
+import type { ScreenMap } from '../main/agent/screen-map'
 import type { FileResult, StartSessionRequest } from '../shared/ipc'
 import type { DeviceAction } from '../shared/shortcuts'
 
@@ -231,6 +232,10 @@ export interface MobMirrorApi {
     compare(url: string, device: string): Promise<DesignCompareResult>
     /** The phone's own screen now, as an image (data URL). */
     screen(device: string): Promise<string>
+  }
+  /** Inspect mode: the mirrored screen's layout (read-only). */
+  inspect: {
+    map(device: string): Promise<ScreenMap>
   }
   /** Recorded tests (Tests view): record on a mirrored phone, replay through the agent controller. */
   tests: {

@@ -16,6 +16,7 @@ import { MirrorToolbar } from '@/components/mirror-toolbar'
 import { Sidebar } from '@/components/sidebar'
 import { StatusBar, type TabStats } from '@/components/status-bar'
 import { RecorderBar } from '@/components/tests-view'
+import { InspectOverlay } from '@/components/inspect-overlay'
 import { useTestRecorder } from '@/hooks/use-test-recorder'
 import { ActivityBar, EditorTabs, TitleBar, TITLE_BAR, type EditorTabSpec, type SideView } from '@/components/workbench'
 import type { TabsState } from '../../preload/api'
@@ -205,6 +206,7 @@ export function App(): ReactNode {
   const { connect, runAction } = mirror
   // Recording a test on this page's mirror (a tab page, or a window's own mirror).
   const recorder = useTestRecorder(mirror, mirror.state.transport?.serial ?? null)
+  const [inspecting, setInspecting] = useState(false)
   const recorderRef = useRef(recorder)
   recorderRef.current = recorder
   const live = mirror.state.phase === 'live'
@@ -354,6 +356,20 @@ export function App(): ReactNode {
     if (!IS_HOST) return
     return window.mobMirror.tabs.onStats(({ id, stats }) => setTabStats((m) => ({ ...m, [id]: stats as TabStats })))
   }, [])
+
+  // ⌥⌘I: inspect mode on the mirror (and it ends with the mirror).
+  useEffect(() => {
+    if (!live) setInspecting(false)
+    if (!live || SECOND_SCREEN) return
+    const key = (e: KeyboardEvent): void => {
+      if (e.metaKey && e.altKey && e.code === 'KeyI') {
+        e.preventDefault()
+        setInspecting((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [live])
 
   // A tab page names its tab after the phone.
   useEffect(() => {
@@ -761,6 +777,8 @@ export function App(): ReactNode {
             onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
             onSecondScreen={SECOND_SCREEN ? undefined : () => openSecondScreen()}
             onOpenApps={SECOND_SCREEN ? () => setGridOpen(true) : undefined}
+            onInspect={SECOND_SCREEN ? undefined : () => setInspecting((v) => !v)}
+            inspecting={inspecting}
           />
             )}
           </>
@@ -770,6 +788,9 @@ export function App(): ReactNode {
           {/* Lazy overlays get their own boundary: the canvas below must never suspend/unmount. */}
           <Suspense fallback={null}>
             {recorder.state && <RecorderBar recorder={recorder} />}
+            {inspecting && live && !SECOND_SCREEN && mirror.state.transport && (
+              <InspectOverlay canvasRef={canvasRef} serial={mirror.state.transport.serial} aspect={vw && vh ? vw / vh : 0} onClose={() => setInspecting(false)} />
+            )}
             {/* The Settings tab covers the stage; the mirror keeps running underneath. */}
             {workbench && settingsTab && editorTab === 'settings' && (
               <div className="absolute inset-0 z-30">
