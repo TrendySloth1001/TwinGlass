@@ -101,7 +101,7 @@ export function TestsView({ target, onRecord }: { target: { serial: string; name
         <Circle className="fill-destructive text-destructive" /> Record a test
       </Button>
       <p className="text-[12px] leading-snug text-muted-foreground">
-        Use the phone on the mirror: every tap is saved by what the element says, so replays survive layout changes. Add checks with <Crosshair className="inline size-3" /> Check.
+        Use the phone on the mirror: every tap is saved by what the element says, so replays survive layout changes. Add checks with <Crosshair className="inline size-3" /> Check. Tests replay on a second screen of the phone, so you can keep using it.
       </p>
       {tests?.length === 0 && <p className="text-[12px] text-muted-foreground">No tests yet.</p>}
       <ul className="-mx-3 flex flex-col">
@@ -133,7 +133,7 @@ export function TestsView({ target, onRecord }: { target: { serial: string; name
                   size="icon-xs"
                   variant="ghost"
                   disabled={!!running}
-                  title={target ? `Run on ${target.name}` : 'Connect a phone first'}
+                  title={target ? `Run on a second screen of ${target.name} (you keep using your phone)` : 'Connect a phone first'}
                   aria-label={`Run ${t.name}`}
                   onClick={() => void run(t)}
                   className="[&_svg]:size-4"

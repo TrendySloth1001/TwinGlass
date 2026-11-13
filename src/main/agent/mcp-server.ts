@@ -634,13 +634,13 @@ function buildServer(ctl: DeviceController): McpServer {
     'run_test',
     {
       description:
-        "Replay a test the user recorded, on the phone's own screen: each step finds its element by text or id (not position) and waits for the screen to settle. Stops at the first failing step and reports which and why.",
-      inputSchema: z.object({ name: z.string().min(1), device: deviceArg }),
+        "Replay a test the user recorded: each step finds its element by text or id (not position) and waits for the screen to settle. Runs on your own second screen unless screen is \"phone\". Stops at the first failing step and reports which and why.",
+      inputSchema: z.object({ name: z.string().min(1), device: deviceArg, screen: screenArg }),
     },
-    async ({ name, device }) => {
+    async ({ name, device, screen }) => {
       const t = (await listTests()).find((x) => x.name === name)
       if (!t) throw new Error(`No test named “${name}”. Call list_tests.`)
-      const r = await runTest(ctl, t, device)
+      const r = await runTest(ctl, t, device, undefined, screen ?? 'agent')
       const lines = r.results.map((x) => `${x.ok ? '✓' : '✗'} ${x.index + 1}. ${describeStep(t.steps[x.index]!)}: ${x.message}`)
       return text(`${r.ok ? 'PASSED' : 'FAILED'} “${t.name}” (${r.results.length}/${t.steps.length} steps)\n${lines.join('\n')}`)
     },

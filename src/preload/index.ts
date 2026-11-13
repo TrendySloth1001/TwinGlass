@@ -107,7 +107,7 @@ const api: MobMirrorApi = {
     snapshot: (device) => ipcRenderer.invoke('tests:snapshot', device),
     describeTap: (device, at, long) => ipcRenderer.invoke('tests:describe-tap', device, at, long),
     describeCheck: (device, at) => ipcRenderer.invoke('tests:describe-check', device, at),
-    run: (name, device) => ipcRenderer.invoke('tests:run', name, device),
+    run: (name, device, screen) => ipcRenderer.invoke('tests:run', name, device, screen),
     onProgress: (cb) => subscribe('tests:progress', cb),
     onChanged: (cb) => subscribe('tests:changed', cb),
   },

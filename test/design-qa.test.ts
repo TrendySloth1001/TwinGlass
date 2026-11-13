@@ -70,6 +70,20 @@ describe('compareDesign', () => {
     expect(r.issues).toEqual([])
   })
 
+  it('ignores containers labelled with a title and icon descriptions', () => {
+    const f = { name: 't', width: 360, height: 800, texts: [{ text: 'Battery', name: 'title', x: 28, y: 100, w: 90, h: 30, fontSize: 24 }] }
+    const r = compareDesign(
+      f,
+      map([
+        node('Battery', 0, 61, 411.5, { kind: 'FrameLayout' }), // the toolbar, labelled with its title
+        node('Battery', 28, 100, 90, { kind: 'TextView', textSize: '24sp' }),
+        node('Navigate up', 8, 61, 48, { kind: 'ImageButton' }),
+      ]),
+    )
+    expect(r.issues).toEqual([])
+    expect(r.matched).toBe(1)
+  })
+
   it('flags a text colour that is clearly different', () => {
     const f = { name: 'c', width: 360, height: 800, texts: [{ text: 'Error', name: 'e', x: 10, y: 10, w: 50, h: 20, color: '#D32F2F' }] }
     const r = compareDesign(f, map([node('Error', 10, 10, 50, { foreground: '#1F1F1F' })]))

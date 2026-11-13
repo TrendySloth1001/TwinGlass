@@ -241,7 +241,8 @@ export interface MobMirrorApi {
     snapshot(device: string): Promise<void>
     describeTap(device: string, at: [number, number], long: boolean): Promise<TestStep>
     describeCheck(device: string, at: [number, number]): Promise<TestStep | null>
-    run(name: string, device: string): Promise<TestRunResult>
+    /** Replays on the agent's own second screen unless screen is 'phone'. */
+    run(name: string, device: string, screen?: 'agent' | 'phone'): Promise<TestRunResult>
     onProgress(cb: (r: StepResult & { name: string }) => void): () => void
     onChanged(cb: () => void): () => void
   }

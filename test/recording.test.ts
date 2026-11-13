@@ -25,6 +25,12 @@ describe('describeTap', () => {
     expect(describeTap([row, label], space, [0.1, 0.25], true)).toMatchObject({ action: 'tap_element', text: 'Wi-Fi', long: true })
   })
 
+  it('counts from the row when a pressable row carries its inner text as its label', () => {
+    const row = node('Lock screen', [0, 770, 1000, 850], { clickable: true, ref: '0.6' })
+    const text = node('Lock screen', [80, 790, 400, 830], { ref: '0.6.0' })
+    expect(describeTap([row, text], space, [0.2, 0.405])).toEqual({ action: 'tap_element', text: 'Lock screen', exact: true, at: [0.2, 0.405] })
+  })
+
   it('uses the match index tap_element will use (pressable matches first)', () => {
     const nodes = [
       node('Add', [0, 100, 200, 200]), // a plain label "Add" (not pressable)
@@ -33,6 +39,11 @@ describe('describeTap', () => {
     ]
     // The second pressable "Add" → index 1 (pressable ones are tried first).
     expect(describeTap(nodes, space, [0.1, 0.275])).toMatchObject({ action: 'tap_element', text: 'Add', index: 1 })
+  })
+
+  it('keeps the position when only a big unlabelled container is there (a pager, a feed)', () => {
+    const pager = node('', [0, 200, 1000, 1800], { id: 'vertical_pager' })
+    expect(describeTap([pager], space, [0.5, 0.35])).toEqual({ action: 'tap', at: [0.5, 0.35] })
   })
 
   it('falls back to an id when there is no text, and to a position when nothing can be named', () => {

@@ -33,13 +33,18 @@ export function describeTap(nodes: UiNode[], space: Size, at: NormPoint, long = 
   const y = at[1] * space.height
   const named = namedAt(nodes, x, y)
   const p: NormPoint = [round(at[0]), round(at[1])]
-  if (!named) return { action: 'tap', at: p, ...(long ? { long: true } : {}) }
+  // Nothing to name, or only a big unlabelled container (a pager, a feed, a map: pressing it by id
+  // would press its middle, not where the tap was): keep the position.
+  const big = named && !named.label.trim() && area(named) > 0.2 * space.width * space.height
+  if (!named || big) return { action: 'tap', at: p, ...(long ? { long: true } : {}) }
   // Prefer the visible text (what a person reads); an id when there is no text.
   const text = named.label.trim()
   const q = text ? { text, exact: true } : { id: named.id }
   // The element a replay will press must be the one pressed now (or the row around it).
-  const index = indexOf(nodes, q, named)
   const pressed = clickableAround(nodes, named)
+  // Rows often carry their inner text as their own label: count from the row then (what replays press).
+  const same = (a: string, b: string): boolean => a.toLowerCase().replace(/\s+/g, ' ').trim() === b.toLowerCase().replace(/\s+/g, ' ').trim()
+  const index = indexOf(nodes, q, pressed && text && same(pressed.label, text) ? pressed : named)
   if (pressed && !inside(pressed, x, y) && !inside(named, x, y)) return { action: 'tap', at: p, ...(long ? { long: true } : {}) }
   return { action: 'tap_element', ...q, ...(index ? { index } : {}), ...(long ? { long: true } : {}), at: p }
 }

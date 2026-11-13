@@ -5,7 +5,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { isTestStep, testFileName, type NormPoint, type SavedTest, type StepResult, type TestRunResult, type TestStep } from '@shared/tests'
-import type { DeviceController } from './agent/controller'
+import type { DeviceController, ScreenChoice } from './agent/controller'
 import type { Size } from './agent/geometry'
 import { describeCheck, describeTap } from './agent/recording'
 import type { UiNode } from './agent/ui-tree'
@@ -41,45 +41,49 @@ const broadcast = (channel: string, payload?: unknown): void => {
   for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(channel, payload)
 }
 
-/** Replays a test's steps on a phone's own screen. Stops at the first failing step. */
-export async function runTest(ctl: DeviceController, t: SavedTest, device: string | undefined, onStep?: (r: StepResult) => void): Promise<TestRunResult> {
+/**
+ * Replays a test's steps. By default on the agent's own second screen (a separate display of the
+ * phone), so the user keeps using the phone while it runs; `screen: 'phone'` replays on the phone's
+ * own screen. Stops at the first failing step.
+ */
+export async function runTest(ctl: DeviceController, t: SavedTest, device: string | undefined, onStep?: (r: StepResult) => void, screen: ScreenChoice = 'agent'): Promise<TestRunResult> {
   const results: StepResult[] = []
   let space: Size | null = null
   const toAgent = async (p: NormPoint): Promise<[number, number]> => {
-    space ??= (await ctl.uiTree(device, 'phone')).space
+    space ??= (await ctl.uiTree(device, screen)).space
     return [Math.round(p[0] * space.width), Math.round(p[1] * space.height)]
   }
   const run = async (s: TestStep): Promise<string> => {
     switch (s.action) {
       case 'launch_app':
-        return ctl.launchApp(s.package, device, 'phone')
+        return ctl.launchApp(s.package, device, screen)
       case 'tap_element': {
         const q = { ...(s.text ? { text: s.text } : {}), ...(s.id ? { id: s.id } : {}), exact: s.exact, index: s.index }
         try {
-          return await ctl.tapElement(q, s.long ?? false, device, 'phone', 4000)
+          return await ctl.tapElement(q, s.long ?? false, device, screen, 4000)
         } catch (e) {
           if (!s.at) throw e
           const [x, y] = await toAgent(s.at)
-          return `${await ctl.tap(x, y, device, s.long ? 700 : 60, 'phone')} (couldn’t find it by name, used where it was)`
+          return `${await ctl.tap(x, y, device, s.long ? 700 : 60, screen)} (couldn’t find it by name, used where it was)`
         }
       }
       case 'tap': {
         const [x, y] = await toAgent(s.at)
-        return ctl.tap(x, y, device, s.long ? 700 : 60, 'phone')
+        return ctl.tap(x, y, device, s.long ? 700 : 60, screen)
       }
       case 'swipe': {
         const [x1, y1] = await toAgent(s.from)
         const [x2, y2] = await toAgent(s.to)
-        return ctl.swipe({ x: x1, y: y1 }, { x: x2, y: y2 }, Math.min(Math.max(s.ms, 100), 2000), device, 'phone')
+        return ctl.swipe({ x: x1, y: y1 }, { x: x2, y: y2 }, Math.min(Math.max(s.ms, 100), 2000), device, screen)
       }
       case 'scroll':
-        return ctl.scroll(s.direction, 0.5, device, 'phone')
+        return ctl.scroll(s.direction, 0.5, device, screen)
       case 'type_text':
-        return ctl.typeText(s.text, false, device, 'phone')
+        return ctl.typeText(s.text, false, device, screen)
       case 'press_key':
-        return ctl.pressKey(s.key, device, 'phone')
+        return ctl.pressKey(s.key, device, screen)
       case 'wait_for':
-        return ctl.waitFor({ ...(s.text ? { text: s.text } : {}), ...(s.id ? { id: s.id } : {}), exact: s.exact }, false, s.timeoutMs ?? 6000, device, 'phone')
+        return ctl.waitFor({ ...(s.text ? { text: s.text } : {}), ...(s.id ? { id: s.id } : {}), exact: s.exact }, false, s.timeoutMs ?? 6000, device, screen)
     }
   }
   for (const [index, s] of t.steps.entries()) {
@@ -93,7 +97,7 @@ export async function runTest(ctl: DeviceController, t: SavedTest, device: strin
       const r = { index, ok: false, message: e instanceof Error ? e.message : String(e), ms: Date.now() - start }
       results.push(r)
       onStep?.(r)
-      const shot = await ctl.screenshot(device, 'phone').catch(() => null)
+      const shot = await ctl.screenshot(device, screen).catch(() => null)
       return { name: t.name, ok: false, results, ...(shot ? { screenshot: `data:${shot.mimeType};base64,${shot.data}` } : {}) }
     }
   }
@@ -152,11 +156,17 @@ export function registerTestsIpc(ctl: DeviceController): void {
     const s = await snapshot(d)
     return describeCheck(s.nodes, s.space, pt(at))
   })
-  ipcMain.handle('tests:run', async (e, name: unknown, device: unknown) => {
+  ipcMain.handle('tests:run', async (e, name: unknown, device: unknown, screen: unknown) => {
     const t = (await listTests()).find((x) => x.name === str(name))
     if (!t) throw new Error('That test is gone.')
-    return runTest(ctl, t, str(device), (r) => {
-      if (!e.sender.isDestroyed()) e.sender.send('tests:progress', { name: t.name, ...r })
-    })
+    return runTest(
+      ctl,
+      t,
+      str(device),
+      (r) => {
+        if (!e.sender.isDestroyed()) e.sender.send('tests:progress', { name: t.name, ...r })
+      },
+      screen === 'phone' ? 'phone' : 'agent',
+    )
   })
 }

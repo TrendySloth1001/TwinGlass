@@ -147,7 +147,10 @@ export function compareDesign(frame: DesignFrame, map: ScreenMap, o: CompareOpti
   const tol = { posDp: o.posDp ?? 2, sizeDp: o.sizeDp ?? 4, fontSp: o.fontSp ?? 0.5, color: o.color ?? 48 }
   // A frame drawn at the phone's width in dp has scale 1 (Figma px = dp).
   const scale = frame.width / map.display.widthDp
-  const onScreen = map.nodes.filter((n) => n.text?.trim())
+  // Real text elements only: a container labelled with its title (a toolbar "Battery", 411 dp wide)
+  // or an icon's description ("Navigate up") isn't a text a design would draw.
+  const isText = (n: MapNode): boolean => !!n.textSize || (/(Text|Button)/.test(n.kind) && !/Image/.test(n.kind))
+  const onScreen = map.nodes.filter((n) => n.text?.trim() && isText(n))
   const used = new Set<MapNode>()
   const pairs: { d: DesignText; n: MapNode }[] = []
   const issues: DesignIssue[] = []

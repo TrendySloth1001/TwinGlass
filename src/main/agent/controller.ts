@@ -425,6 +425,9 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
    * at most 2.5 s), so the next action doesn't land mid-transition. Returns a note for the result.
    */
   private async settle(t: Target): Promise<string> {
+    // Give the action a moment to start its transition: checked at once, a page that is about to
+    // open still looks idle ("settled in 0 ms", then a screenshot of the old page).
+    await sleep(150)
     const r = await bridgeCall(t.adb, t.serial, 'idle', { display: t.displayId, quiet: 300, max: 2500 }).catch(() => null)
     if (r?.ok === true && typeof r.waited === 'number') return r.idle === true ? ` · screen settled (${r.waited} ms)` : ` · screen still changing after ${r.waited} ms (animation, video or loading)`
     await sleep(400) // older phone app or no accessibility: a short pause instead
