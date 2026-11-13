@@ -175,15 +175,15 @@ function HeroRotator() {
 /** Where the collage's cards sit on large screens: left, top, width, height. */
 const COLLAGE: Record<string, [string, string, string, string]> = {
   mac: ['57%', '0px', '43%', '470px'],
-  phone: ['0%', '260px', '25%', '580px'],
-  agent: ['27%', '220px', '28%', '270px'],
-  unlock: ['27%', '518px', '28%', '220px'],
+  phone: ['0%', '260px', '25%', '570px'],
+  agent: ['27%', '220px', '28%', '250px'],
+  unlock: ['27%', '498px', '28%', '250px'],
   wifi: ['57%', '498px', '20%', '250px'],
   second: ['79%', '498px', '21%', '332px'],
 }
-/** Empty cells of the grid, filled with hatching (cut-out detailing, not content). */
+/** Empty cells of the grid, filled with hatching (cut-out detailing, not content). Rows line up: 470 / 498 / 748 / 776 / 830. */
 const HATCH: [string, string, string, string][] = [
-  ['27%', '766px', '28%', '64px'],
+  ['27%', '776px', '28%', '54px'],
   ['57%', '776px', '20%', '54px'],
 ]
 
@@ -223,6 +223,32 @@ function IconTile({ icon: Icon, badge: Badge }: { icon: LucideIcon; badge: Lucid
         <Badge className="size-3 text-heading" strokeWidth={2} />
       </span>
     </span>
+  )
+}
+
+/**
+ * "+" marks on every card corner, in one layer above the cards, each centred exactly on its corner
+ * (the gutters are equal, so marks of neighbouring cards line up in neat pairs).
+ */
+function Corners() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 z-20 hidden lg:block">
+      {Object.entries(COLLAGE).map(([k, [l, t, w, h]]) =>
+        (
+          [
+            [l, t],
+            [`calc(${l} + ${w})`, t],
+            [l, `calc(${t} + ${h})`],
+            [`calc(${l} + ${w})`, `calc(${t} + ${h})`],
+          ] as const
+        ).map(([x, y], n) => (
+          <span key={`${k}${n}`} className="absolute size-[15px] -translate-x-1/2 -translate-y-1/2" style={{ left: x, top: y }}>
+            <span className="absolute top-1/2 left-0 h-px w-full -translate-y-1/2 bg-input-border" />
+            <span className="absolute top-0 left-1/2 h-full w-px -translate-x-1/2 bg-input-border" />
+          </span>
+        )),
+      )}
+    </div>
   )
 }
 
@@ -268,6 +294,7 @@ function HeroCollage() {
   return (
     <div className="relative mt-16 flex flex-col gap-6 lg:block lg:h-[860px]">
       <Guides />
+      <Corners />
       {/* Intro, top left (the reference layout's headline slot). */}
       <BlurFade delay={0.1} className="relative z-10 lg:absolute lg:top-0 lg:left-0 lg:w-[52%] lg:bg-background lg:pt-6 lg:pr-6 lg:pb-8">
         <p className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">00 · What you get</p>
