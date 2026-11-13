@@ -260,6 +260,7 @@ function Corners() {
 function Piece({
   at,
   tag,
+  wide = false,
   className = '',
   delay = 0,
   overlay,
@@ -267,6 +268,8 @@ function Piece({
 }: {
   at: keyof typeof COLLAGE
   tag: string
+  /** Spans both columns on tablets. */
+  wide?: boolean
   className?: string
   delay?: number
   overlay?: ReactNode
@@ -276,7 +279,7 @@ function Piece({
   return (
     <BlurFade
       delay={delay}
-      className="relative z-10 lg:absolute lg:top-[var(--t)] lg:left-[var(--l)] lg:h-[var(--h)] lg:w-[var(--w)]"
+      className={`relative z-10 ${wide ? 'md:col-span-2' : ''} lg:absolute lg:top-[var(--t)] lg:left-[var(--l)] lg:h-[var(--h)] lg:w-[var(--w)]`}
       style={{ '--l': l, '--t': t, '--w': w, '--h': h } as CSSProperties}
     >
       <div className={`relative h-full border border-border bg-tile ${className}`}>{children}</div>
@@ -293,11 +296,11 @@ function Piece({
 /** The hero's product collage: the Mac app, the phone app and what they do, laid out on a dashed grid. */
 function HeroCollage() {
   return (
-    <div className="relative mt-16 flex flex-col gap-6 lg:block lg:h-[860px]">
+    <div className="relative mt-16 grid gap-6 md:grid-cols-2 lg:block lg:h-[860px]">
       <Guides />
       <Corners />
       {/* Intro, top left (the reference layout's headline slot). */}
-      <BlurFade delay={0.1} className="relative z-10 lg:absolute lg:top-0 lg:left-0 lg:w-[52%] lg:bg-background lg:pt-6 lg:pr-6 lg:pb-8">
+      <BlurFade delay={0.1} className="relative z-10 md:col-span-2 lg:absolute lg:top-0 lg:left-0 lg:w-[52%] lg:bg-background lg:pt-6 lg:pr-6 lg:pb-8">
         <p className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">00 · What you get</p>
         <h2 className="font-soft mt-3 text-3xl leading-tight text-heading sm:text-[2.1rem]">
           Mirror it, drive it,
@@ -314,6 +317,7 @@ function HeroCollage() {
       <Piece
         at="mac"
         tag="01 · Mac"
+        wide
         delay={0.15}
         className="min-h-[360px] overflow-hidden sm:min-h-[460px] lg:min-h-0"
       >
@@ -406,13 +410,13 @@ function HeroCollage() {
       </Piece>
 
       {/* Second screens. */}
-      <Piece at="second" tag="06 · Screens" delay={0.4}>
+      <Piece at="second" tag="06 · Screens" wide delay={0.4}>
         <div className="flex h-full flex-col p-5">
           <p className="flex items-center gap-2 text-[13px] font-medium text-heading">
             <Layers className="size-4 text-mark" /> Second screens
           </p>
           {/* Two screens of the same phone, side by side: its own, and a second one running another app. */}
-          <div className="relative mt-5 flex min-h-[170px] flex-1 items-start justify-center gap-3">
+          <div className="relative mx-auto mt-5 flex min-h-[170px] w-full max-w-[320px] flex-1 items-start justify-center gap-3">
             <figure className="flex w-[44%] flex-col items-center gap-2">
               <div className="flex aspect-[9/17] w-full flex-col rounded-[14px] border-2 border-input-border bg-input p-1.5">
                 <span className="mx-auto mb-1.5 h-1 w-6 rounded-full bg-border" />
