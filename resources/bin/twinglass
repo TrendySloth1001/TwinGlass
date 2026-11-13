@@ -10,9 +10,10 @@ self=$0 # inside a function zsh's $0 is the function's name
 usage() { sed -n '3,6p' "$self" | sed 's/^# \{0,1\}//'; exit 2 }
 
 # The app's agent settings (port and token): the installed app, else a development build.
-cfg=""
+cfg="${TWINGLASS_CONFIG:-}" # another profile's agent.json (development builds)
+[[ -n "$cfg" && ! -f "$cfg" ]] && { echo "twinglass: no file at $cfg" >&2; exit 3 }
 for d in "$HOME/Library/Application Support/Twinglass" "$HOME/Library/Application Support/mob-mirror"; do
-  [[ -f "$d/agent.json" ]] && { cfg="$d/agent.json"; break }
+  [[ -z "$cfg" && -f "$d/agent.json" ]] && { cfg="$d/agent.json"; break }
 done
 [[ -n "$cfg" ]] || { echo "twinglass: open Twinglass and turn on agent access (Settings → Agents)." >&2; exit 3 }
 
