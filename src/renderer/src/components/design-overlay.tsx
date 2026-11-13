@@ -31,6 +31,7 @@ export function DesignOverlay({
   design,
   screen,
   onRefreshScreen,
+  labels = ['Design', 'Phone'],
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
@@ -38,6 +39,8 @@ export function DesignOverlay({
   design: string | null
   screen: string | null
   onRefreshScreen?: () => void
+  /** What the two images are called ("Baseline" and "Now" for visual baselines). */
+  labels?: [string, string]
 }): ReactNode {
   const d = useImage(design)
   const s = useImage(screen)
@@ -151,7 +154,7 @@ export function DesignOverlay({
               <Diff /> Difference
             </ToggleGroupItem>
           </ToggleGroup>
-          {mode === 'overlay' && slider('Design', opacity, setOpacity, 0, 100)}
+          {mode === 'overlay' && slider(labels[0], opacity, setOpacity, 0, 100)}
           {mode === 'swipe' && slider('Divider', split, setSplit, 0, 100)}
           {mode !== 'side' && slider('Nudge', nudge, setNudge, -200, 200, ' px')}
           {onRefreshScreen && (
@@ -164,8 +167,8 @@ export function DesignOverlay({
           {mode === 'side' ? (
             <div className="flex gap-4">
               {[
-                [design, 'Design'],
-                [screen, 'Phone'],
+                [design, labels[0]],
+                [screen, labels[1]],
               ].map(([src, label]) =>
                 src ? (
                   <figure key={label} className="flex flex-col items-center gap-1.5">

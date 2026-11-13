@@ -99,6 +99,11 @@ const api: MobMirrorApi = {
     crashes: (device, pkg) => ipcRenderer.invoke('devpanel:crashes', device, pkg),
     perf: (device, pkg) => ipcRenderer.invoke('devpanel:perf', device, pkg),
   },
+  matrix: {
+    run: (name, device, conditions) => ipcRenderer.invoke('matrix:run', name, device, conditions),
+    accept: (name, condition, image) => ipcRenderer.invoke('matrix:accept', name, condition, image),
+    onProgress: (cb) => subscribe('matrix:progress', cb),
+  },
   build: {
     status: () => ipcRenderer.invoke('build:status'),
     chooseFolder: () => ipcRenderer.invoke('build:choose-folder'),

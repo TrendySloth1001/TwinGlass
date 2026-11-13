@@ -1095,9 +1095,11 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
       reset?: boolean
     },
     device?: string,
+    /** The user started it in the app (test matrix), not an agent: the agent setting doesn't apply. */
+    byUser = false,
   ): Promise<string> {
     // Putting settings back is always allowed.
-    if (!o.reset) this.allow('allowDeviceSettings')
+    if (!o.reset && !byUser) this.allow('allowDeviceSettings')
     const { adb, device: d } = await this.pickDevice(device)
     const serial = d.transports[0]!.serial
     const sh = (c: string): Promise<string> => adb.runLoose(['shell', c], serial, 15_000).then((x) => x.trim())

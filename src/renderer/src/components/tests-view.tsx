@@ -1,11 +1,12 @@
 // Recorded tests in the UI: the recording bar over the mirror, and the Tests view in the side bar
 // (list, run with live progress, failure screenshot).
-import { Check, ChevronRight, Circle, Crosshair, FlaskConical, Loader2, Play, Square, Trash2, X } from 'lucide-react'
+import { Check, ChevronRight, Circle, Crosshair, FlaskConical, Grid2x2, Loader2, Play, Square, Trash2, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { describeStep, type SavedTest, type StepResult, type TestRunResult } from '@shared/tests'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { TestMatrix } from '@/components/test-matrix'
 import type { TestRecorder } from '@/hooks/use-test-recorder'
 import { cn } from '@/lib/utils'
 
@@ -67,6 +68,7 @@ export function TestsView({ target, onRecord }: { target: { serial: string; name
   const [open, setOpen] = useState<string | null>(null)
   const [running, setRunning] = useState<{ name: string; results: StepResult[] } | null>(null)
   const [last, setLast] = useState<TestRunResult | null>(null)
+  const [matrix, setMatrix] = useState<string | null>(null)
   useEffect(() => {
     const load = (): void => void window.mobMirror.tests.list().then(setTests, () => setTests([]))
     load()
@@ -143,6 +145,17 @@ export function TestsView({ target, onRecord }: { target: { serial: string; name
                 <Button
                   size="icon-xs"
                   variant="ghost"
+                  disabled={!!running || !target}
+                  title="Test matrix: light, dark and large text, compared with baselines"
+                  aria-label={`Test matrix for ${t.name}`}
+                  onClick={() => setMatrix(t.name)}
+                  className="[&_svg]:size-4"
+                >
+                  <Grid2x2 />
+                </Button>
+                <Button
+                  size="icon-xs"
+                  variant="ghost"
                   disabled={!!running}
                   aria-label={`Delete ${t.name}`}
                   title="Delete"
@@ -182,6 +195,7 @@ export function TestsView({ target, onRecord }: { target: { serial: string; name
           )
         })}
       </ul>
+      {matrix && <TestMatrix test={matrix} target={target} open onOpenChange={(o) => !o && setMatrix(null)} />}
     </div>
   )
 }

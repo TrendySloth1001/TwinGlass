@@ -2,6 +2,7 @@
 import type { SavedTest, StepResult, TestRunResult, TestStep } from '../shared/tests'
 import type { DesignCompareResult } from '../main/design-ipc'
 import type { BuildEvent, BuildLoopStatus } from '../main/build-loop'
+import type { MatrixCell, MatrixConditionId } from '../shared/visual-diff'
 import type { ScreenMap } from '../main/agent/screen-map'
 import type { FileResult, StartSessionRequest } from '../shared/ipc'
 import type { DeviceAction } from '../shared/shortcuts'
@@ -240,6 +241,13 @@ export interface MobMirrorApi {
     logcat(device: string, pkg?: string, level?: 'V' | 'D' | 'I' | 'W' | 'E'): Promise<string>
     crashes(device: string, pkg?: string): Promise<string>
     perf(device: string, pkg: string): Promise<{ frames: number; jankyPercent: number; p50: number; p90: number; pssMb: number | null; cpu: number | null } | null>
+  }
+  /** Test matrix: replay a test light / dark / large text on a second screen and compare with baselines. */
+  matrix: {
+    /** Changes dark mode, font size and animations phone-wide during the run; always puts them back. */
+    run(name: string, device: string, conditions: MatrixConditionId[]): Promise<MatrixCell[]>
+    accept(name: string, condition: MatrixConditionId, image: string): Promise<void>
+    onProgress(cb: (c: MatrixCell | { condition: MatrixConditionId; status: 'running' }) => void): () => void
   }
   /** Build loop: install each new APK from a build folder, restart the app, optionally run a test. */
   build: {
