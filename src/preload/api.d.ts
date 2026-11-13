@@ -238,6 +238,9 @@ export interface MobMirrorApi {
     popOut(): void
     /** Ask the selected tab to open its own search / clipboard history. */
     command(cmd: 'open-palette' | 'open-clipboard'): void
+    /** From a tab's page: its stream numbers (the renderer's MirrorState fields), for the window's status bar. */
+    reportStats(stats: unknown): void
+    onStats(cb: (s: { id: string; stats: unknown }) => void): () => void
   }
   /** Device menu items / their shortcuts (⌘B back, ⇧⌘H home…), sent to the focused window. */
   onDeviceAction(cb: (action: DeviceAction) => void): () => void

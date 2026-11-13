@@ -215,6 +215,12 @@ export function registerTabs(openWindow: (t: TabTarget & { compact?: boolean }) 
     t.view.webContents.send('ui:command', cmd)
   })
 
+  // A tab's stream numbers (about once a second): passed to its window for the status bar.
+  ipcMain.on('tabs:stats', (e, stats: unknown) => {
+    const f = find(e.sender)
+    if (f && !f.h.win.isDestroyed()) f.h.win.webContents.send('tabs:stats', { id: f.t.info.id, stats })
+  })
+
   // From a tab's own page.
   ipcMain.on('tabs:title', (e, title: unknown) => {
     const f = find(e.sender)

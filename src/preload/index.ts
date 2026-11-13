@@ -105,6 +105,8 @@ const api: MobMirrorApi = {
     closeSelf: () => ipcRenderer.send('tabs:self-close'),
     popOut: () => ipcRenderer.send('tabs:popout'),
     command: (cmd) => ipcRenderer.send('tabs:command', cmd),
+    reportStats: (stats) => ipcRenderer.send('tabs:stats', stats),
+    onStats: (cb) => subscribe('tabs:stats', cb),
   },
   setWindowLayout: (layout, aspect, extra) => ipcRenderer.invoke('window:layout', layout, aspect, extra),
   setAlwaysOnTop: (on: boolean) => ipcRenderer.invoke('window:always-on-top', on),

@@ -14,7 +14,7 @@ import { applyTheme } from '@/hooks/use-theme'
 import { notify, setPopups } from '@/lib/notify'
 import { MirrorToolbar } from '@/components/mirror-toolbar'
 import { Sidebar } from '@/components/sidebar'
-import { StatusBar } from '@/components/status-bar'
+import { StatusBar, type TabStats } from '@/components/status-bar'
 import { ActivityBar, EditorTabs, TitleBar, TITLE_BAR, type EditorTabSpec, type SideView } from '@/components/workbench'
 import type { TabsState } from '../../preload/api'
 import type { DeviceAction } from '@shared/shortcuts'
@@ -327,6 +327,23 @@ export function App(): ReactNode {
   useEffect(() => {
     if (!live) setUnlockOpen(false)
   }, [live])
+
+  // A tab page reports its stream numbers to its window's status bar (at most once a second).
+  const lastReport = useRef(0)
+  useEffect(() => {
+    if (!EMBED) return
+    const now = Date.now()
+    if (now - lastReport.current < 900 && mirror.state.stats) return
+    lastReport.current = now
+    const { stats, audio, muted, recordingSince } = mirror.state
+    window.mobMirror.tabs.reportStats({ stats, audio, muted, recordingSince } satisfies TabStats)
+  }, [mirror.state.stats, mirror.state.audio, mirror.state.muted, mirror.state.recordingSince])
+  // The main window keeps the latest numbers of each of its phone tabs.
+  const [tabStats, setTabStats] = useState<Record<string, TabStats>>({})
+  useEffect(() => {
+    if (!IS_HOST) return
+    return window.mobMirror.tabs.onStats(({ id, stats }) => setTabStats((m) => ({ ...m, [id]: stats as TabStats })))
+  }, [])
 
   // A tab page names its tab after the phone.
   useEffect(() => {
@@ -772,7 +789,7 @@ export function App(): ReactNode {
             phones={devices.list?.devices.length ?? 0}
             adb={devices.adb}
             onRemote={() => pickView('phones')}
-            tab={activeTabInfo ? { title: activeTabInfo.title, kind: activeTabInfo.kind === 'usb' ? 'usb' : 'wifi' } : undefined}
+            tab={activeTabInfo ? { title: activeTabInfo.title, kind: activeTabInfo.kind === 'usb' ? 'usb' : 'wifi', stats: tabStats[activeTabInfo.id] } : undefined}
           />
         </div>
       )}

@@ -5,6 +5,9 @@ import type { MirrorState } from '@/hooks/use-mirror'
 import { useVisibleInterval } from '@/hooks/use-visible-interval'
 import { cn } from '@/lib/utils'
 
+/** What a phone tab reports about its stream (the same fields as its MirrorState). */
+export type TabStats = Pick<MirrorState, 'stats' | 'audio' | 'muted' | 'recordingSince'>
+
 /** VS Code's status bar height. */
 export const STATUS_BAR = 22
 
@@ -56,10 +59,12 @@ export function StatusBar({
   adb: AdbStatusInfo | null
   onRemote: () => void
   /** The main window's selected phone tab (its stream numbers live in the tab's own page). */
-  tab?: { title: string; kind: 'usb' | 'wifi' }
+  tab?: { title: string; kind: 'usb' | 'wifi'; stats?: TabStats }
 }): ReactNode {
-  const s = state.stats
-  const live = state.phase === 'live'
+  // A phone tab's numbers come from its own page; otherwise from this window's mirror.
+  const src: TabStats = tab ? (tab.stats ?? { stats: null, audio: 'off', muted: false, recordingSince: null }) : state
+  const s = src.stats
+  const live = tab ? !!s : state.phase === 'live'
   const busy = state.phase === 'connecting' || state.phase === 'reconnecting'
   const kind = state.transport?.kind
   const RemoteIcon = tab ? (tab.kind === 'usb' ? Usb : Wifi) : busy ? LoaderCircle : !state.transport ? Unplug : kind === 'usb' ? Usb : Wifi
@@ -112,15 +117,15 @@ export function StatusBar({
             </Item>
           )}
           <Item className="hidden @xl:flex">
-            <Music /> {AUDIO_LABEL[state.audio]}
-            {state.muted && ' (muted)'}
+            <Music /> {AUDIO_LABEL[src.audio]}
+            {src.muted && ' (muted)'}
           </Item>
         </>
       )}
       <span className="ml-auto" />
-      {state.recordingSince !== null && (
+      {src.recordingSince !== null && (
         <Item className="text-destructive">
-          <Circle className="fill-current" /> REC <Elapsed since={state.recordingSince} />
+          <Circle className="fill-current" /> REC <Elapsed since={src.recordingSince} />
         </Item>
       )}
       <Item className="hidden @lg:flex" title={adb?.adbPath ?? ''}>
