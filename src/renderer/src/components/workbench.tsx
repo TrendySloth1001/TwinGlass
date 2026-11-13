@@ -30,8 +30,8 @@ export function TitleBar({
   onOpenPalette,
   sidebarOpen,
   onToggleSidebar,
-  statusBarOpen,
-  onToggleStatusBar,
+  panelOpen,
+  onTogglePanel,
   update,
 }: {
   /** An update is ready: shown as a pill in the title bar (Mac app, or the phone app on a phone). */
@@ -40,8 +40,9 @@ export function TitleBar({
   onOpenPalette: () => void
   sidebarOpen: boolean
   onToggleSidebar: () => void
-  statusBarOpen: boolean
-  onToggleStatusBar: () => void
+  /** The developer panel (log, crashes, performance) under the editor. */
+  panelOpen: boolean
+  onTogglePanel: () => void
 }): ReactNode {
   const toggle = 'flex size-[26px] items-center justify-center rounded-[5px] text-foreground/80 hover:bg-foreground/10 [-webkit-app-region:no-drag] [&_svg]:size-4'
   return (
@@ -79,9 +80,9 @@ export function TitleBar({
             <PanelLeft className={cn(sidebarOpen && 'fill-foreground/25')} />
           </button>
         </Tip>
-        <Tip label={statusBarOpen ? 'Hide Status Bar' : 'Show Status Bar'}>
-          <button type="button" aria-label="Toggle Status Bar" aria-pressed={statusBarOpen} onClick={onToggleStatusBar} className={toggle}>
-            <PanelBottom className={cn(statusBarOpen && 'fill-foreground/25')} />
+        <Tip label={panelOpen ? 'Hide Panel (log, crashes, performance)' : 'Show Panel (log, crashes, performance)'} shortcut="⌘J">
+          <button type="button" aria-label="Toggle Panel" aria-pressed={panelOpen} onClick={onTogglePanel} className={toggle}>
+            <PanelBottom className={cn(panelOpen && 'fill-foreground/25')} />
           </button>
         </Tip>
       </div>

@@ -787,7 +787,7 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
     return `Force-stopped ${pkg}`
   }
 
-  async logcat(opts: { pkg?: string; lines?: number; level?: 'V' | 'D' | 'I' | 'W' | 'E'; grep?: string }, device?: string): Promise<string> {
+  async logcat(opts: { pkg?: string; lines?: number; level?: 'V' | 'D' | 'I' | 'W' | 'E'; grep?: string; quiet?: boolean }, device?: string): Promise<string> {
     const { adb, device: d } = await this.pickDevice(device)
     const n = Math.min(Math.max(opts.lines ?? 200, 10), 2000)
     const filter = opts.level ? ` '*:${opts.level}'` : ''
@@ -801,7 +801,7 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
       const g = opts.grep.toLowerCase()
       out = out.split('\n').filter((l) => l.toLowerCase().includes(g)).join('\n')
     }
-    this.log('read the log')
+    if (!opts.quiet) this.log('read the log')
     return out.length > 60_000 ? `…${out.slice(-60_000)}` : out || '(empty)'
   }
 
@@ -981,7 +981,7 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
     return `Reset the runtime permissions of ${pkg} (it will ask again)`
   }
 
-  async crashes(pkg: string | undefined, lines: number, device?: string): Promise<string> {
+  async crashes(pkg: string | undefined, lines: number, device?: string, quiet = false): Promise<string> {
     const { out } = await this.sh(device, `logcat -b crash -d -t ${Math.min(Math.max(lines, 20), 3000)}`)
     let text = out
     if (pkg) {
@@ -990,7 +990,7 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
       const blocks = out.split(/\n(?=--------- beginning of|\S+ \S+ +\d+ +\d+ E AndroidRuntime: FATAL EXCEPTION)/)
       text = blocks.filter((b) => b.includes(pkg)).join('\n')
     }
-    this.log('read the crash log')
+    if (!quiet) this.log('read the crash log')
     return text.trim() ? (text.length > 60_000 ? `…${text.slice(-60_000)}` : text) : 'No crashes recorded.'
   }
 
@@ -1040,6 +1040,18 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
     const ms = parseLaunchTime(out)
     this.log(`started ${comp ?? o.action ?? o.pkg}${this.where(t)}`)
     return `Started ${comp ?? o.data ?? o.action}${this.where(t)}${ms !== null ? `; launch took ${ms} ms${o.cold ? ' (cold start)' : ''}` : ''}`
+  }
+
+  /** Frame, memory and CPU numbers for an app (the developer panel's graph). Quiet: not logged. */
+  async perfStats(pkg: string, device?: string): Promise<{ frames: number; jankyPercent: number; p50: number; p90: number; pssMb: number | null; cpu: number | null } | null> {
+    this.pkgOk(pkg)
+    const { adb, serial } = await this.sh(device, 'true')
+    const [gfx = '', mem = '', cpu = ''] = await adb.shellBatch(serial, [`dumpsys gfxinfo ${pkg}`, `dumpsys meminfo ${pkg}`, 'dumpsys cpuinfo'])
+    const f = parseGfxinfo(gfx)
+    const pss = parseMeminfoPss(mem)
+    const c = parseCpuinfo(pkg, cpu)
+    if (!f && pss === null) return null
+    return { frames: f?.frames ?? 0, jankyPercent: f?.jankyPercent ?? 0, p50: f?.p50 ?? 0, p90: f?.p90 ?? 0, pssMb: pss !== null ? Math.round((pss / 1024) * 10) / 10 : null, cpu: c }
   }
 
   async performance(pkg: string, reset: boolean, device?: string): Promise<string> {

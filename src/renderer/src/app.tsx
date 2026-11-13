@@ -17,6 +17,7 @@ import { Sidebar } from '@/components/sidebar'
 import { StatusBar, type TabStats } from '@/components/status-bar'
 import { RecorderBar } from '@/components/tests-view'
 import { InspectOverlay } from '@/components/inspect-overlay'
+import { DevPanel } from '@/components/dev-panel'
 import { useTestRecorder } from '@/hooks/use-test-recorder'
 import { ActivityBar, EditorTabs, TitleBar, TITLE_BAR, type EditorTabSpec, type SideView } from '@/components/workbench'
 import type { TabsState } from '../../preload/api'
@@ -207,6 +208,22 @@ export function App(): ReactNode {
   // Recording a test on this page's mirror (a tab page, or a window's own mirror).
   const recorder = useTestRecorder(mirror, mirror.state.transport?.serial ?? null)
   const [inspecting, setInspecting] = useState(false)
+  /** The developer panel under the editor (remembered per Mac). */
+  const [panel, setPanel] = useState<{ open: boolean; height: number }>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem('mob-mirror:panel') ?? 'null') as { open?: unknown; height?: unknown } | null
+      return { open: v?.open === true, height: typeof v?.height === 'number' ? v.height : 240 }
+    } catch {
+      return { open: false, height: 240 }
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem('mob-mirror:panel', JSON.stringify(panel))
+    } catch {
+      /* private storage */
+    }
+  }, [panel])
   const recorderRef = useRef(recorder)
   recorderRef.current = recorder
   const live = mirror.state.phase === 'live'
@@ -355,6 +372,19 @@ export function App(): ReactNode {
   useEffect(() => {
     if (!IS_HOST) return
     return window.mobMirror.tabs.onStats(({ id, stats }) => setTabStats((m) => ({ ...m, [id]: stats as TabStats })))
+  }, [])
+
+  // ⌘J: the developer panel (as in VS Code).
+  useEffect(() => {
+    if (EMBED) return
+    const key = (e: KeyboardEvent): void => {
+      if (e.metaKey && !e.altKey && !e.shiftKey && e.code === 'KeyJ') {
+        e.preventDefault()
+        setPanel((p) => ({ ...p, open: !p.open }))
+      }
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
   }, [])
 
   // ⌥⌘I: inspect mode on the mirror (and it ends with the mirror).
@@ -701,8 +731,8 @@ export function App(): ReactNode {
             onOpenPalette={() => (tabShown ? window.mobMirror.tabs.command('open-palette') : setPalette({ open: true, mode: 'all' }))}
             sidebarOpen={settings.sidebarOpen}
             onToggleSidebar={() => updateSettings({ sidebarOpen: !settings.sidebarOpen })}
-            statusBarOpen={settings.showStatusBar}
-            onToggleStatusBar={() => updateSettings({ showStatusBar: !settings.showStatusBar })}
+            panelOpen={panel.open}
+            onTogglePanel={() => setPanel((p) => ({ ...p, open: !p.open }))}
             update={
               macUpdate?.latest
                 ? {
@@ -868,6 +898,9 @@ export function App(): ReactNode {
             }
           />
         </div>
+        {workbench && panel.open && (
+          <DevPanel target={testTarget} height={panel.height} onResize={(height) => setPanel((p) => ({ ...p, height }))} onClose={() => setPanel((p) => ({ ...p, open: false }))} />
+        )}
         {compact && settings.navBar && !framed && <NavBar onAction={dispatch} disabled={!live} />}
         {/* Framed: the dock attaches right under the phone body (absolute), this keeps its room. */}
         {compact && settings.navBar && framed && <div aria-hidden className="shrink-0" style={{ height: NAV }} />}

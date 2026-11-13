@@ -233,6 +233,13 @@ export interface MobMirrorApi {
     /** The phone's own screen now, as an image (data URL). */
     screen(device: string): Promise<string>
   }
+  /** Developer panel: log, crashes and performance of the app in front (read-only). */
+  devPanel: {
+    front(device: string): Promise<string | null>
+    logcat(device: string, pkg?: string, level?: 'V' | 'D' | 'I' | 'W' | 'E'): Promise<string>
+    crashes(device: string, pkg?: string): Promise<string>
+    perf(device: string, pkg: string): Promise<{ frames: number; jankyPercent: number; p50: number; p90: number; pssMb: number | null; cpu: number | null } | null>
+  }
   /** Inspect mode: the mirrored screen's layout (read-only). */
   inspect: {
     map(device: string): Promise<ScreenMap>

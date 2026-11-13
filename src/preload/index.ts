@@ -93,6 +93,12 @@ const api: MobMirrorApi = {
   openDeviceWindow: (serial, kind, opts) => ipcRenderer.invoke('window:open-device', serial, kind, opts),
   onDeviceAction: (cb) => subscribe('device:action', cb),
   onUiCommand: (cb) => subscribe('ui:command', cb),
+  devPanel: {
+    front: (device) => ipcRenderer.invoke('devpanel:front', device),
+    logcat: (device, pkg, level) => ipcRenderer.invoke('devpanel:logcat', device, pkg, level),
+    crashes: (device, pkg) => ipcRenderer.invoke('devpanel:crashes', device, pkg),
+    perf: (device, pkg) => ipcRenderer.invoke('devpanel:perf', device, pkg),
+  },
   inspect: {
     map: (device) => ipcRenderer.invoke('inspect:map', device),
   },
