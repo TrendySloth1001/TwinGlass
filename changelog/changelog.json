@@ -2,6 +2,20 @@
   "repo": "https://github.com/TrendySloth1001/TwinGlass",
   "releases": [
     {
+      "version": "0.1.7",
+      "date": "2026-11-13",
+      "phone": "0.9.1",
+      "title": "A new icon",
+      "summary": "A new icon for both apps, a Mac with an Android phone in front, and the live numbers of the phone tab in front in the status bar.",
+      "mac": [
+        "A new app icon: a Mac with an Android phone in front, on the violet glass.",
+        "With a phone tab in front, the status bar shows its resolution, frame rate, codec, latency, audio and recording, each with its icon."
+      ],
+      "phoneApp": [
+        "The new icon on your home screen, matching the Mac app."
+      ]
+    },
+    {
       "version": "0.1.6",
       "date": "2026-11-13",
       "phone": "0.9.0",

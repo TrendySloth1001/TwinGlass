@@ -2,6 +2,19 @@
 
 Twinglass for Mac and the Twinglass phone app ship together: each Mac release carries the phone app listed with it.
 
+## [0.1.7](https://github.com/TrendySloth1001/TwinGlass/releases/tag/v0.1.7) · 2026-11-13 · A new icon
+
+A new icon for both apps, a Mac with an Android phone in front, and the live numbers of the phone tab in front in the status bar.
+
+### Twinglass for Mac 0.1.7
+
+- A new app icon: a Mac with an Android phone in front, on the violet glass.
+- With a phone tab in front, the status bar shows its resolution, frame rate, codec, latency, audio and recording, each with its icon.
+
+### Phone app 0.9.1
+
+- The new icon on your home screen, matching the Mac app.
+
 ## [0.1.6](https://github.com/TrendySloth1001/TwinGlass/releases/tag/v0.1.6) · 2026-11-13 · Small fixes
 
 Tooltips are back to their standard dark style, with readable shortcuts.
