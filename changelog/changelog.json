@@ -2,6 +2,23 @@
   "repo": "https://github.com/TrendySloth1001/TwinGlass",
   "releases": [
     {
+      "version": "0.1.8",
+      "date": "2026-11-13",
+      "phone": "0.9.3",
+      "title": "A cleaner phone app",
+      "summary": "The phone app gets a calmer, cleaner look in light and dark, and your phone's numbers now sit together in one card.",
+      "mac": [
+        "Comes with the redesigned phone app and offers it to your phone when it needs the update."
+      ],
+      "phoneApp": [
+        "A fresh look: new light and dark colours, cards set apart by shade instead of outlines, rounder corners, bigger tap targets and easier-to-read text.",
+        "Labels and buttons read in plain sentence case instead of capitals.",
+        "The active tab at the bottom sits on a soft highlight, and the status strip below it is quieter.",
+        "Battery, memory, storage and display are now one card: a row each with its icon, the value and a thin meter.",
+        "Status dots on blue cards are visible again."
+      ]
+    },
+    {
       "version": "0.1.7",
       "date": "2026-11-13",
       "phone": "0.9.1",

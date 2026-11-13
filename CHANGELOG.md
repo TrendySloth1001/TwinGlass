@@ -2,6 +2,22 @@
 
 Twinglass for Mac and the Twinglass phone app ship together: each Mac release carries the phone app listed with it.
 
+## [0.1.8](https://github.com/TrendySloth1001/TwinGlass/releases/tag/v0.1.8) · 2026-11-13 · A cleaner phone app
+
+The phone app gets a calmer, cleaner look in light and dark, and your phone's numbers now sit together in one card.
+
+### Twinglass for Mac 0.1.8
+
+- Comes with the redesigned phone app and offers it to your phone when it needs the update.
+
+### Phone app 0.9.3
+
+- A fresh look: new light and dark colours, cards set apart by shade instead of outlines, rounder corners, bigger tap targets and easier-to-read text.
+- Labels and buttons read in plain sentence case instead of capitals.
+- The active tab at the bottom sits on a soft highlight, and the status strip below it is quieter.
+- Battery, memory, storage and display are now one card: a row each with its icon, the value and a thin meter.
+- Status dots on blue cards are visible again.
+
 ## [0.1.7](https://github.com/TrendySloth1001/TwinGlass/releases/tag/v0.1.7) · 2026-11-13 · A new icon
 
 A new icon for both apps, updates right in the title bar, and the live numbers of the phone tab in front in the status bar.
