@@ -21,6 +21,9 @@ extraResources:
   # Its version (Gradle's output-metadata), so the Mac knows when a phone's app is older.
   - from: companion/app/build/outputs/apk/release/output-metadata.json
     to: mob-mirror-companion.json
+  # The command line tool (Build view → Command line): runs recorded tests and audits from a terminal or CI.
+  - from: resources/bin/twinglass
+    to: bin/twinglass
 asar: true
 mac:
   category: public.app-category.utilities

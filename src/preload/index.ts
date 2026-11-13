@@ -99,6 +99,16 @@ const api: MobMirrorApi = {
     crashes: (device, pkg) => ipcRenderer.invoke('devpanel:crashes', device, pkg),
     perf: (device, pkg) => ipcRenderer.invoke('devpanel:perf', device, pkg),
   },
+  build: {
+    status: () => ipcRenderer.invoke('build:status'),
+    chooseFolder: () => ipcRenderer.invoke('build:choose-folder'),
+    setTest: (name) => ipcRenderer.invoke('build:set-test', name),
+    start: (device) => ipcRenderer.invoke('build:start', device),
+    stop: () => ipcRenderer.invoke('build:stop'),
+    installNow: (device) => ipcRenderer.invoke('build:install-now', device),
+    cliPath: () => ipcRenderer.invoke('build:cli-path'),
+    onEvent: (cb) => subscribe('build:event', cb),
+  },
   inspect: {
     map: (device) => ipcRenderer.invoke('inspect:map', device),
   },

@@ -1,6 +1,7 @@
 // The only surface the renderer can reach (contextIsolation + sandbox).
 import type { SavedTest, StepResult, TestRunResult, TestStep } from '../shared/tests'
 import type { DesignCompareResult } from '../main/design-ipc'
+import type { BuildEvent, BuildLoopStatus } from '../main/build-loop'
 import type { ScreenMap } from '../main/agent/screen-map'
 import type { FileResult, StartSessionRequest } from '../shared/ipc'
 import type { DeviceAction } from '../shared/shortcuts'
@@ -239,6 +240,18 @@ export interface MobMirrorApi {
     logcat(device: string, pkg?: string, level?: 'V' | 'D' | 'I' | 'W' | 'E'): Promise<string>
     crashes(device: string, pkg?: string): Promise<string>
     perf(device: string, pkg: string): Promise<{ frames: number; jankyPercent: number; p50: number; p90: number; pssMb: number | null; cpu: number | null } | null>
+  }
+  /** Build loop: install each new APK from a build folder, restart the app, optionally run a test. */
+  build: {
+    status(): Promise<BuildLoopStatus>
+    chooseFolder(): Promise<BuildLoopStatus>
+    setTest(name: string | null): Promise<BuildLoopStatus>
+    start(device: string): Promise<BuildLoopStatus>
+    stop(): Promise<BuildLoopStatus>
+    installNow(device: string): Promise<BuildLoopStatus>
+    /** The bundled `twinglass` command line tool. */
+    cliPath(): Promise<string>
+    onEvent(cb: (e: BuildEvent) => void): () => void
   }
   /** Inspect mode: the mirrored screen's layout (read-only). */
   inspect: {

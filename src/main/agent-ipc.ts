@@ -2,6 +2,7 @@
 import { registerTestsIpc } from './tests-ipc'
 import { registerDesignIpc } from './design-ipc'
 import { registerInspectIpc } from './inspect-ipc'
+import { registerBuildLoop } from './build-loop'
 import { registerDevPanelIpc } from './dev-panel-ipc'
 import { BrowserWindow, clipboard, ipcMain, webContents } from 'electron'
 import type { Adb } from './adb/adb'
@@ -56,6 +57,7 @@ export function registerAgentIpc(
   registerDesignIpc(ctl)
   registerInspectIpc(ctl)
   registerDevPanelIpc(ctl)
+  registerBuildLoop(ctl)
   ctl.on('activity', (summary) => {
     for (const w of BrowserWindow.getAllWindows()) w.webContents.send('agent:activity', { summary, at: Date.now() })
   })

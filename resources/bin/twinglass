@@ -1,0 +1,57 @@
+#!/bin/zsh
+# Twinglass command line: run tests you recorded in Twinglass, and audits, from a terminal or CI.
+# It talks to the Twinglass app on this Mac (agent access must be on: Twinglass → Settings → Agents).
+#   twinglass test list
+#   twinglass test run "<name>" [--phone]   exit 0 when it passes, 1 when it fails
+#   twinglass audit [--phone]               accessibility check of the screen in front
+set -euo pipefail
+
+self=$0 # inside a function zsh's $0 is the function's name
+usage() { sed -n '3,6p' "$self" | sed 's/^# \{0,1\}//'; exit 2 }
+
+# The app's agent settings (port and token): the installed app, else a development build.
+cfg=""
+for d in "$HOME/Library/Application Support/Twinglass" "$HOME/Library/Application Support/mob-mirror"; do
+  [[ -f "$d/agent.json" ]] && { cfg="$d/agent.json"; break }
+done
+[[ -n "$cfg" ]] || { echo "twinglass: open Twinglass and turn on agent access (Settings → Agents)." >&2; exit 3 }
+
+# JSON with JavaScript for Automation (built into macOS): no python or jq needed.
+js() { /usr/bin/osascript -l JavaScript -e "$1" 2>/dev/null }
+port=$(js "JSON.parse(\$.NSString.stringWithContentsOfFileEncodingError('$cfg', 4, null).js).port")
+token=$(js "JSON.parse(\$.NSString.stringWithContentsOfFileEncodingError('$cfg', 4, null).js).token")
+
+call() { # call <tool> <json arguments> → the tool's text; exit 4 when the app can't be reached
+  local body
+  body=$(js "JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'$1',arguments:JSON.parse(\`$2\`)}})")
+  local out
+  out=$(curl -sS -m 600 "http://127.0.0.1:$port/mcp" -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+    -H 'Accept: application/json, text/event-stream' -H 'MCP-Protocol-Version: 2025-06-18' -d "$body") ||
+    { echo "twinglass: can't reach Twinglass on port $port. Is it open, with agent access on?" >&2; exit 4 }
+  local data=${out#*data: }
+  print -r -- "$data" > "${TMPDIR:-/tmp}/twinglass-last.json"
+  local text
+  text=$(js "const r = JSON.parse(\$.NSString.stringWithContentsOfFileEncodingError('${TMPDIR:-/tmp}/twinglass-last.json', 4, null).js); r.error ? 'ERROR: ' + r.error.message : (r.result.isError ? 'ERROR: ' : '') + r.result.content.map(c => c.text || '').join('\\n')")
+  print -r -- "$text"
+  [[ "$text" != ERROR:* ]] || exit 5
+}
+
+screen='agent'
+[[ " $* " == *" --phone "* ]] && screen='phone'
+
+case "${1:-}" in
+  test)
+    case "${2:-}" in
+      list) call list_tests '{}' ;;
+      run)
+        [[ -n "${3:-}" ]] || usage
+        result=$(call run_test "{\"name\":\"${3//\"/\\\"}\",\"screen\":\"$screen\"}") || { print -r -- "$result"; exit 5 }
+        print -r -- "$result"
+        [[ "$result" == PASSED* ]] && exit 0 || exit 1
+        ;;
+      *) usage ;;
+    esac
+    ;;
+  audit) call audit_accessibility "{\"screen\":\"$screen\"}" ;;
+  *) usage ;;
+esac

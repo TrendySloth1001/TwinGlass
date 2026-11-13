@@ -1,13 +1,13 @@
 // The VS Code-style workbench around the full view: title bar with a command center, activity bar,
 // editor tabs. Colours come from the workbench tokens in globals.css (title bar, activity bar, tabs).
-import { ArrowDownToLine, Bot, ClipboardList, FlaskConical, Ruler, House, Keyboard, Layers, PanelBottom, PanelLeft, Search, Settings, Smartphone, Usb, Wifi, X, type LucideIcon } from 'lucide-react'
+import { ArrowDownToLine, Bot, ClipboardList, FlaskConical, Hammer, Ruler, House, Keyboard, Layers, PanelBottom, PanelLeft, Search, Settings, Smartphone, Usb, Wifi, X, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { NotificationCenter } from '@/components/notification-center'
 import { Kbd } from '@/components/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
-export type SideView = 'phones' | 'tests' | 'design' | 'agents'
+export type SideView = 'phones' | 'tests' | 'build' | 'design' | 'agents'
 
 /** Height of the title bar; the macOS traffic lights are centred in it (see window-layout.ts). */
 export const TITLE_BAR = 35
@@ -159,6 +159,7 @@ export function ActivityBar({
       <ActivityItem icon={ClipboardList} label="Clipboard history" shortcut="⇧⌘V" onClick={onClipboard} />
       {onSecondScreen && <ActivityItem icon={Layers} label="Second screen" shortcut="⌥⌘N" onClick={onSecondScreen} />}
       <ActivityItem icon={FlaskConical} label="Tests" active={sidebarOpen && view === 'tests'} onClick={() => onView('tests')} />
+      <ActivityItem icon={Hammer} label="Build loop" active={sidebarOpen && view === 'build'} onClick={() => onView('build')} />
       <ActivityItem icon={Ruler} label="Design check" active={sidebarOpen && view === 'design'} onClick={() => onView('design')} />
       <ActivityItem icon={Bot} label="Agents" active={sidebarOpen && view === 'agents'} onClick={() => onView('agents')} />
       <div className="mt-auto" />

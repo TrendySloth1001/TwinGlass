@@ -779,6 +779,12 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
     return `Opened ${u}${this.where(t)}`
   }
 
+  /** The app installed or updated most recently (after `adb install`, the one just installed). */
+  async lastInstalledPackage(device?: string): Promise<string | null> {
+    const { out } = await this.sh(device, "dumpsys package packages | grep -E '^  Package \\[|lastUpdateTime='", 30_000)
+    return newestPackage(out)
+  }
+
   async stopApp(pkg: string, device?: string): Promise<string> {
     const { adb, device: d } = await this.pickDevice(device)
     if (!/^[\w]+(\.[\w]+)+$/.test(pkg)) throw new Error('package must look like com.example.app (see list_apps)')
@@ -838,8 +844,9 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
     return (await adb.runLoose(['shell', `ls -la ${shellQuote(phoneDir)}`], d.transports[0]!.serial, 15_000)).trim()
   }
 
-  async installApk(macPath: string, device?: string): Promise<string> {
-    this.allow('allowFiles')
+  /** byUser: started by the user in the app (the build loop), not by an agent, so no agent switch applies. */
+  async installApk(macPath: string, device?: string, byUser = false): Promise<string> {
+    if (!byUser) this.allow('allowFiles')
     const { adb, device: d } = await this.pickDevice(device)
     if (!isAbsolute(macPath) || !macPath.toLowerCase().endsWith('.apk') || !statSync(macPath).isFile()) throw new Error('apk_path must be an absolute path to an .apk on this Mac')
     const out = (await adb.runLoose(['install', '-r', macPath], d.transports[0]!.serial, 300_000)).trim()
@@ -1229,4 +1236,23 @@ export function findTaskOutside(dump: string, pkg: string, displayId: number): n
 
 export function describeQuery(q: NodeQuery): string {
   return [q.text && `text “${q.text}”`, q.id && `id “${q.id}”`, q.ref && `ref ${q.ref}`].filter(Boolean).join(' + ') || 'any element'
+}
+
+/** From `dumpsys package packages` (Package [x] … lastUpdateTime=…) lines: the most recently updated package. */
+export function newestPackage(out: string): string | null {
+  let current: string | null = null
+  let best: { pkg: string; at: number } | null = null
+  for (const line of out.split('\n')) {
+    const p = /Package \[([\w.]+)\]/.exec(line)
+    if (p) {
+      current = p[1]!
+      continue
+    }
+    const t = /lastUpdateTime=(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)/.exec(line)
+    if (t && current) {
+      const at = Date.parse(t[1]!.replace(' ', 'T'))
+      if (!best || at > best.at) best = { pkg: current, at }
+    }
+  }
+  return best?.pkg ?? null
 }
