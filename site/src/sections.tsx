@@ -75,6 +75,7 @@ import { Chip, CopyInline, FrameCorners, GhostLink, HoverButton, REPO, RELEASES,
 import { DownloadPanel, useDownload } from './components/download'
 import { BlurFade, Typewriter } from './components/fx'
 import { TOOL_INFO } from './pages/Tools'
+import { LogoMark } from './components/logo'
 
 const WRAP = 'mx-auto max-w-6xl px-4 sm:px-6 lg:px-10'
 const DOCS = `${REPO}/blob/master/docs`
@@ -321,7 +322,7 @@ function HeroCollage() {
         <span aria-hidden className="absolute inset-0 opacity-40 [background-image:radial-gradient(var(--color-border)_1px,transparent_1px)] [background-size:14px_14px]" />
         <div className="relative flex items-center justify-between px-5 pt-5 text-[12px] text-muted-foreground">
           <span className="flex items-center gap-2 font-medium text-heading">
-            <img src="/icon.png" alt="" className="size-4 rounded-[4px]" /> Twinglass for Mac
+            <LogoMark className="size-5 text-heading" /> Twinglass for Mac
           </span>
           <span className="flex items-center gap-1.5 border border-border px-1.5 py-0.5 font-mono text-[10px]">⌘K</span>
         </div>
@@ -1380,7 +1381,7 @@ export function Footer() {
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
           <div className="col-span-2 flex max-w-sm flex-col gap-3 lg:col-span-1">
             <span className="flex items-center gap-2 font-semibold text-heading">
-              <img src="/icon.png" alt="" className="size-5 rounded-[5px]" /> Twinglass
+              <LogoMark className="size-6 text-heading" /> Twinglass
             </span>
             <p className="text-sm">An indie Mac app for people who work next to an Android phone. No accounts, no analytics.</p>
           </div>

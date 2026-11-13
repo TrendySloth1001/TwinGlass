@@ -3,6 +3,7 @@ import { ArrowUp, Download, Menu, Moon, Sun, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { FrameCorners, GithubMark, REPO } from './base'
+import { LogoMark } from './logo'
 import { useDownload } from './download'
 
 function go(hash: string) {
@@ -226,7 +227,7 @@ export function SiteHeader() {
 
         {/* The icon rides along inside the card: the bar's logo at the top, the whole button in the corner. */}
         <span className="pointer-events-none absolute bottom-[13px] left-[13px] size-7">
-          <img src="/icon.png" alt="" className="size-7 rounded-[6px]" />
+          <LogoMark className="size-7 text-heading" />
         </span>
         {scrolled && (
           <button

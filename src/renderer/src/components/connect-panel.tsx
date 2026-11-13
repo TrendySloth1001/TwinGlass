@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import type { FrameColor, FrameStyle } from '@/lib/phone-frames'
 import { cn } from '@/lib/utils'
-import appIcon from '@/assets/twinglass-icon.png'
+import { LogoMark } from '@/components/logo-mark'
 import { SectionHeader } from '@/components/section-header'
 import { AddPhoneSheet } from '@/components/add-phone-sheet'
 import { DirectPhones, useDirectPhones } from '@/components/direct-phones'
@@ -272,7 +272,7 @@ export function ConnectPanel(p: ConnectPanelProps): ReactNode {
     <div className="relative z-10 w-full max-w-[1040px] px-10 py-4">
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <img src={appIcon} alt="" className="size-11 drop-shadow-sm" draggable={false} />
+          <LogoMark className="size-11 shrink-0 text-foreground" />
           <div>
             <div className="text-[28px] leading-tight font-light tracking-tight">Twinglass</div>
             <div className="text-[17px] font-light text-muted-foreground">Your Android phone, right on your Mac.</div>
