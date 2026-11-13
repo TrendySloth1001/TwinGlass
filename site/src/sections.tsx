@@ -20,6 +20,7 @@ import {
   KeyRound,
   Laptop,
   Layers,
+  Link2,
   Lock,
   LockKeyhole,
   Keyboard,
@@ -396,16 +397,41 @@ function HeroCollage() {
           <p className="flex items-center gap-2 text-[13px] font-medium text-heading">
             <Layers className="size-4 text-mark" /> Second screens
           </p>
-          <div className="relative mt-4 min-h-[150px] flex-1">
-            <div className="absolute top-0 left-0 h-[78%] w-[52%] rounded-[12px] border-[3px] border-black bg-gradient-to-b from-[#2a2346] to-[#120f1f] shadow-xl">
-              <span className="absolute -top-2.5 left-2 bg-tile px-1 font-mono text-[9px] text-muted-foreground">phone</span>
-            </div>
-            <div className="absolute right-0 bottom-0 flex h-[78%] w-[52%] flex-col gap-1.5 rounded-[12px] border-[3px] border-black bg-[#1f1f1f] p-2 shadow-xl">
-              <span className="absolute -top-2.5 left-2 bg-tile px-1 font-mono text-[9px] text-mark">screen 2</span>
-              <span className="mt-1 h-2 w-2/3 rounded-full bg-white/25" />
-              <span className="h-2 w-1/2 rounded-full bg-white/15" />
-              <span className="mt-auto h-6 rounded-[5px] bg-mark/70" />
-            </div>
+          {/* Two screens of the same phone, side by side: its own, and a second one running another app. */}
+          <div className="relative mt-5 flex min-h-[170px] flex-1 items-start justify-center gap-3">
+            <figure className="flex w-[44%] flex-col items-center gap-2">
+              <div className="flex aspect-[9/17] w-full flex-col rounded-[14px] border-2 border-input-border bg-input p-1.5">
+                <span className="mx-auto mb-1.5 h-1 w-6 rounded-full bg-border" />
+                <div className="grid grid-cols-3 gap-1">
+                  {Array.from({ length: 9 }, (_, k) => (
+                    <span key={k} className="aspect-square rounded-[4px] bg-border" />
+                  ))}
+                </div>
+                <div className="mt-auto flex justify-between rounded-[6px] bg-border/60 p-1">
+                  {[0, 1, 2].map((k) => (
+                    <span key={k} className="size-2.5 rounded-[3px] bg-muted-foreground/40" />
+                  ))}
+                </div>
+              </div>
+              <figcaption className="font-mono text-[10px] text-muted-foreground">your phone</figcaption>
+            </figure>
+            <span aria-hidden className="absolute top-[38%] left-1/2 z-10 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-input-border bg-tile">
+              <Link2 className="size-3 text-mark" />
+            </span>
+            <figure className="flex w-[44%] -translate-y-2 flex-col items-center gap-2">
+              <div className="flex aspect-[9/17] w-full flex-col gap-1 rounded-[14px] border-2 border-mark/60 bg-input p-1.5 shadow-[0_10px_30px_-12px_rgb(124_92_255/0.6)]">
+                <span className="mx-auto mb-1 h-1 w-6 rounded-full bg-border" />
+                <span className="h-2 w-2/3 rounded-full bg-heading/25" />
+                {[0, 1, 2].map((k) => (
+                  <span key={k} className="flex items-center gap-1">
+                    <span className="size-2.5 shrink-0 rounded-full bg-mark/40" />
+                    <span className="h-1.5 flex-1 rounded-full bg-border" />
+                  </span>
+                ))}
+                <span className="mt-auto h-4 rounded-[5px] bg-mark/80" />
+              </div>
+              <figcaption className="font-mono text-[10px] text-mark">second screen</figcaption>
+            </figure>
           </div>
           <p className="mt-3 text-[12px] leading-snug">Run another app on a screen of its own, next to your phone’s.</p>
         </div>
