@@ -98,6 +98,7 @@ const api: MobMirrorApi = {
     setToken: (t) => ipcRenderer.invoke('design:set-token', t),
     clearToken: () => ipcRenderer.invoke('design:clear-token'),
     compare: (url, device) => ipcRenderer.invoke('design:compare', url, device),
+    screen: (device) => ipcRenderer.invoke('design:screen', device),
   },
   tests: {
     list: () => ipcRenderer.invoke('tests:list'),

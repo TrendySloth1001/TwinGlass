@@ -229,6 +229,8 @@ export interface MobMirrorApi {
     setToken(token: string): Promise<{ saved: boolean; handle: string | null }>
     clearToken(): Promise<{ saved: boolean }>
     compare(url: string, device: string): Promise<DesignCompareResult>
+    /** The phone's own screen now, as an image (data URL). */
+    screen(device: string): Promise<string>
   }
   /** Recorded tests (Tests view): record on a mirrored phone, replay through the agent controller. */
   tests: {

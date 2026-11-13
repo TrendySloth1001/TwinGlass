@@ -79,6 +79,12 @@ export function registerDesignIpc(ctl: DeviceController): void {
     await rm(tokenFile(), { force: true })
     return { saved: false }
   })
+  /** The phone's own screen as it is now (for comparing with a design image on the Mac). */
+  ipcMain.handle('design:screen', async (_e, device: unknown) => {
+    if (typeof device !== 'string' || !device) throw new Error('Connect a phone first.')
+    const s = await ctl.screenshot(device, 'phone')
+    return `data:${s.mimeType};base64,${s.data}`
+  })
   ipcMain.handle('design:compare', (_e, url: unknown, device: unknown) => {
     if (typeof url !== 'string') throw new Error('Paste a Figma frame link.')
     return compareWithFigma(ctl, url, typeof device === 'string' ? device : undefined)
