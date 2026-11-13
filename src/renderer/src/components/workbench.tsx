@@ -1,6 +1,6 @@
 // The VS Code-style workbench around the full view: title bar with a command center, activity bar,
 // editor tabs. Colours come from the workbench tokens in globals.css (title bar, activity bar, tabs).
-import { Bot, ClipboardList, House, Keyboard, Layers, PanelBottom, PanelLeft, Search, Settings, Smartphone, Usb, Wifi, X, type LucideIcon } from 'lucide-react'
+import { ArrowDownToLine, Bot, ClipboardList, House, Keyboard, Layers, PanelBottom, PanelLeft, Search, Settings, Smartphone, Usb, Wifi, X, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { NotificationCenter } from '@/components/notification-center'
 import { Kbd } from '@/components/ui/kbd'
@@ -32,7 +32,10 @@ export function TitleBar({
   onToggleSidebar,
   statusBarOpen,
   onToggleStatusBar,
+  update,
 }: {
+  /** An update is ready: shown as a pill in the title bar (Mac app, or the phone app on a phone). */
+  update?: { label: string; detail: string; onClick: () => void }
   title: string
   onOpenPalette: () => void
   sidebarOpen: boolean
@@ -58,6 +61,18 @@ export function TitleBar({
         </button>
       </div>
       <div className="relative ml-auto flex items-center gap-0.5">
+        {update && (
+          <Tip label={update.detail}>
+            <button
+              type="button"
+              onClick={update.onClick}
+              className="mr-1.5 flex h-[22px] items-center gap-1 rounded-full bg-primary px-2.5 text-[12px] font-medium text-primary-foreground transition-[filter] hover:brightness-110 [-webkit-app-region:no-drag] [&_svg]:size-3.5"
+            >
+              <ArrowDownToLine />
+              {update.label}
+            </button>
+          </Tip>
+        )}
         <NotificationCenter />
         <Tip label={sidebarOpen ? 'Hide Primary Side Bar' : 'Show Primary Side Bar'} shortcut="⌘\">
           <button type="button" aria-label="Toggle Primary Side Bar" aria-pressed={sidebarOpen} onClick={onToggleSidebar} className={toggle}>

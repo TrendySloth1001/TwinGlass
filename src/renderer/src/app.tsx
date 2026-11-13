@@ -437,6 +437,29 @@ export function App(): ReactNode {
   useEffect(() => void window.mobMirror.setClipboardHistoryEnabled(settings.clipboardHistory).catch(() => {}), [settings.clipboardHistory])
   // The menu bar icon asked this window to mirror a phone.
   useEffect(() => window.mobMirror.onConnectRequest((t) => onMirror({ ...t, state: 'device' })), [onMirror])
+  // Updates also live in the title bar (the newest one wins) until they're installed.
+  const [macUpdate, setMacUpdate] = useState<Parameters<typeof startUpdate>[0] | null>(null)
+  const [phoneUpdate, setPhoneUpdate] = useState<{ serial: string; model: string; bundled: string } | null>(null)
+  useEffect(() => {
+    if (EMBED) return
+    void window.mobMirror.checkForUpdate().then((u) => u.available && u.latest && setMacUpdate(u), () => {})
+    const offMac = window.mobMirror.onUpdateAvailable((u) => u.available && u.latest && setMacUpdate(u))
+    const offPhone = window.mobMirror.onPhoneAppOutdated(setPhoneUpdate)
+    return () => {
+      offMac()
+      offPhone()
+    }
+  }, [])
+  const updatePhoneApp = (ph: { serial: string; model: string }): void => {
+    const id = toast.loading(`Updating the phone app on ${ph.model}…`)
+    window.mobMirror.companionInstall(ph.serial).then(
+      () => {
+        toast.success(`Phone app updated on ${ph.model}`, { id })
+        setPhoneUpdate(null)
+      },
+      (e: unknown) => toast.error('Couldn’t update the phone app', { id, description: e instanceof Error ? e.message : String(e) }),
+    )
+  }
   useEffect(
     () =>
       window.mobMirror.onUpdateAvailable((u) => {
@@ -636,6 +659,21 @@ export function App(): ReactNode {
             onToggleSidebar={() => updateSettings({ sidebarOpen: !settings.sidebarOpen })}
             statusBarOpen={settings.showStatusBar}
             onToggleStatusBar={() => updateSettings({ showStatusBar: !settings.showStatusBar })}
+            update={
+              macUpdate?.latest
+                ? {
+                    label: `Update to ${macUpdate.latest}`,
+                    detail: macUpdate.canInstall ? `Twinglass ${macUpdate.latest} installs in a few seconds and reopens (you have ${macUpdate.current}).` : `Download Twinglass ${macUpdate.latest} (you have ${macUpdate.current}).`,
+                    onClick: () => startUpdate(macUpdate),
+                  }
+                : phoneUpdate
+                  ? {
+                      label: `Update phone app`,
+                      detail: `Phone app ${phoneUpdate.bundled} for ${phoneUpdate.model}: installs over the cable or wireless debugging and keeps its settings.`,
+                      onClick: () => updatePhoneApp(phoneUpdate),
+                    }
+                  : undefined
+            }
           />
         </div>
       )}
