@@ -4,9 +4,10 @@
 import { useEffect, useState } from 'react'
 import changelog from '../data/changelog.json'
 import release from '../data/release.json'
+import { RELEASES } from '../components/base'
 
 export type Entry = (typeof changelog.releases)[number]
-export const ENTRIES: Entry[] = changelog.releases
+export const ENTRIES: Entry[] = RELEASES
 export const REPO = release.repo
 export const anchor = (version: string) => `v${version}`
 

@@ -1,10 +1,11 @@
 // The site header: a floating bar at the top that becomes a corner icon once you scroll.
-import { ArrowUp, Download, Menu, Moon, Sun, X } from 'lucide-react'
+import { ArrowUp, Download, GitFork, Menu, Moon, Star, Sun, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { FrameCorners, GithubMark, REPO } from './base'
 import { LogoMark } from './logo'
 import { useDownload } from './download'
+import { compact, useRepoStats } from '../lib/repo-stats'
 
 function go(hash: string) {
   if (window.location.pathname !== '/') window.location.href = `/${hash}`
@@ -175,9 +176,7 @@ export function SiteHeader() {
             <span className="ml-auto" />
             <span className="hidden sm:contents">
               <ThemeToggle />
-              <a href={REPO} target="_blank" rel="noopener noreferrer" aria-label="GitHub" tabIndex={scrolled ? -1 : 0} className={iconBtn}>
-                <GithubMark className="size-[18px]" />
-              </a>
+              <RepoButton tabIndex={scrolled ? -1 : 0} />
             </span>
             <button
               type="button"
@@ -268,9 +267,7 @@ export function SiteHeader() {
             <span aria-hidden className="mx-3 my-1.5 block h-px bg-border" />
             <div className="flex items-center gap-1 px-1">
               <ThemeToggle />
-              <a href={REPO} target="_blank" rel="noopener noreferrer" aria-label="GitHub" className={iconBtn}>
-                <GithubMark className="size-[18px]" />
-              </a>
+              <RepoButton />
               <button
                 type="button"
                 onClick={() => (setOpen(false), openDownload())}
@@ -284,5 +281,35 @@ export function SiteHeader() {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+/** GitHub link with the live star and fork counts (just the mark until they arrive). */
+function RepoButton({ tabIndex }: { tabIndex?: number }) {
+  const stats = useRepoStats()
+  return (
+    <a
+      href={REPO}
+      target="_blank"
+      rel="noopener noreferrer"
+      tabIndex={tabIndex}
+      aria-label={stats ? `GitHub: ${stats.stars} stars, ${stats.forks} forks` : 'GitHub'}
+      title={stats ? `${stats.stars} stars · ${stats.forks} forks on GitHub` : 'GitHub'}
+      className="flex h-8 shrink-0 items-center gap-2 rounded-[4px] border border-border px-2.5 text-sm text-muted-foreground tabular-nums transition-colors hover:border-heading/30 hover:text-heading"
+    >
+      <GithubMark className="size-4" />
+      {stats && (
+        <>
+          <span className="flex items-center gap-1">
+            <Star className="size-3.5" />
+            {compact(stats.stars)}
+          </span>
+          <span className="flex items-center gap-1">
+            <GitFork className="size-3.5" />
+            {compact(stats.forks)}
+          </span>
+        </>
+      )}
+    </a>
   )
 }

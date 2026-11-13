@@ -7,7 +7,14 @@ import changelog from '../data/changelog.json'
 import release from '../data/release.json'
 
 export const REPO = release.repo
-export const RELEASES = changelog.releases
+/** Released versions only: an entry written ahead of a release stays hidden until that version ships. */
+const newer = (a: string, b: string): boolean => {
+  const x = a.split('.').map(Number)
+  const y = b.split('.').map(Number)
+  for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) > (y[i] ?? 0)
+  return false
+}
+export const RELEASES = changelog.releases.filter((r) => !newer(r.version, release.version))
 export const INSTALL = 'curl -fsSL https://raw.githubusercontent.com/TrendySloth1001/TwinGlass/master/install.sh | bash'
 export const BREW = 'brew tap TrendySloth1001/tap && brew trust TrendySloth1001/tap\nbrew install --cask twinglass'
 
