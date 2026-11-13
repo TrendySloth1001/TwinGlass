@@ -308,7 +308,7 @@ function HeroCollage() {
           or hand it to your <span className="text-mark">AI agent.</span>
         </h2>
         <p className="mt-4 max-w-md text-[15px] leading-relaxed">
-          A VS Code-style workbench on your Mac, a small app on your phone, and 46 tools so <Tag logo={siClaude}>Claude Code</Tag>,{' '}
+          A VS Code-style workbench on your Mac, a small app on your phone, and 42 tools so <Tag logo={siClaude}>Claude Code</Tag>,{' '}
           <Tag logo={siCursor}>Cursor</Tag> or any MCP client can test on it.
         </p>
       </BlurFade>
@@ -681,7 +681,7 @@ export function Features() {
             </div>
           </Mock>
         </Cell>
-        <Cell title="Coding agents that test on your phone" body={<>An MCP server for <Tag logo={siClaude}>Claude Code</Tag>, <Tag logo={siCursor}>Cursor</Tag> and more, with <a href="/tools" className="text-heading underline underline-offset-2 hover:text-mark">46 tools</a>. Agents work on their own screen of the phone and check every step.</>} link={['Agent setup', `${DOCS}/AGENTS.md`]}>
+        <Cell title="Coding agents that test on your phone" body={<>An MCP server for <Tag logo={siClaude}>Claude Code</Tag>, <Tag logo={siCursor}>Cursor</Tag> and more, with <a href="/tools" className="text-heading underline underline-offset-2 hover:text-mark">42 tools</a>. Agents work on their own screen of the phone and check every step.</>} link={['Agent setup', `${DOCS}/AGENTS.md`]}>
           <Mock className="w-full font-mono text-[11.5px]">
             <FrameCorners />
             <p className="flex items-center gap-2 border-b border-input-border px-3 py-2 text-muted-foreground">
@@ -741,7 +741,7 @@ export function Connect() {
       name: 'Developer mode',
       body: 'The Mac talks to the phone through your own adb, over a cable or wireless debugging. The fastest path, and everything unlocks.',
       needs: 'USB debugging on, adb installed',
-      gets: ['Lowest latency', 'Second screens', 'Touch ID unlock', 'All 46 agent tools'],
+      gets: ['Lowest latency', 'Second screens', 'Touch ID unlock', 'All 42 agent tools'],
     },
   ]
   return (
@@ -831,7 +831,7 @@ export function Agents() {
         <div className="min-w-0">
           <H2>Let your agent test the app while you keep your phone.</H2>
           <p className="mt-4 max-w-lg text-lg">
-            <Tag logo={siClaude}>Claude Code</Tag>, <Tag logo={siCursor}>Cursor</Tag>, <Tag icon={Code2}>VS Code</Tag> or any MCP client get <a href="/tools" className="text-heading underline underline-offset-2 hover:text-mark">46 tools</a>: see the screen, act on it,
+            <Tag logo={siClaude}>Claude Code</Tag>, <Tag logo={siCursor}>Cursor</Tag>, <Tag icon={Code2}>VS Code</Tag> or any MCP client get <a href="/tools" className="text-heading underline underline-offset-2 hover:text-mark">42 tools</a>: see the screen, act on it,
             install and launch apps, read logs and crashes, measure jank.
           </p>
           <ul className="mt-8 flex flex-col gap-3 text-sm">
@@ -845,7 +845,7 @@ export function Agents() {
             ))}
           </ul>
           <div className="mt-8">
-            <MoreLink href="/tools">All 46 tools</MoreLink>
+            <MoreLink href="/tools">All 42 tools</MoreLink>
           </div>
         </div>
         <BlurFade className="relative flex min-w-0 flex-col border border-border bg-tile p-3 sm:p-6">
@@ -1081,7 +1081,7 @@ function PrivacyDiagram() {
 
 export function PrivacyBlock() {
   const items: [string, string][] = [
-    ['No accounts, no analytics', 'It only goes online for updates, and for Figma when you use Design check.'],
+    ['No accounts, no analytics', 'The only internet request is the update check.'],
     ['Encrypted Wi-Fi link', 'Paired with a 6-digit code, AES-256-GCM on every frame.'],
     ['Your PIN behind Touch ID', 'Saved PINs stay encrypted in your keychain.'],
     ['Forget works both ways', 'Forget on either side and the other forgets too.'],
@@ -1172,7 +1172,7 @@ const FAQ: [Topic, string, ReactNode][] = [
   ['Setup', 'How does it update?', 'The Mac app checks GitHub for new releases, verifies the download’s SHA-256, swaps itself in place and reopens. It then offers the matching phone app to your phones.'],
   ['Setup', 'Does it work with iPhone?', 'No. Twinglass is built on Android’s own tools: adb, scrcpy and the accessibility service.'],
   ['Privacy', 'Does the phone app need the internet?', 'No. It only talks to your paired Mac, and it gets its updates from your Mac too.'],
-  ['Privacy', 'What does Twinglass send anywhere?', 'Nothing about you. The Mac app checks GitHub Releases for updates, and talks to Figma only if you use Design check with your own token. Your phone’s screen never leaves your Mac.'],
+  ['Privacy', 'What does Twinglass send anywhere?', 'Nothing about you. The Mac app’s only internet request is the update check against GitHub Releases.'],
   ['Agents', 'Is my data safe with agents?', 'Agent access is off by default. If you turn it on, the AI tool you connect can see your phone’s screen and may send it to its provider, so only use it with tools you trust.'],
   ['Agents', 'Can an agent use my phone while I’m using it?', 'Yes. Agents work on their own second screen of the phone, in a window you can watch, so your screen stays yours.'],
 ]

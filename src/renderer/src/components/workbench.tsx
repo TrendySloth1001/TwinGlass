@@ -1,13 +1,13 @@
 // The VS Code-style workbench around the full view: title bar with a command center, activity bar,
 // editor tabs. Colours come from the workbench tokens in globals.css (title bar, activity bar, tabs).
-import { ArrowDownToLine, Bot, ClipboardList, FlaskConical, Hammer, Ruler, House, Keyboard, Layers, PanelBottom, PanelLeft, Search, Settings, Smartphone, Usb, Wifi, X, type LucideIcon } from 'lucide-react'
+import { ArrowDownToLine, Bot, ClipboardList, House, Keyboard, Layers, PanelBottom, PanelLeft, Search, Settings, Smartphone, Usb, Wifi, X, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { NotificationCenter } from '@/components/notification-center'
 import { Kbd } from '@/components/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
-export type SideView = 'phones' | 'tests' | 'build' | 'design' | 'agents'
+export type SideView = 'phones' | 'agents'
 
 /** Height of the title bar; the macOS traffic lights are centred in it (see window-layout.ts). */
 export const TITLE_BAR = 35
@@ -30,8 +30,8 @@ export function TitleBar({
   onOpenPalette,
   sidebarOpen,
   onToggleSidebar,
-  panelOpen,
-  onTogglePanel,
+  statusBarOpen,
+  onToggleStatusBar,
   update,
 }: {
   /** An update is ready: shown as a pill in the title bar (Mac app, or the phone app on a phone). */
@@ -40,9 +40,8 @@ export function TitleBar({
   onOpenPalette: () => void
   sidebarOpen: boolean
   onToggleSidebar: () => void
-  /** The developer panel (log, crashes, performance) under the editor. */
-  panelOpen: boolean
-  onTogglePanel: () => void
+  statusBarOpen: boolean
+  onToggleStatusBar: () => void
 }): ReactNode {
   const toggle = 'flex size-[26px] items-center justify-center rounded-[5px] text-foreground/80 hover:bg-foreground/10 [-webkit-app-region:no-drag] [&_svg]:size-4'
   return (
@@ -80,9 +79,9 @@ export function TitleBar({
             <PanelLeft className={cn(sidebarOpen && 'fill-foreground/25')} />
           </button>
         </Tip>
-        <Tip label={panelOpen ? 'Hide Panel (log, crashes, performance)' : 'Show Panel (log, crashes, performance)'} shortcut="⌘J">
-          <button type="button" aria-label="Toggle Panel" aria-pressed={panelOpen} onClick={onTogglePanel} className={toggle}>
-            <PanelBottom className={cn(panelOpen && 'fill-foreground/25')} />
+        <Tip label={statusBarOpen ? 'Hide Status Bar' : 'Show Status Bar'}>
+          <button type="button" aria-label="Toggle Status Bar" aria-pressed={statusBarOpen} onClick={onToggleStatusBar} className={toggle}>
+            <PanelBottom className={cn(statusBarOpen && 'fill-foreground/25')} />
           </button>
         </Tip>
       </div>
@@ -158,9 +157,6 @@ export function ActivityBar({
       <ActivityItem icon={Search} label="Open an app on the phone" shortcut="⌘K" onClick={onSearch} />
       <ActivityItem icon={ClipboardList} label="Clipboard history" shortcut="⇧⌘V" onClick={onClipboard} />
       {onSecondScreen && <ActivityItem icon={Layers} label="Second screen" shortcut="⌥⌘N" onClick={onSecondScreen} />}
-      <ActivityItem icon={FlaskConical} label="Tests" active={sidebarOpen && view === 'tests'} onClick={() => onView('tests')} />
-      <ActivityItem icon={Hammer} label="Build loop" active={sidebarOpen && view === 'build'} onClick={() => onView('build')} />
-      <ActivityItem icon={Ruler} label="Design check" active={sidebarOpen && view === 'design'} onClick={() => onView('design')} />
       <ActivityItem icon={Bot} label="Agents" active={sidebarOpen && view === 'agents'} onClick={() => onView('agents')} />
       <div className="mt-auto" />
       <ActivityItem icon={Keyboard} label="Shortcuts & gestures" onClick={onShortcuts} />

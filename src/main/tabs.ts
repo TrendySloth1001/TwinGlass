@@ -210,7 +210,7 @@ export function registerTabs(openWindow: (t: TabTarget & { compact?: boolean }) 
     const win = BrowserWindow.fromWebContents(e.sender)
     const h = win ? hosts.get(win.id) : undefined
     const t = h?.active ? h.tabs.get(h.active) : undefined
-    if (!t || (cmd !== 'open-palette' && cmd !== 'open-clipboard' && cmd !== 'open-second-screen' && cmd !== 'record-test')) return
+    if (!t || (cmd !== 'open-palette' && cmd !== 'open-clipboard' && cmd !== 'open-second-screen')) return
     t.view.webContents.focus()
     t.view.webContents.send('ui:command', cmd)
   })

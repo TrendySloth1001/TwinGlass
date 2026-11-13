@@ -32,9 +32,6 @@ Every touch / read tool takes optional `device` and `screen` ("agent" | "phone")
 | Act by element | `tap_element`, `set_text` (any language, replaces the field), `wait_for` (appears / gone) |
 | Act by coordinates | `tap`, `long_press`, `swipe`, `scroll`, `type_text`, `press_key` |
 | Batches | `run_steps`: up to 50 actions in one call, stops at the first failure, optional screenshot at the end |
-| Recorded tests | `list_tests`, `run_test`: replay a test the user recorded in Twinglass (Tests view); steps find elements by text or id and wait for the screen to settle |
-| Accessibility | `audit_accessibility`: targets under 48 dp, unlabelled buttons, low contrast, text under 12 sp, per element |
-| Design check | `compare_design`: a Figma frame vs the screen (missing/extra texts; position, width, font size and colour off, in dp/sp). Needs the user's Figma token, added in Twinglass |
 | Apps | `list_apps` (names + packages), `launch_app` (name or package), `open_url` (web, mailto, tel, geo, market, app deep links), `stop_app` |
 | App testing | `install_apk`, `app_info`, `start_activity` (component, action, data, extras, cold start time), `clear_app_data`, `uninstall_app`, `set_permission`, `get_crashes`, `logcat`, `app_performance` (jank %, frame-time percentiles, PSS, CPU) |
 | Conditions | `set_device_state`: dark mode, font scale, animations, density, Wi-Fi, mobile data, airplane mode, fake battery. `reset:true` restores everything it changed |

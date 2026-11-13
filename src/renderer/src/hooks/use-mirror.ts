@@ -8,7 +8,7 @@ import { expandNotificationPanel, expandSettingsPanel, resetVideo, setDisplayPow
 import type { DeviceAction } from '@shared/shortcuts'
 import type { DeviceInfo, TransportInfo } from '../../../preload/api'
 import { AudioPlayer } from '@/engine/audio-player'
-import { InputController, type InputOptions, type InputRecorder } from '@/engine/input'
+import { InputController, type InputOptions } from '@/engine/input'
 import { backoffDelay } from '@shared/util/backoff'
 import { Recorder } from '@/engine/recorder'
 import { TouchOverlay } from '@/engine/touch-overlay'
@@ -129,8 +129,6 @@ export interface Mirror {
   setShowTouches: (on: boolean) => void
   /** Mouse buttons / scroll direction and speed, applied instantly. */
   setInputOptions: (patch: Partial<InputOptions>) => void
-  /** Attach (or detach with null) a test recorder to the mirror's input. */
-  setRecorder: (r: InputRecorder | null) => void
   /** Whether an unexpected drop starts the reconnect loop (instant). */
   setAutoReconnect: (on: boolean) => void
 }
@@ -302,7 +300,6 @@ export function useMirror(
           points.length && showTouches.current ? overlay?.show(points, size) : overlay?.clear(),
         )
         input.options = inputOptions.current
-        input.recorder = recorderRef.current
         const recorder = new Recorder()
 
         port.onmessage = ({ data }: MessageEvent<MainToRenderer>) => {
@@ -405,11 +402,6 @@ export function useMirror(
   }, [])
 
   /** Mouse-button and scroll preferences: instant (the live controller reads the same object). */
-  const recorderRef = useRef<InputRecorder | null>(null)
-  const setRecorder = useCallback((r: InputRecorder | null) => {
-    recorderRef.current = r
-    if (engine.current) engine.current.input.recorder = r
-  }, [])
   const setInputOptions = useCallback((patch: Partial<InputOptions>) => {
     inputOptions.current = { ...inputOptions.current, ...patch }
     if (engine.current) engine.current.input.options = inputOptions.current
@@ -613,7 +605,6 @@ export function useMirror(
     toggleRecording,
     setShowTouches,
     setInputOptions,
-    setRecorder,
     setAutoReconnect,
   }
 }

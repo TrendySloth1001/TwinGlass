@@ -16,7 +16,6 @@ import {
   RotateCw,
   LayoutGrid,
   Layers,
-  ScanSearch,
   Search,
   Settings2,
   Smartphone,
@@ -94,12 +93,9 @@ interface ToolbarProps {
   onOpenApps?: () => void
   onOpenSettings: () => void
   onOpenPalette: () => void
-  /** Inspect mode (element boxes and measurements over the mirror). */
-  onInspect?: () => void
-  inspecting?: boolean
 }
 
-export function MirrorToolbar({ mirror, onAction, onShowHelp, onCompact, onOpenPalette, onSecondScreen, onOpenApps, onInspect, inspecting }: ToolbarProps): ReactNode {
+export function MirrorToolbar({ mirror, onAction, onShowHelp, onCompact, onOpenPalette, onSecondScreen, onOpenApps }: ToolbarProps): ReactNode {
   const { state } = mirror
   const live = state.phase === 'live'
   const idle = state.phase === 'idle'
@@ -241,17 +237,6 @@ export function MirrorToolbar({ mirror, onAction, onShowHelp, onCompact, onOpenP
         {!idle && (
           <IconButton label="Open app, send to phone, clipboard" shortcut="⌘K" size="icon-xs" className="[&_svg]:size-4" onClick={onOpenPalette}>
             <Search />
-          </IconButton>
-        )}
-        {!idle && onInspect && (
-          <IconButton
-            label={inspecting ? 'Leave inspect mode' : 'Inspect the layout (sizes, spacing, text, colours)'}
-            shortcut="⌥⌘I"
-            size="icon-xs"
-            className={cn('[&_svg]:size-4', inspecting && 'bg-primary/15 text-primary')}
-            onClick={onInspect}
-          >
-            <ScanSearch />
           </IconButton>
         )}
         {!idle && onOpenApps && (

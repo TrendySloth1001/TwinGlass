@@ -15,7 +15,7 @@ flowchart LR
       ADB["adb socket client<br/>shell · sync · forward · reverse"]
       SES["scrcpy session<br/>server push, sockets"]
       DIR["Direct server<br/>pairing, AES-GCM link, mDNS"]
-      MCP["MCP server<br/>46 tools, localhost + token"]
+      MCP["MCP server<br/>42 tools, localhost + token"]
       LNK["Companion link<br/>HTTP via adb reverse"]
       UPD["Updater<br/>both apps"]
     end

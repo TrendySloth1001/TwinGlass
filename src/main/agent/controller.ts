@@ -425,9 +425,6 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
    * at most 2.5 s), so the next action doesn't land mid-transition. Returns a note for the result.
    */
   private async settle(t: Target): Promise<string> {
-    // Give the action a moment to start its transition: checked at once, a page that is about to
-    // open still looks idle ("settled in 0 ms", then a screenshot of the old page).
-    await sleep(150)
     const r = await bridgeCall(t.adb, t.serial, 'idle', { display: t.displayId, quiet: 300, max: 2500 }).catch(() => null)
     if (r?.ok === true && typeof r.waited === 'number') return r.idle === true ? ` · screen settled (${r.waited} ms)` : ` · screen still changing after ${r.waited} ms (animation, video or loading)`
     await sleep(400) // older phone app or no accessibility: a short pause instead
@@ -779,12 +776,6 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
     return `Opened ${u}${this.where(t)}`
   }
 
-  /** The app installed or updated most recently (after `adb install`, the one just installed). */
-  async lastInstalledPackage(device?: string): Promise<string | null> {
-    const { out } = await this.sh(device, "dumpsys package packages | grep -E '^  Package \\[|lastUpdateTime='", 30_000)
-    return newestPackage(out)
-  }
-
   async stopApp(pkg: string, device?: string): Promise<string> {
     const { adb, device: d } = await this.pickDevice(device)
     if (!/^[\w]+(\.[\w]+)+$/.test(pkg)) throw new Error('package must look like com.example.app (see list_apps)')
@@ -793,7 +784,7 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
     return `Force-stopped ${pkg}`
   }
 
-  async logcat(opts: { pkg?: string; lines?: number; level?: 'V' | 'D' | 'I' | 'W' | 'E'; grep?: string; quiet?: boolean }, device?: string): Promise<string> {
+  async logcat(opts: { pkg?: string; lines?: number; level?: 'V' | 'D' | 'I' | 'W' | 'E'; grep?: string }, device?: string): Promise<string> {
     const { adb, device: d } = await this.pickDevice(device)
     const n = Math.min(Math.max(opts.lines ?? 200, 10), 2000)
     const filter = opts.level ? ` '*:${opts.level}'` : ''
@@ -807,7 +798,7 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
       const g = opts.grep.toLowerCase()
       out = out.split('\n').filter((l) => l.toLowerCase().includes(g)).join('\n')
     }
-    if (!opts.quiet) this.log('read the log')
+    this.log('read the log')
     return out.length > 60_000 ? `…${out.slice(-60_000)}` : out || '(empty)'
   }
 
@@ -844,9 +835,8 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
     return (await adb.runLoose(['shell', `ls -la ${shellQuote(phoneDir)}`], d.transports[0]!.serial, 15_000)).trim()
   }
 
-  /** byUser: started by the user in the app (the build loop), not by an agent, so no agent switch applies. */
-  async installApk(macPath: string, device?: string, byUser = false): Promise<string> {
-    if (!byUser) this.allow('allowFiles')
+  async installApk(macPath: string, device?: string): Promise<string> {
+    this.allow('allowFiles')
     const { adb, device: d } = await this.pickDevice(device)
     if (!isAbsolute(macPath) || !macPath.toLowerCase().endsWith('.apk') || !statSync(macPath).isFile()) throw new Error('apk_path must be an absolute path to an .apk on this Mac')
     const out = (await adb.runLoose(['install', '-r', macPath], d.transports[0]!.serial, 300_000)).trim()
@@ -988,7 +978,7 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
     return `Reset the runtime permissions of ${pkg} (it will ask again)`
   }
 
-  async crashes(pkg: string | undefined, lines: number, device?: string, quiet = false): Promise<string> {
+  async crashes(pkg: string | undefined, lines: number, device?: string): Promise<string> {
     const { out } = await this.sh(device, `logcat -b crash -d -t ${Math.min(Math.max(lines, 20), 3000)}`)
     let text = out
     if (pkg) {
@@ -997,7 +987,7 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
       const blocks = out.split(/\n(?=--------- beginning of|\S+ \S+ +\d+ +\d+ E AndroidRuntime: FATAL EXCEPTION)/)
       text = blocks.filter((b) => b.includes(pkg)).join('\n')
     }
-    if (!quiet) this.log('read the crash log')
+    this.log('read the crash log')
     return text.trim() ? (text.length > 60_000 ? `…${text.slice(-60_000)}` : text) : 'No crashes recorded.'
   }
 
@@ -1049,18 +1039,6 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
     return `Started ${comp ?? o.data ?? o.action}${this.where(t)}${ms !== null ? `; launch took ${ms} ms${o.cold ? ' (cold start)' : ''}` : ''}`
   }
 
-  /** Frame, memory and CPU numbers for an app (the developer panel's graph). Quiet: not logged. */
-  async perfStats(pkg: string, device?: string): Promise<{ frames: number; jankyPercent: number; p50: number; p90: number; pssMb: number | null; cpu: number | null } | null> {
-    this.pkgOk(pkg)
-    const { adb, serial } = await this.sh(device, 'true')
-    const [gfx = '', mem = '', cpu = ''] = await adb.shellBatch(serial, [`dumpsys gfxinfo ${pkg}`, `dumpsys meminfo ${pkg}`, 'dumpsys cpuinfo'])
-    const f = parseGfxinfo(gfx)
-    const pss = parseMeminfoPss(mem)
-    const c = parseCpuinfo(pkg, cpu)
-    if (!f && pss === null) return null
-    return { frames: f?.frames ?? 0, jankyPercent: f?.jankyPercent ?? 0, p50: f?.p50 ?? 0, p90: f?.p90 ?? 0, pssMb: pss !== null ? Math.round((pss / 1024) * 10) / 10 : null, cpu: c }
-  }
-
   async performance(pkg: string, reset: boolean, device?: string): Promise<string> {
     this.pkgOk(pkg)
     const { adb, serial } = await this.sh(device, 'true')
@@ -1095,11 +1073,9 @@ export class DeviceController extends EventEmitter<{ activity: [string] }> {
       reset?: boolean
     },
     device?: string,
-    /** The user started it in the app (test matrix), not an agent: the agent setting doesn't apply. */
-    byUser = false,
   ): Promise<string> {
     // Putting settings back is always allowed.
-    if (!o.reset && !byUser) this.allow('allowDeviceSettings')
+    if (!o.reset) this.allow('allowDeviceSettings')
     const { adb, device: d } = await this.pickDevice(device)
     const serial = d.transports[0]!.serial
     const sh = (c: string): Promise<string> => adb.runLoose(['shell', c], serial, 15_000).then((x) => x.trim())
@@ -1238,23 +1214,4 @@ export function findTaskOutside(dump: string, pkg: string, displayId: number): n
 
 export function describeQuery(q: NodeQuery): string {
   return [q.text && `text “${q.text}”`, q.id && `id “${q.id}”`, q.ref && `ref ${q.ref}`].filter(Boolean).join(' + ') || 'any element'
-}
-
-/** From `dumpsys package packages` (Package [x] … lastUpdateTime=…) lines: the most recently updated package. */
-export function newestPackage(out: string): string | null {
-  let current: string | null = null
-  let best: { pkg: string; at: number } | null = null
-  for (const line of out.split('\n')) {
-    const p = /Package \[([\w.]+)\]/.exec(line)
-    if (p) {
-      current = p[1]!
-      continue
-    }
-    const t = /lastUpdateTime=(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)/.exec(line)
-    if (t && current) {
-      const at = Date.parse(t[1]!.replace(' ', 'T'))
-      if (!best || at > best.at) best = { pkg: current, at }
-    }
-  }
-  return best?.pkg ?? null
 }

@@ -1,9 +1,4 @@
 // The only surface the renderer can reach (contextIsolation + sandbox).
-import type { SavedTest, StepResult, TestRunResult, TestStep } from '../shared/tests'
-import type { DesignCompareResult } from '../main/design-ipc'
-import type { BuildEvent, BuildLoopStatus } from '../main/build-loop'
-import type { MatrixCell, MatrixConditionId } from '../shared/visual-diff'
-import type { ScreenMap } from '../main/agent/screen-map'
 import type { FileResult, StartSessionRequest } from '../shared/ipc'
 import type { DeviceAction } from '../shared/shortcuts'
 
@@ -67,7 +62,7 @@ export interface AboutInfo {
   packaged: boolean
 }
 
-export type AboutLink = 'repo' | 'releases' | 'issues' | 'new-issue' | 'changelog' | 'scrcpy' | 'figma-tokens'
+export type AboutLink = 'repo' | 'releases' | 'issues' | 'new-issue' | 'changelog' | 'scrcpy'
 
 export interface UpdateProgress {
   phase: 'downloading' | 'verifying' | 'installing' | 'error'
@@ -226,61 +221,6 @@ export interface MobMirrorApi {
   onQrState(cb: (s: QrState) => void): () => void
   /** opts.second: mirror a new virtual display (a second screen), opening opts.app on it. */
   openDeviceWindow(serial: string, kind: 'usb' | 'wifi', opts?: { second?: boolean; app?: string }): Promise<void>
-  /** Design check: compare a Figma frame with the phone's screen (token kept encrypted on this Mac). */
-  design: {
-    tokenStatus(): Promise<{ saved: boolean }>
-    setToken(token: string): Promise<{ saved: boolean; handle: string | null }>
-    clearToken(): Promise<{ saved: boolean }>
-    compare(url: string, device: string): Promise<DesignCompareResult>
-    /** The phone's own screen now, as an image (data URL). */
-    screen(device: string): Promise<string>
-  }
-  /** Developer panel: log, crashes and performance of the app in front (read-only). */
-  devPanel: {
-    front(device: string): Promise<string | null>
-    logcat(device: string, pkg?: string, level?: 'V' | 'D' | 'I' | 'W' | 'E'): Promise<string>
-    crashes(device: string, pkg?: string): Promise<string>
-    perf(device: string, pkg: string): Promise<{ frames: number; jankyPercent: number; p50: number; p90: number; pssMb: number | null; cpu: number | null } | null>
-  }
-  /** Test matrix: replay a test light / dark / large text on a second screen and compare with baselines. */
-  matrix: {
-    /** Changes dark mode, font size and animations phone-wide during the run; always puts them back. */
-    run(name: string, device: string, conditions: MatrixConditionId[]): Promise<MatrixCell[]>
-    accept(name: string, condition: MatrixConditionId, image: string): Promise<void>
-    onProgress(cb: (c: MatrixCell | { condition: MatrixConditionId; status: 'running' }) => void): () => void
-  }
-  /** Build loop: install each new APK from a build folder, restart the app, optionally run a test. */
-  build: {
-    status(): Promise<BuildLoopStatus>
-    chooseFolder(): Promise<BuildLoopStatus>
-    setTest(name: string | null): Promise<BuildLoopStatus>
-    start(device: string): Promise<BuildLoopStatus>
-    stop(): Promise<BuildLoopStatus>
-    installNow(device: string): Promise<BuildLoopStatus>
-    /** The bundled `twinglass` command line tool. */
-    cliPath(): Promise<string>
-    onEvent(cb: (e: BuildEvent) => void): () => void
-  }
-  /** Inspect mode: the mirrored screen's layout (read-only). */
-  inspect: {
-    map(device: string): Promise<ScreenMap>
-  }
-  /** Recorded tests (Tests view): record on a mirrored phone, replay through the agent controller. */
-  tests: {
-    list(): Promise<SavedTest[]>
-    save(t: SavedTest): Promise<SavedTest>
-    delete(name: string): Promise<void>
-    /** Recording starts on this phone: its model and a first step that opens the app in front. */
-    begin(device: string): Promise<{ model?: string; first: TestStep | null }>
-    /** Read the screen's elements now (before the next tap). */
-    snapshot(device: string): Promise<void>
-    describeTap(device: string, at: [number, number], long: boolean): Promise<TestStep>
-    describeCheck(device: string, at: [number, number]): Promise<TestStep | null>
-    /** Replays on the agent's own second screen unless screen is 'phone'. */
-    run(name: string, device: string, screen?: 'agent' | 'phone'): Promise<TestRunResult>
-    onProgress(cb: (r: StepResult & { name: string }) => void): () => void
-    onChanged(cb: () => void): () => void
-  }
   /** Editor tabs (a window's own mirror tabs; each tab is its own page with its own session). */
   tabs: {
     open(target: { serial: string; kind: 'usb' | 'wifi'; second?: boolean; app?: string }): Promise<string | null>
@@ -297,7 +237,7 @@ export interface MobMirrorApi {
     closeSelf(): void
     popOut(): void
     /** Ask the selected tab to open its own search / clipboard history. */
-    command(cmd: 'open-palette' | 'open-clipboard' | 'record-test'): void
+    command(cmd: 'open-palette' | 'open-clipboard'): void
     /** From a tab's page: its stream numbers (the renderer's MirrorState fields), for the window's status bar. */
     reportStats(stats: unknown): void
     onStats(cb: (s: { id: string; stats: unknown }) => void): () => void
@@ -306,7 +246,7 @@ export interface MobMirrorApi {
   onDeviceAction(cb: (action: DeviceAction) => void): () => void
   /** View menu commands (toggle sidebar ⌘\, float/dock ⌥⌘\). */
   onUiCommand(
-    cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view' | 'open-settings' | 'open-palette' | 'open-clipboard' | 'send-clipboard' | 'open-second-screen' | 'record-test') => void,
+    cb: (cmd: 'toggle-sidebar' | 'toggle-sidebar-layout' | 'toggle-view' | 'open-settings' | 'open-palette' | 'open-clipboard' | 'send-clipboard' | 'open-second-screen') => void,
   ): () => void
   /** compact: phone-shaped window locked to `aspect` (video width / height); full: restore. */
   /** extra: chrome around the video besides the title strip and rail (nav bar, phone frame). */

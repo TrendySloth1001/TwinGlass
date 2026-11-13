@@ -15,10 +15,6 @@ import { notify, setPopups } from '@/lib/notify'
 import { MirrorToolbar } from '@/components/mirror-toolbar'
 import { Sidebar } from '@/components/sidebar'
 import { StatusBar, type TabStats } from '@/components/status-bar'
-import { RecorderBar } from '@/components/tests-view'
-import { InspectOverlay } from '@/components/inspect-overlay'
-import { DevPanel } from '@/components/dev-panel'
-import { useTestRecorder } from '@/hooks/use-test-recorder'
 import { ActivityBar, EditorTabs, TitleBar, TITLE_BAR, type EditorTabSpec, type SideView } from '@/components/workbench'
 import type { TabsState } from '../../preload/api'
 import type { DeviceAction } from '@shared/shortcuts'
@@ -205,27 +201,6 @@ export function App(): ReactNode {
   }, [])
   const [unlockOpen, setUnlockOpen] = useState(false)
   const { connect, runAction } = mirror
-  // Recording a test on this page's mirror (a tab page, or a window's own mirror).
-  const recorder = useTestRecorder(mirror, mirror.state.transport?.serial ?? null)
-  const [inspecting, setInspecting] = useState(false)
-  /** The developer panel under the editor (remembered per Mac). */
-  const [panel, setPanel] = useState<{ open: boolean; height: number }>(() => {
-    try {
-      const v = JSON.parse(localStorage.getItem('mob-mirror:panel') ?? 'null') as { open?: unknown; height?: unknown } | null
-      return { open: v?.open === true, height: typeof v?.height === 'number' ? v.height : 240 }
-    } catch {
-      return { open: false, height: 240 }
-    }
-  })
-  useEffect(() => {
-    try {
-      localStorage.setItem('mob-mirror:panel', JSON.stringify(panel))
-    } catch {
-      /* private storage */
-    }
-  }, [panel])
-  const recorderRef = useRef(recorder)
-  recorderRef.current = recorder
   const live = mirror.state.phase === 'live'
 
   const [unlockError, setUnlockError] = useState<string | null>(null)
@@ -279,10 +254,6 @@ export function App(): ReactNode {
         }
       } else if (action === 'unlock') {
         if (live) void quickUnlock()
-      } else if ((action === 'back' || action === 'home' || action === 'recents') && recorderRef.current.state) {
-        recorderRef.current.key(action)
-        runAction(action)
-        if (action === 'home' && SECOND_SCREEN && live) setGridOpen(true)
       } else if (action === 'disconnect' && EMBED) {
         runAction('disconnect')
         window.mobMirror.tabs.closeSelf()
@@ -374,33 +345,6 @@ export function App(): ReactNode {
     return window.mobMirror.tabs.onStats(({ id, stats }) => setTabStats((m) => ({ ...m, [id]: stats as TabStats })))
   }, [])
 
-  // ⌘J: the developer panel (as in VS Code).
-  useEffect(() => {
-    if (EMBED) return
-    const key = (e: KeyboardEvent): void => {
-      if (e.metaKey && !e.altKey && !e.shiftKey && e.code === 'KeyJ') {
-        e.preventDefault()
-        setPanel((p) => ({ ...p, open: !p.open }))
-      }
-    }
-    window.addEventListener('keydown', key)
-    return () => window.removeEventListener('keydown', key)
-  }, [])
-
-  // ⌥⌘I: inspect mode on the mirror (and it ends with the mirror).
-  useEffect(() => {
-    if (!live) setInspecting(false)
-    if (!live || SECOND_SCREEN) return
-    const key = (e: KeyboardEvent): void => {
-      if (e.metaKey && e.altKey && e.code === 'KeyI') {
-        e.preventDefault()
-        setInspecting((v) => !v)
-      }
-    }
-    window.addEventListener('keydown', key)
-    return () => window.removeEventListener('keydown', key)
-  }, [live])
-
   // A tab page names its tab after the phone.
   useEffect(() => {
     if (EMBED && mirror.state.deviceName) window.mobMirror.tabs.setTitle(SECOND_SCREEN ? `${mirror.state.deviceName} · Second screen` : mirror.state.deviceName)
@@ -450,8 +394,7 @@ export function App(): ReactNode {
     () =>
       window.mobMirror.onUiCommand((cmd) => {
         const s = settingsRef.current
-        if (cmd === 'record-test') void recorderRef.current.start()
-        else if (cmd === 'open-settings') openSettings()
+        if (cmd === 'open-settings') openSettings()
         else if (cmd === 'open-second-screen') setPalette({ open: true, mode: 'second' })
         else if (cmd === 'open-palette') setPalette({ open: true, mode: 'all' })
         else if (cmd === 'open-clipboard') setPalette({ open: true, mode: 'clipboard' })
@@ -693,23 +636,6 @@ export function App(): ReactNode {
     mo.observe(document.body, { childList: true, subtree: true })
     return () => mo.disconnect()
   }, [])
-  // Tests run on, and designs are checked against, the phone in front: the selected phone tab, this
-  // window's own mirror, or else the first phone connected.
-  const firstDevice = devices.list?.devices[0]
-  const testTarget: { serial: string; name: string } | null =
-    activeTabInfo && !activeTabInfo.second
-      ? { serial: activeTabInfo.serial, name: activeTabInfo.title }
-      : mirror.state.transport
-        ? { serial: mirror.state.transport.serial, name: mirror.state.deviceName || 'Phone' }
-        : firstDevice?.transports[0]
-          ? { serial: firstDevice.transports[0].serial, name: firstDevice.model }
-          : null
-  const onRecord = (): void => {
-    if (IS_HOST) {
-      if (tabShown) window.mobMirror.tabs.command('record-test')
-      else toast.info('Open a phone first', { description: 'Mirror it (Phones → ▷), then press Record: the recording happens on its tab.' })
-    } else void recorder.start()
-  }
   const phoneName = phoneNameNow
   const onPhone = onPhoneNow
 
@@ -731,8 +657,8 @@ export function App(): ReactNode {
             onOpenPalette={() => (tabShown ? window.mobMirror.tabs.command('open-palette') : setPalette({ open: true, mode: 'all' }))}
             sidebarOpen={settings.sidebarOpen}
             onToggleSidebar={() => updateSettings({ sidebarOpen: !settings.sidebarOpen })}
-            panelOpen={panel.open}
-            onTogglePanel={() => setPanel((p) => ({ ...p, open: !p.open }))}
+            statusBarOpen={settings.showStatusBar}
+            onToggleStatusBar={() => updateSettings({ showStatusBar: !settings.showStatusBar })}
             update={
               macUpdate?.latest
                 ? {
@@ -771,8 +697,6 @@ export function App(): ReactNode {
           error={devices.error}
           adb={devices.adb}
           refresh={devices.refresh}
-          target={testTarget}
-          onRecord={onRecord}
           activeSerial={IS_HOST ? (activeTabInfo && !activeTabInfo.second ? activeTabInfo.serial : null) : (mirror.state.transport?.serial ?? null)}
           connecting={mirror.state.phase === 'connecting'}
           onMirror={onMirror}
@@ -807,8 +731,6 @@ export function App(): ReactNode {
             onOpenPalette={() => setPalette({ open: true, mode: 'all' })}
             onSecondScreen={SECOND_SCREEN ? undefined : () => openSecondScreen()}
             onOpenApps={SECOND_SCREEN ? () => setGridOpen(true) : undefined}
-            onInspect={SECOND_SCREEN ? undefined : () => setInspecting((v) => !v)}
-            inspecting={inspecting}
           />
             )}
           </>
@@ -817,10 +739,6 @@ export function App(): ReactNode {
         <div ref={editorRef} className="relative flex min-h-0 flex-1">
           {/* Lazy overlays get their own boundary: the canvas below must never suspend/unmount. */}
           <Suspense fallback={null}>
-            {recorder.state && <RecorderBar recorder={recorder} />}
-            {inspecting && live && !SECOND_SCREEN && mirror.state.transport && (
-              <InspectOverlay canvasRef={canvasRef} serial={mirror.state.transport.serial} aspect={vw && vh ? vw / vh : 0} onClose={() => setInspecting(false)} />
-            )}
             {/* The Settings tab covers the stage; the mirror keeps running underneath. */}
             {workbench && settingsTab && editorTab === 'settings' && (
               <div className="absolute inset-0 z-30">
@@ -898,9 +816,6 @@ export function App(): ReactNode {
             }
           />
         </div>
-        {workbench && panel.open && (
-          <DevPanel target={testTarget} height={panel.height} onResize={(height) => setPanel((p) => ({ ...p, height }))} onClose={() => setPanel((p) => ({ ...p, open: false }))} />
-        )}
         {compact && settings.navBar && !framed && <NavBar onAction={dispatch} disabled={!live} />}
         {/* Framed: the dock attaches right under the phone body (absolute), this keeps its room. */}
         {compact && settings.navBar && framed && <div aria-hidden className="shrink-0" style={{ height: NAV }} />}
