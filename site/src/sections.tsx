@@ -90,20 +90,6 @@ function Glow({ className }: { className?: string }) {
   )
 }
 
-/** A brand logo set inside a headline: a small tile sized to the letters, sitting on the baseline. */
-function HeadLogo({ logo, color }: { logo: { path: string; title: string }; color: string }) {
-  return (
-    <span
-      aria-hidden
-      className="mx-[0.08em] inline-flex size-[0.82em] -translate-y-[0.06em] items-center justify-center align-middle"
-    >
-      <svg viewBox="0 0 24 24" className="size-[0.72em]" fill={color}>
-        <path d={logo.path} />
-      </svg>
-    </span>
-  )
-}
-
 /**
  * The Android robot in the hero heading, alive the way Android's own branding shows it: it peeks up
  * from the baseline, wiggles its antennas, then blinks now and then. Still for reduced motion.
@@ -139,6 +125,30 @@ function AndroidHead() {
             <circle cx={8.1} cy={15} r={1.15} className="fill-background" />
             <circle cx={15.9} cy={15} r={1.15} className="fill-background" />
           </motion.g>
+        </motion.g>
+      </svg>
+    </span>
+  )
+}
+
+/**
+ * The Apple logo in the hero heading: it drops into place with a small bounce, then its leaf sways
+ * now and then. The body and leaf are the logo's own two shapes. Still for reduced motion.
+ */
+const [APPLE_BODY, APPLE_LEAF] = siApple.path.split(/(?=M)/) as [string, string]
+function AppleMark() {
+  const still = useReducedMotion()
+  return (
+    <span aria-hidden className="mx-[0.08em] inline-flex size-[0.82em] -translate-y-[0.06em] items-center justify-center align-middle">
+      <svg viewBox="0 0 24 24" className="size-[0.72em] overflow-hidden" fill="currentColor">
+        <motion.g initial={still ? false : { y: -24 }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 12, delay: 0.55 }}>
+          <path d={APPLE_BODY} />
+          <motion.path
+            d={APPLE_LEAF}
+            style={{ transformBox: 'view-box', transformOrigin: '13.7px 4.6px' }}
+            animate={still ? undefined : { rotate: [0, -14, 9, -4, 0] }}
+            transition={{ duration: 1.1, ease: 'easeInOut', delay: 1.6, repeat: Infinity, repeatDelay: 5.5 }}
+          />
         </motion.g>
       </svg>
     </span>
@@ -512,7 +522,7 @@ export function Hero() {
       </BlurFade>
       <BlurFade delay={0.05}>
         <h1 className="font-soft mt-6 max-w-5xl text-[2.9rem] leading-[1.08] text-balance sm:text-6xl lg:text-[4.5rem]">
-          Your <AndroidHead /> Android phone, on your <HeadLogo logo={siApple} color="currentColor" /> Mac.
+          Your <AndroidHead /> Android phone, on your <AppleMark /> Mac.
         </h1>
       </BlurFade>
       <BlurFade delay={0.1}>
