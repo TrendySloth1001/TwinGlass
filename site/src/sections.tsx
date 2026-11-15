@@ -39,7 +39,7 @@ import {
   Wifi,
   type LucideIcon,
 } from 'lucide-react'
-import { AnimatePresence, motion, useMotionValue, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react'
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react'
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import {
   siAndroid,
@@ -133,7 +133,8 @@ function AndroidHead() {
 
 /**
  * The Apple logo in the hero heading: it falls in from above (visible all the way, not clipped),
- * lands, bounces once and settles; its leaf sways once as it first lands. The body and leaf are the
+ * lands, bounces once and settles; its leaf sways as it first lands, then again at random moments
+ * with a random strength, like a leaf in a breeze. The body and leaf are the
  * logo's own two shapes. Still for reduced motion.
  */
 const [APPLE_BODY, APPLE_LEAF] = siApple.path.split(/(?=M)/) as [string, string]
@@ -142,6 +143,32 @@ const APPLE_DROP_DELAY = 0.55
 const APPLE_FALL = 0.42
 function AppleMark() {
   const still = useReducedMotion()
+  const leaf = useMotionValue(0)
+  useEffect(() => {
+    if (still) return
+    let timer: ReturnType<typeof setTimeout>
+    let stopped = false
+    const sway = (strength: number): void => {
+      const a = strength * (Math.random() < 0.5 ? -1 : 1)
+      void animate(leaf, [0, a, -a * 0.6, a * 0.25, 0], { duration: 0.7 + strength / 25, ease: 'easeInOut' })
+    }
+    const next = (): void => {
+      timer = setTimeout(() => {
+        if (stopped) return
+        sway(6 + Math.random() * 12)
+        next()
+      }, 3000 + Math.random() * 6000)
+    }
+    // The first sway is the landing knock; random ones follow.
+    timer = setTimeout(() => {
+      sway(16)
+      next()
+    }, (APPLE_DROP_DELAY + APPLE_FALL) * 1000)
+    return () => {
+      stopped = true
+      clearTimeout(timer)
+    }
+  }, [still, leaf])
   return (
     <span aria-hidden className="mx-[0.08em] inline-flex size-[0.82em] -translate-y-[0.06em] items-center justify-center align-middle">
       <svg viewBox="0 0 24 24" className="size-[0.72em] overflow-visible" fill="currentColor">
@@ -153,9 +180,7 @@ function AppleMark() {
           <path d={APPLE_BODY} />
           <motion.path
             d={APPLE_LEAF}
-            style={{ transformBox: 'view-box', transformOrigin: '13.7px 4.6px' }}
-            animate={still ? undefined : { rotate: [0, -16, 10, -4, 0] }}
-            transition={{ duration: 0.9, ease: 'easeInOut', delay: APPLE_DROP_DELAY + APPLE_FALL }}
+            style={{ transformBox: 'view-box', transformOrigin: '13.7px 4.6px', rotate: leaf }}
           />
         </motion.g>
       </svg>
