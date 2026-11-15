@@ -95,7 +95,7 @@ function HeadLogo({ logo, color }: { logo: { path: string; title: string }; colo
   return (
     <span
       aria-hidden
-      className="mx-[0.04em] inline-flex size-[0.82em] -translate-y-[0.06em] items-center justify-center rounded-[0.16em] border border-input-border bg-input align-middle shadow-[0_0.1em_0.4em_-0.1em_rgb(124_92_255/0.5)]"
+      className="mx-[0.04em] inline-flex size-[0.82em] -translate-y-[0.06em] items-center justify-center rounded-[0.16em] border border-input-border bg-input align-middle"
     >
       <svg viewBox="0 0 24 24" className="size-[0.52em]" fill={color}>
         <path d={logo.path} />
