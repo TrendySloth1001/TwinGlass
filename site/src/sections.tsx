@@ -132,22 +132,30 @@ function AndroidHead() {
 }
 
 /**
- * The Apple logo in the hero heading: it drops into place with a small bounce, then its leaf sways
- * now and then. The body and leaf are the logo's own two shapes. Still for reduced motion.
+ * The Apple logo in the hero heading: it falls in from above (visible all the way, not clipped),
+ * lands, bounces once and settles; its leaf sways once as it first lands. The body and leaf are the
+ * logo's own two shapes. Still for reduced motion.
  */
 const [APPLE_BODY, APPLE_LEAF] = siApple.path.split(/(?=M)/) as [string, string]
+const APPLE_DROP_DELAY = 0.55
+/** Seconds from above to the first landing; the bounce adds 0.36 s. */
+const APPLE_FALL = 0.42
 function AppleMark() {
   const still = useReducedMotion()
   return (
     <span aria-hidden className="mx-[0.08em] inline-flex size-[0.82em] -translate-y-[0.06em] items-center justify-center align-middle">
-      <svg viewBox="0 0 24 24" className="size-[0.72em] overflow-hidden" fill="currentColor">
-        <motion.g initial={still ? false : { y: -24 }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 12, delay: 0.55 }}>
+      <svg viewBox="0 0 24 24" className="size-[0.72em] overflow-visible" fill="currentColor">
+        <motion.g
+          initial={still ? false : { y: -30, opacity: 0 }}
+          animate={still ? undefined : { y: [-30, 0, -7, 0], opacity: [0, 1, 1, 1] }}
+          transition={{ delay: APPLE_DROP_DELAY, duration: APPLE_FALL + 0.36, times: [0, APPLE_FALL / (APPLE_FALL + 0.36), (APPLE_FALL + 0.18) / (APPLE_FALL + 0.36), 1], ease: ['easeIn', 'easeOut', 'easeIn'] }}
+        >
           <path d={APPLE_BODY} />
           <motion.path
             d={APPLE_LEAF}
             style={{ transformBox: 'view-box', transformOrigin: '13.7px 4.6px' }}
-            animate={still ? undefined : { rotate: [0, -14, 9, -4, 0] }}
-            transition={{ duration: 1.1, ease: 'easeInOut', delay: 1.6, repeat: Infinity, repeatDelay: 5.5 }}
+            animate={still ? undefined : { rotate: [0, -16, 10, -4, 0] }}
+            transition={{ duration: 0.9, ease: 'easeInOut', delay: APPLE_DROP_DELAY + APPLE_FALL }}
           />
         </motion.g>
       </svg>
