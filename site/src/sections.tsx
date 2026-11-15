@@ -104,6 +104,47 @@ function HeadLogo({ logo, color }: { logo: { path: string; title: string }; colo
   )
 }
 
+/**
+ * The Android robot in the hero heading, alive the way Android's own branding shows it: it peeks up
+ * from the baseline, wiggles its antennas, then blinks now and then. Still for reduced motion.
+ */
+function AndroidHead() {
+  const still = useReducedMotion()
+  const antenna = (side: -1 | 1) => (
+    <motion.line
+      x1={12 + side * 4.4}
+      y1={10.9}
+      x2={12 + side * 6.4}
+      y2={7.4}
+      stroke="#3ddc84"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      style={{ transformBox: 'view-box', transformOrigin: `${12 + side * 4.4}px 10.9px` }}
+      animate={still ? undefined : { rotate: [0, side * -16, side * 10, side * -5, 0] }}
+      transition={{ duration: 0.9, ease: 'easeInOut', delay: 0.9, repeat: Infinity, repeatDelay: 5 }}
+    />
+  )
+  return (
+    <span aria-hidden className="mx-[0.08em] inline-flex size-[0.82em] -translate-y-[0.06em] items-center justify-center align-middle">
+      <svg viewBox="0 0 24 24" className="size-[0.72em] overflow-hidden">
+        <motion.g initial={still ? false : { y: 9 }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 0.35 }}>
+          {antenna(-1)}
+          {antenna(1)}
+          <path d="M2.6 19.2a9.4 9.4 0 0 1 18.8 0Z" fill="#3ddc84" />
+          <motion.g
+            style={{ transformBox: 'view-box', transformOrigin: '12px 15px' }}
+            animate={still ? undefined : { scaleY: [1, 1, 0.1, 1, 1] }}
+            transition={{ duration: 3.6, times: [0, 0.9, 0.94, 0.98, 1], repeat: Infinity, delay: 1.8 }}
+          >
+            <circle cx={8.1} cy={15} r={1.15} className="fill-background" />
+            <circle cx={15.9} cy={15} r={1.15} className="fill-background" />
+          </motion.g>
+        </motion.g>
+      </svg>
+    </span>
+  )
+}
+
 function H2({ children, className }: { children: ReactNode; className?: string }) {
   return <h2 className={`font-soft text-[2.2rem] leading-[1.06] text-balance sm:text-5xl ${className ?? ''}`}>{children}</h2>
 }
@@ -471,7 +512,7 @@ export function Hero() {
       </BlurFade>
       <BlurFade delay={0.05}>
         <h1 className="font-soft mt-6 max-w-5xl text-[2.9rem] leading-[1.08] text-balance sm:text-6xl lg:text-[4.5rem]">
-          Your <HeadLogo logo={siAndroid} color="#3ddc84" /> Android phone, on your <HeadLogo logo={siApple} color="currentColor" /> Mac.
+          Your <AndroidHead /> Android phone, on your <HeadLogo logo={siApple} color="currentColor" /> Mac.
         </h1>
       </BlurFade>
       <BlurFade delay={0.1}>
