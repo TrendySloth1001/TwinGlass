@@ -140,7 +140,7 @@ function AndroidHead() {
 const [APPLE_BODY, APPLE_LEAF] = siApple.path.split(/(?=M)/) as [string, string]
 const APPLE_DROP_DELAY = 0.55
 /** Seconds from above to the first landing; the bounce adds 0.36 s. */
-const APPLE_FALL = 0.42
+const APPLE_FALL = 0.36
 function AppleMark() {
   const still = useReducedMotion()
   const leaf = useMotionValue(0)
@@ -173,8 +173,8 @@ function AppleMark() {
     <span aria-hidden className="mx-[0.08em] inline-flex size-[0.82em] -translate-y-[0.06em] items-center justify-center align-middle">
       <svg viewBox="0 0 24 24" className="size-[0.72em] overflow-visible" fill="currentColor">
         <motion.g
-          initial={still ? false : { y: -30, opacity: 0 }}
-          animate={still ? undefined : { y: [-30, 0, -7, 0], opacity: [0, 1, 1, 1] }}
+          initial={still ? false : { y: -20, opacity: 0 }}
+          animate={still ? undefined : { y: [-20, 0, -5, 0], opacity: [0, 1, 1, 1] }}
           transition={{ delay: APPLE_DROP_DELAY, duration: APPLE_FALL + 0.36, times: [0, APPLE_FALL / (APPLE_FALL + 0.36), (APPLE_FALL + 0.18) / (APPLE_FALL + 0.36), 1], ease: ['easeIn', 'easeOut', 'easeIn'] }}
         >
           <path d={APPLE_BODY} />
