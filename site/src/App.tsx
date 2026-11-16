@@ -2,7 +2,6 @@ import { MotionConfig } from 'motion/react'
 import { useEffect } from 'react'
 import { SiteHeader } from './components/chrome'
 import { DownloadProvider } from './components/download'
-import { Intro } from './components/intro'
 import { Changelog } from './pages/Changelog'
 import { Privacy } from './pages/Privacy'
 import { Releases } from './pages/Releases'
@@ -24,7 +23,6 @@ export function App() {
   return (
     // "user": animations follow the visitor's reduced-motion setting.
     <MotionConfig reducedMotion="user">
-      <Intro />
       <DownloadProvider>
         <SiteHeader />
         {page === 'privacy' ? (
