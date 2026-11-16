@@ -111,7 +111,9 @@ function AndroidHead() {
     />
   )
   return (
-    <span aria-hidden className="mx-[0.08em] inline-flex size-[0.82em] -translate-y-[0.06em] items-center justify-center rounded-[0.16em] align-middle shadow-[0_0.1em_0.4em_-0.1em_rgb(124_92_255/0.5)]">
+    <span aria-hidden className="relative isolate mx-[0.08em] inline-flex size-[0.82em] -translate-y-[0.06em] items-center justify-center align-middle">
+      {/* A soft round violet light behind the logo (no box). */}
+      <span className="pointer-events-none absolute inset-[-12%] -z-10 translate-y-[0.1em] rounded-full bg-[radial-gradient(closest-side,rgb(124_92_255/0.45),transparent)] blur-[0.12em]" />
       <svg viewBox="0 0 24 24" className="size-[0.72em] overflow-hidden">
         <motion.g initial={still ? false : { y: 9 }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 0.35 }}>
           {antenna(-1)}
@@ -170,7 +172,9 @@ function AppleMark() {
     }
   }, [still, leaf])
   return (
-    <span aria-hidden className="mx-[0.08em] inline-flex size-[0.82em] -translate-y-[0.06em] items-center justify-center rounded-[0.16em] align-middle shadow-[0_0.1em_0.4em_-0.1em_rgb(124_92_255/0.5)]">
+    <span aria-hidden className="relative isolate mx-[0.08em] inline-flex size-[0.82em] -translate-y-[0.06em] items-center justify-center align-middle">
+      {/* A soft round violet light behind the logo (no box). */}
+      <span className="pointer-events-none absolute inset-[-12%] -z-10 translate-y-[0.1em] rounded-full bg-[radial-gradient(closest-side,rgb(124_92_255/0.45),transparent)] blur-[0.12em]" />
       <svg viewBox="0 0 24 24" className="size-[0.72em] overflow-visible" fill="currentColor">
         <motion.g
           initial={still ? false : { y: -20, opacity: 0 }}
